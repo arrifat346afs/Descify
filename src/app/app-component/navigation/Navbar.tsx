@@ -19,7 +19,7 @@ const Navbar = () => {
       <div data-tauri-drag-region className=" w-full">
         <div>
           <ItemMedia variant="image">
-            <logo />
+            
           </ItemMedia>
         </div>
         <div>
