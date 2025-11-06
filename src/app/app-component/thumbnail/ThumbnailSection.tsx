@@ -243,7 +243,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     <div className="w-">
       {(!files || files.length === 0) && (
         <div className="p-2">
-          <div className="h-[20vh] w-[20vw] border-2 rounded-md flex justify-center items-center text-7xl bg-amber-400">
+          <div className="h-[20vh] w-[20vw] border-2 rounded-md flex justify-center items-center text-7xl b">
             <MdOutlineImageNotSupported />
           </div>
         </div>
