@@ -243,11 +243,9 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     <div className="w-">
       {(!files || files.length === 0) && (
         <div className="p- h-[28vh]">
-          {" "}
-          
-       
+
             <MdOutlineImageNotSupported />
-          </Card>
+          
         </div>
       )}
 
