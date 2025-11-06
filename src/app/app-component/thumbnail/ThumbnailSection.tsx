@@ -2,17 +2,30 @@ import { useEffect, useRef } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { ScrollArea, ScrollBar } from "../../../components/ui/scroll-area";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-
+// import { NoSuchToolError } from "ai";
+import { MdOutlineImageNotSupported } from "react-icons/md";
+import { Card } from "@/components/ui/card";
 type ThumbnailSectionProps = {
   onSelectFile: (file: File) => void;
 };
 
 const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
-  const { files, thumbnails: thumbsCtx, generated, hasAttemptedGeneration, selectedFile } = useSettings();
+  const {
+    files,
+    thumbnails: thumbsCtx,
+    generated,
+    hasAttemptedGeneration,
+    selectedFile,
+  } = useSettings();
   const thumbnails = thumbsCtx.items;
   const thumbnailRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  console.log('ThumbnailSection render - files:', files?.length, 'thumbnails:', thumbnails?.length);
+  console.log(
+    "ThumbnailSection render - files:",
+    files?.length,
+    "thumbnails:",
+    thumbnails?.length
+  );
 
   // Auto-scroll to selected thumbnail
   useEffect(() => {
@@ -21,11 +34,11 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       const thumbnailElement = thumbnailRefs.current.get(fileName);
 
       if (thumbnailElement) {
-        console.log('📜 Auto-scrolling to:', fileName);
+        console.log("📜 Auto-scrolling to:", fileName);
         thumbnailElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'center'
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
         });
       }
     }
@@ -33,7 +46,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
   const generateThumbnail = async (file: File) => {
     try {
-      console.log('⚡ Creating optimized thumbnail for:', file.name);
+      console.log("⚡ Creating optimized thumbnail for:", file.name);
 
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
@@ -41,13 +54,13 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       if (isImage) {
         // Create a small, compressed thumbnail for images
         const thumbnailUrl = await createImageThumbnail(file);
-        console.log('✓ Image thumbnail ready:', file.name);
+        console.log("✓ Image thumbnail ready:", file.name);
         thumbsCtx.upsert({ file, thumbnailUrl });
         return thumbnailUrl;
       } else if (isVideo) {
         // For videos, capture a frame at 1 second
         const thumbnailUrl = await createVideoThumbnail(file);
-        console.log('✓ Video thumbnail ready:', file.name);
+        console.log("✓ Video thumbnail ready:", file.name);
         thumbsCtx.upsert({ file, thumbnailUrl });
         return thumbnailUrl;
       }
@@ -84,21 +97,21 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         }
 
         // Create canvas and draw resized image
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
 
         if (!ctx) {
           URL.revokeObjectURL(objectUrl);
-          reject(new Error('Failed to get canvas context'));
+          reject(new Error("Failed to get canvas context"));
           return;
         }
 
         ctx.drawImage(img, 0, 0, width, height);
 
         // Convert to compressed JPEG (70% quality)
-        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+        const thumbnailUrl = canvas.toDataURL("image/jpeg", 0.7);
 
         URL.revokeObjectURL(objectUrl);
         resolve(thumbnailUrl);
@@ -106,7 +119,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
       img.onerror = () => {
         URL.revokeObjectURL(objectUrl);
-        reject(new Error('Failed to load image'));
+        reject(new Error("Failed to load image"));
       };
 
       img.src = objectUrl;
@@ -116,7 +129,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   // Create video thumbnail by capturing frame at 1 second
   const createVideoThumbnail = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
+      const video = document.createElement("video");
       const objectUrl = URL.createObjectURL(file);
 
       video.onloadeddata = () => {
@@ -143,21 +156,21 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         }
 
         // Create canvas and capture frame
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
 
         if (!ctx) {
           URL.revokeObjectURL(objectUrl);
-          reject(new Error('Failed to get canvas context'));
+          reject(new Error("Failed to get canvas context"));
           return;
         }
 
         ctx.drawImage(video, 0, 0, width, height);
 
         // Convert to compressed JPEG
-        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+        const thumbnailUrl = canvas.toDataURL("image/jpeg", 0.7);
 
         URL.revokeObjectURL(objectUrl);
         resolve(thumbnailUrl);
@@ -165,7 +178,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
       video.onerror = () => {
         URL.revokeObjectURL(objectUrl);
-        reject(new Error('Failed to load video'));
+        reject(new Error("Failed to load video"));
       };
 
       video.src = objectUrl;
@@ -175,8 +188,8 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
   // Generate thumbnails when files change
   useEffect(() => {
-    console.log('📁 Files changed:', files?.length, 'files');
-    console.log('🖼️  Current thumbnails in context:', thumbsCtx.items.length);
+    console.log("📁 Files changed:", files?.length, "files");
+    console.log("🖼️  Current thumbnails in context:", thumbsCtx.items.length);
 
     if (!files || files.length === 0) {
       thumbsCtx.setIsGenerating(false);
@@ -198,11 +211,13 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
     // Set generating state
     thumbsCtx.setIsGenerating(true);
-    console.log(`🚀 Starting generation of ${filesToGenerate.length} thumbnails...`);
+    console.log(
+      `🚀 Starting generation of ${filesToGenerate.length} thumbnails...`
+    );
 
     // Generate thumbnails for all files that don't have one yet
     filesToGenerate.forEach((file) => {
-      console.log('⚡ Triggering thumbnail generation for:', file.name);
+      console.log("⚡ Triggering thumbnail generation for:", file.name);
       generateThumbnail(file);
     });
   }, [files]); // Only depend on files, not thumbnails to avoid infinite loop
@@ -218,16 +233,22 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       });
 
       if (allDone) {
-        console.log('✅ All thumbnails generated!');
+        console.log("✅ All thumbnails generated!");
         thumbsCtx.setIsGenerating(false);
       }
     }
   }, [thumbnails, files, thumbsCtx.isGenerating]);
 
   return (
-    <div className="w-400">
+    <div className="w-">
       {(!files || files.length === 0) && (
-        <p className="text-gray-500 text-center mt-4">No files selected.</p>
+        <div className="p- h-[28vh]">
+          {" "}
+          <Card className="aspect-12/9 h-[24vh]">
+       
+            <MdOutlineImageNotSupported />
+          </Card>
+        </div>
       )}
 
       {files && files.length > 0 && (
@@ -240,12 +261,29 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               // Check if this file has generated metadata
               const hasMetadata = generated.getMetadata(file) !== undefined;
 
-              // Border color: green if has metadata, red only if user attempted generation and still missing metadata
-              const borderClass = hasMetadata
-                ? "border border-green-500"
-                : hasAttemptedGeneration
-                ? "border border-red-500"
-                : "border border-gray-300";
+              // Check if this file is currently selected
+              const isSelected = selectedFile === file;
+
+              // Border styling based on selection and metadata status
+              // Selected state: thick blue border with ring effect
+              // Metadata status: thin colored border (green/red/gray)
+              let borderClass = "";
+              let ringClass = "";
+
+              if (isSelected) {
+                // Selected: thick blue border with ring
+                borderClass = "border-2 border-blue-500";
+                // ringClass = "ring-2 ring-blue-300 ring-offset-2";
+              } else if (hasMetadata) {
+                // Has metadata: thin green border
+                borderClass = "border-1 border-green-500";
+              } else if (hasAttemptedGeneration) {
+                // Missing metadata after generation attempt: thin red border
+                borderClass = "border-1 border-red-500";
+              } else {
+                // Default: thin gray border
+                borderClass = "border border-gray-300";
+              }
 
               return (
                 <div
@@ -258,15 +296,15 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                     }
                   }}
                   onClick={() => onSelectFile(file)}
-                  className={`${borderClass} rounded-md shadow overflow-hidden cursor-pointer hover:scale-105 transition-transform w-[30vh] shrink-0`}
+                  className={`${borderClass} ${ringClass} rounded-md shadow overflow-hidden cursor-pointer hover:scale-105 transition-all duration-200 w-[30vh] shrink-0`}
                 >
-                  <AspectRatio ratio={12 / 9} className="active:border-blue-500 border">
+                  <AspectRatio ratio={12 / 9}>
                     <img
                       src={url}
                       alt={file.name}
-                      className="w-full h-40 object-cover"
+                      className="w-full h-45 object-cover"
                     />
-                    <p className="p-2 text-sm truncate text-center text-gray-600">
+                    <p className="absolute bottom-0 left-0 right-0 p-2 text-sm truncate text-center text-gray-300">
                       {file.name}
                     </p>
                   </AspectRatio>

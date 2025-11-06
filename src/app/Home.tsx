@@ -16,19 +16,19 @@ export const Home = () => {
   };
 
   return (
-    <div className="h-full">
+    <div className="min-h-screen flex flex-col m-0 p-0">
       <div>
         <Navbar />
       </div>
-        <div className="flex justify-between h-[60vh] gap-0 ">
+        <div className="flex justify-between h-[60vh] ">
           <div className="w-[30vw] h-full"><CategorySection /></div>
           <div className="w-[40vw] h-full"><FileSection file={selectedFile} /></div>
           <div className="w-[30vw] h-full"><MetadataSection /></div>
         </div>
         <div className="flex flex-col justify-between h-[40vh]">
-            <div className="h-[8vh] "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
-            <div className="h-[20vh"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
-            <div className="h-[10vh] "><ProgressSection /></div>
+            <div className=" "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
+            <div className=" w-full"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
+            <div className=" "><ProgressSection /></div>
         </div>
     </div>
   )

@@ -83,7 +83,7 @@ export const CategorySection = () => {
         </Select>
       </div>
         <h4 className="text-center text-l text-zinc-500">ShutterStock</h4>
-      <div className="flex gap-4 w-full px-3">
+      <div className="flex gap-4 w-full px-3 ">
         <div className="w-full flex justify-center items-center">
           <Select
             value={categories.shutterStock1}
