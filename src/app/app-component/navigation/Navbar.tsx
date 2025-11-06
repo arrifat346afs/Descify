@@ -10,7 +10,7 @@ import {
 } from "react-icons/vsc";
 import { ItemMedia } from "@/components/ui/item";
 
-import logo from "../../../public/tp.";
+import logo from "../../../public/tp.png";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
