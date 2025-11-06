@@ -4,7 +4,7 @@ import { ScrollArea, ScrollBar } from "../../../components/ui/scroll-area";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 // import { NoSuchToolError } from "ai";
 import { MdOutlineImageNotSupported } from "react-icons/md";
-import { Card } from "@/components/ui/card";
+// import { Card } from "@/components/ui/card";
 type ThumbnailSectionProps = {
   onSelectFile: (file: File) => void;
 };
