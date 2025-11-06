@@ -20,15 +20,15 @@ export const Home = () => {
       <div>
         <Navbar />
       </div>
-        <div className="flex justify-between h-[60vh] ">
+        <div className="flex justify-between h-[59vh] ">
           <div className="w-[30vw] h-full"><CategorySection /></div>
           <div className="w-[40vw] h-full"><FileSection file={selectedFile} /></div>
           <div className="w-[30vw] h-full"><MetadataSection /></div>
         </div>
-        <div className="flex flex-col justify-between h-[40vh]">
-            <div className="h-[5vh] "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
-            <div className="h-[30vh] w-full"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
-            <div className="h-[5vh] "><ProgressSection /></div>
+        <div className="flex flex-col h-[40vh]">
+            <div className="h-[6vh] shrink-0 "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
+            <div className="h-[27vh] w-full border"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
+            <div className="h-[4vh] shrink-0 "><ProgressSection /></div>
         </div>
     </div>
   )

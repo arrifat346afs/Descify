@@ -63,7 +63,6 @@ const KeywordsField = () => {
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleInputKeyDown}
         placeholder={selectedFile ? "Add keywords here (press Enter)" : "Select a file to view metadata"}
-        disabled={!selectedFile}
         className="mb-3"
       />
 

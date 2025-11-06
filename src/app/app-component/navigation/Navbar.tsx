@@ -2,38 +2,55 @@ import { Button } from "@/components/ui/button";
 import Settings from "../settings/Settings";
 import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
 import { SettingsIcon } from "lucide-react";
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   VscChromeClose,
   VscChromeMaximize,
   VscChromeMinimize,
 } from "react-icons/vsc";
+import { ItemMedia } from "@/components/ui/item";
 const Navbar = () => {
   const appWindow = getCurrentWindow();
   return (
     <div className="flex justify-between items-center border border-b">
       <div data-tauri-drag-region className=" w-full">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-transparent hover:bg-muted">
-              <SettingsIcon className="w-8 h-8 text-white text-3xl" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <Settings />
-          </DialogContent>
-        </Dialog>
+        <div>
+          <ItemMedia variant="image">
+            <img src="" alt="..." />
+          </ItemMedia>
+        </div>
+        <div>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-transparent hover:bg-muted">
+                <SettingsIcon className="w-8 h-8 text-white text-3xl" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <Settings />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
       <div className="flex">
-        <Button onClick={()=> appWindow.minimize()} className="bg-transparent text-white rounded-none  hover:bg-zinc-500/30">
-         <VscChromeMinimize/>
-       </Button>
-       <Button onClick={()=> appWindow.maximize()} className="bg-transparent text-white rounded-none hover:bg-zinc-500/30">
-         <VscChromeMaximize/>
-       </Button>
-       <Button onClick={()=> appWindow.close()} className="bg-transparent text-white rounded-none">
-         <VscChromeClose/>
-       </Button>
+        <Button
+          onClick={() => appWindow.minimize()}
+          className="bg-transparent text-white rounded-none  hover:bg-zinc-500/30"
+        >
+          <VscChromeMinimize />
+        </Button>
+        <Button
+          onClick={() => appWindow.maximize()}
+          className="bg-transparent text-white rounded-none hover:bg-zinc-500/30"
+        >
+          <VscChromeMaximize />
+        </Button>
+        <Button
+          onClick={() => appWindow.close()}
+          className="bg-transparent text-white rounded-none"
+        >
+          <VscChromeClose />
+        </Button>
       </div>
     </div>
   );

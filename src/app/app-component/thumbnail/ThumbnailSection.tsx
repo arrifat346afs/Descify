@@ -251,7 +251,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
       {files && files.length > 0 && (
         <ScrollArea className="p-2 w-full overflow-hidden">
-          <div className="flex space-x-4 px-4 py-2 w-max">
+          <div className="flex space-x-4 px-2 py-2 w-max">
             {files.map((file, index) => {
               const thumbnail = thumbnails.find((t) => t.file === file);
               const url = thumbnail?.thumbnailUrl || URL.createObjectURL(file);

@@ -34,8 +34,8 @@ export const DescriptionField = () => {
         value={description}
         onChange={handleChange}
         placeholder={selectedFile ? "Generate metadata for this file..." : "Select a file to view metadata"}
-        disabled={!selectedFile}
-        className={`min-h-[100px] ${isOverLimit ? 'border-red-500' : ''}`}
+        
+        
       />
     </div>
   );

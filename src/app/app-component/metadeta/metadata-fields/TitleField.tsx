@@ -34,8 +34,8 @@ const TitleField = () => {
         value={title}
         onChange={handleChange}
         placeholder={selectedFile ? "Generate metadata for this file..." : "Select a file to view metadata"}
-        disabled={!selectedFile}
-        className={isOverLimit ? 'border-red-500' : ''}
+        
+        
       />
     </div>
   );

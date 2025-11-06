@@ -19,7 +19,7 @@ export const ProgressSection = () => {
   const currentIndex = generationProgress.currentIndex;
 
   return (
-    <div className="w-full px-4 py-2 flex flex-col gap-2 ">
+    <div className="w-full  flex flex-col gap-2 ">
       <div className="flex items-center gap-3">
         <div className="flex-1">
           <Progress value={progressValue} key={`progress-${completedFiles}-${totalFiles}`} className="h-2" />
