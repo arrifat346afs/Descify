@@ -10,7 +10,7 @@ import {
 } from "react-icons/vsc";
 import { ItemMedia } from "@/components/ui/item";
 
-import logo from "../../../public/tauri.svg";
+import logo from "../../../public/";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
