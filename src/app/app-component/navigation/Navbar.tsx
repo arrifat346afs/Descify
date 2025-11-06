@@ -10,16 +10,23 @@ import {
 } from "react-icons/vsc";
 import { ItemMedia } from "@/components/ui/item";
 
-import logo from "../../../public/tp.png";
+import logo from "../../../assets/tp.png";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
   return (
     <div className="flex justify-between items-center border border-b">
-      <div data-tauri-drag-region className=" w-full">
+      <div data-tauri-drag-region className="flex w-full">
         <div>
           <ItemMedia variant="image">
-            <img src={logo} alt="logo" />
+            <img
+              src={logo}
+              alt="logo"
+              style={{
+                width: "25px",
+                height: "auto", 
+              }}
+            />
           </ItemMedia>
         </div>
         <div>
