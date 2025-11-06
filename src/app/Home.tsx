@@ -26,7 +26,7 @@ export const Home = () => {
           <div className="w-[30vw] h-full"><MetadataSection /></div>
         </div>
         <div className="flex flex-col justify-between h-[40vh]">
-            <div className="h[] "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
+            <div className="h[5vh] "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
             <div className=" w-full"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
             <div className=" "><ProgressSection /></div>
         </div>
