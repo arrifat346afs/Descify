@@ -251,7 +251,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
       {files && files.length > 0 && (
         <ScrollArea className="p-2 w-full overflow-hidden">
-          <div className="flex space-x-4 px-2 py-2 w-max">
+          <div className="flex space-x-4 px-2 py-2 w-max pb-4">
             {files.map((file, index) => {
               const thumbnail = thumbnails.find((t) => t.file === file);
               const url = thumbnail?.thumbnailUrl || URL.createObjectURL(file);
@@ -280,7 +280,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                 borderClass = "border-1 border-red-500";
               } else {
                 // Default: thin gray border
-                borderClass = "border border-gray-300";
+                borderClass = "border-2";
               }
 
               return (
@@ -296,11 +296,11 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                   onClick={() => onSelectFile(file)}
                   className={`${borderClass} ${ringClass} rounded-md shadow overflow-hidden cursor-pointer hover:scale-105 transition-all duration-200 w-[30vh] shrink-0`}
                 >
-                  <AspectRatio ratio={12 / 9}>
+                  <AspectRatio ratio={12 / 9} className="hover:border-2 hover:border-blue-500">
                     <img
                       src={url}
                       alt={file.name}
-                      className="w-full h-45 object-cover"
+                      className="w-full h-45 object-fill"
                     />
                     <p className="absolute bottom-0 left-0 right-0 p-2 text-sm truncate text-center text-gray-300">
                       {file.name}
@@ -310,7 +310,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               );
             })}
           </div>
-          <ScrollBar orientation="horizontal" />
+          <ScrollBar orientation="horizontal"/>
         </ScrollArea>
       )}
     </div>

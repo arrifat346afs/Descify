@@ -14,7 +14,7 @@ import logo from "../../../assets/tp.png";
 const Navbar = () => {
   const appWindow = getCurrentWindow();
   return (
-    <div className="flex justify-between items-center  border-b h-[30px]">
+    <div className="flex justify-between items-center  border-b h-[31px]">
       <div data-tauri-drag-region className="flex w-full">
         <div>
           <ItemMedia variant="image">
@@ -56,7 +56,7 @@ const Navbar = () => {
         </Button>
         <Button
           onClick={() => appWindow.close()}
-          className="h-full bg-transparent text-white rounded-none"
+          className="h-full bg-transparent text-white rounded-none hover:bg-red-500 hover:text-black"
         >
           <VscChromeClose />
         </Button>

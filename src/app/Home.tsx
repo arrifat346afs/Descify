@@ -17,7 +17,7 @@ export const Home = () => {
 
   return (
     <div className="min-h-screen flex flex-col m-0 p-0">
-      <div>
+      <div className="h-[3vh]">
         <Navbar />
       </div>
         <div className="flex justify-between h-[59vh] ">
@@ -27,7 +27,7 @@ export const Home = () => {
         </div>
         <div className="flex flex-col h-[40vh]">
             <div className="h-[6vh] shrink-0 "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
-            <div className="h-[27vh] w-full border"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
+            <div className="h-[29vh] w-full border"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
             <div className="h-[4vh] shrink-0 "><ProgressSection /></div>
         </div>
     </div>
