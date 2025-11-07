@@ -15,7 +15,7 @@ export const  ActionsSection = ({ onFilesSelected }: ActionsSectionProps) => {
     onFilesSelected(files);
   };
   return (
-    <div className="flex justify-center items-center h-full border-b border-t select-none p-2">
+    <div className="flex justify-center items-center h-full select-none p-2">
       <UploadButton onFilesSelected={handleFilesSelected} />
       <Separator orientation="vertical" />
       <GenerateButton />

@@ -47,7 +47,7 @@ export const CategorySection = () => {
 
   return (
     <div className="h-full w-full">
-     <div className="select-none flex flex-col gap-4 h-full justify-center items-center border-r">
+     <div className="select-none flex flex-col gap-4 h-full justify-center items-center ">
       <div className="w-full flex flex-col gap-2 items-center p-3">
         <h4 className="text-center text-l text-zinc-500">Adobe Stock</h4>
         <Select

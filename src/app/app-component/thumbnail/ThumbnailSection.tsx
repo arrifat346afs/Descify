@@ -240,10 +240,10 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   }, [thumbnails, files, thumbsCtx.isGenerating]);
 
   return (
-    <div className="w-">
+    <div className="w-full h-full">
       {(!files || files.length === 0) && (
         <div className="p-2">
-          <div className="h-[20vh] w-[20vw] border-2 rounded-md flex justify-center items-center text-7xl ">
+          <div className="h-[25vh] w-[17vw] border-2 rounded-md flex justify-center items-center text-7xl ">
             <MdOutlineImageNotSupported />
           </div>
         </div>
