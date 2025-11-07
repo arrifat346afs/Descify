@@ -9,7 +9,7 @@ import {
   VscChromeMinimize,
 } from "react-icons/vsc";
 import { ItemMedia } from "@/components/ui/item";
-
+//thus
 import logo from "../../../assets/tp.png";
 
 const Navbar = () => {
