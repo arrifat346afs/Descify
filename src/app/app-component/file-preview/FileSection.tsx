@@ -1,3 +1,5 @@
+import { CiImageOn } from "react-icons/ci";
+
 type FileSectionProps = {
   file: File | null;
 };
@@ -5,8 +7,8 @@ type FileSectionProps = {
 export default function FileSection({ file }: FileSectionProps) {
   if (!file) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <p className="text-gray-500 text-center">No file selected.</p>
+      <div className="w-full h-full flex items-center justify-center text-6xl text-accent">
+        <CiImageOn />
       </div>
     );
   }
