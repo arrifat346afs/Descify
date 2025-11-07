@@ -44,7 +44,7 @@ const Navbar = () => {
       <div className="flex">
         <Button
           onClick={() => appWindow.minimize()}
-          className="h-full bg-transparent text-white rounded-none  hover:bg-zinc-500/30"
+          className=" bg-transparent text-white rounded-none  hover:bg-zinc-500/30"
         >
           <VscChromeMinimize />
         </Button>
