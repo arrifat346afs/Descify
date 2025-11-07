@@ -50,13 +50,13 @@ const Navbar = () => {
         </Button>
         <Button
           onClick={() => appWindow.maximize()}
-          className="bg-transparent text-white rounded-none hover:bg-zinc-500/30"
+          className="h-full bg-transparent text-white rounded-none hover:bg-zinc-500/30"
         >
           <VscChromeMaximize />
         </Button>
         <Button
           onClick={() => appWindow.close()}
-          className="bg-transparent text-white rounded-none"
+          className="h-full bg-transparent text-white rounded-none"
         >
           <VscChromeClose />
         </Button>
