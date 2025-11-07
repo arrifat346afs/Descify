@@ -7,7 +7,8 @@ import ThumbnailSection from "./app-component/thumbnail/ThumbnailSection"
 import Navbar from "./app-component/navigation/Navbar"
 import { useSettings } from "./contexts/SettingsContext"
 
-
+//this is test to if the auto commite works or not
+// how about now
 export const Home = () => {
   const { selectedFile, setSelectedFile, setFiles } = useSettings()
 
