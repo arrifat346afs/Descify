@@ -15,7 +15,7 @@ import logo from "../../../assets/tp.png";
 const Navbar = () => {
   const appWindow = getCurrentWindow();
   return (
-    <div className="flex justify-between items-center border border-b">
+    <div className="flex justify-between items-center  border-b">
       <div data-tauri-drag-region className="flex w-full">
         <div>
           <ItemMedia variant="image">

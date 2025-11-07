@@ -6,7 +6,7 @@ import { useSettings } from '@/app/contexts/SettingsContext';
 import { generateMetadata } from '@/app/lib/ai';
 
 export const GenerateButton = () => {
-  const { files, thumbnails, api, metadataLimits, generated, setHasAttemptedGeneration, setSelectedFile, generationProgress, setGenerationProgress } = useSettings();
+  const { files, thumbnails, api, metadataLimits, metadataOptions, generated, setHasAttemptedGeneration, setSelectedFile, generationProgress, setGenerationProgress } = useSettings();
   const lastAutoSelectedIndexRef = useRef(-1);
   const isGenerating = generationProgress.isGenerating;
 
@@ -101,6 +101,7 @@ export const GenerateButton = () => {
             descriptionLimit: metadataLimits.descriptionLimit,
             keywordLimit: metadataLimits.keywordLimit,
           },
+          includePlaceName: metadataOptions.includePlaceName,
         });
 
         // Store metadata for this specific file

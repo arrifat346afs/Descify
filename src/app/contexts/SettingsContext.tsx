@@ -1,4 +1,5 @@
 import  { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { toast } from 'sonner';
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
 
@@ -22,6 +23,10 @@ type MetadataLimits = {
   titleLimit: number;
   descriptionLimit: number;
   keywordLimit: number;
+};
+
+type MetadataOptions = {
+  includePlaceName: boolean;
 };
 
 type ApiSettingsState = {
@@ -51,6 +56,7 @@ type GenerationProgress = {
 type SettingsContextType = {
   api: ApiSettingsState;
   metadataLimits: MetadataLimits & { setLimits: (l: Partial<MetadataLimits>) => void };
+  metadataOptions: MetadataOptions & { setOptions: (o: Partial<MetadataOptions>) => void };
   files: File[];
   setFiles: (files: File[]) => void;
   thumbnails: {
@@ -95,6 +101,7 @@ const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
     return item ? JSON.parse(item) : defaultValue;
   } catch (error) {
     console.error(`Error loading ${key} from localStorage:`, error);
+    toast.error("Error loading from localStorage.");
     return defaultValue;
   }
 };
@@ -103,8 +110,10 @@ const saveToLocalStorage = <T,>(key: string, value: T): void => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
     console.log(`✓ Saved ${key} to localStorage:`, value);
+    toast.success("Settings saved!");
   } catch (error) {
     console.error(`Error saving ${key} to localStorage:`, error);
+    toast.error("Error saving to localStorage.");
   }
 };
 
@@ -264,6 +273,25 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  // Load metadata options from localStorage with defaults
+  const [options, setOptionsState] = useState<MetadataOptions>(() => {
+    const saved = loadFromLocalStorage('metadataOptions', null) as MetadataOptions | null;
+    if (saved) {
+      return {
+        includePlaceName: saved.includePlaceName ?? false,
+      };
+    }
+    return { includePlaceName: false };
+  });
+
+  const setOptions = (o: Partial<MetadataOptions>) => {
+    setOptionsState((prev) => {
+      const newOptions = { ...prev, ...o };
+      saveToLocalStorage('metadataOptions', newOptions);
+      return newOptions;
+    });
+  };
+
   const value: SettingsContextType = {
     api: {
       selectedProvider,
@@ -278,6 +306,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     metadataLimits: {
       ...limits,
       setLimits,
+    },
+    metadataOptions: {
+      ...options,
+      setOptions,
     },
     files,
     setFiles,

@@ -3,7 +3,8 @@ import { useSettings } from '@/app/contexts/SettingsContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
 
@@ -50,6 +51,7 @@ const ApiSettings = () => {
 
   const handleApiKeyChange = (provider: Provider, value: string) => {
     setApiKey(provider, value);
+    toast("API Key saved!");
   };
 
   return (
@@ -152,11 +154,6 @@ const ApiSettings = () => {
           <p className="text-xs text-gray-400 mt-1">
             Prevents rate limiting. Set to 0 for no delay.
           </p>
-      </div>
-
-      <div className="flex justify-end space-x-2">
-        <Button variant="secondary">Clear</Button>
-        <Button>Save & Close</Button>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { Switch } from "@/components/ui/switch"
 import { useSettings } from '@/app/contexts/SettingsContext'
 
 const MetadataSettings = () => {
-  const { metadataLimits } = useSettings();
+  const { metadataLimits, metadataOptions } = useSettings();
 
   const handleReset = () => {
     metadataLimits.setLimits({
@@ -89,16 +89,20 @@ const MetadataSettings = () => {
             </Button>
           </div>
         </div>
-        <div className="flex justify-between p-2">
-          <h4 >Include Place Name In the Output</h4>
+        <div className="flex justify-between items-center p-2">
+          <div className="flex flex-col gap-1">
+            <h4>Include Place Names</h4>
+            <span className="text-xs text-gray-500">
+              {metadataOptions.includePlaceName
+                ? "AI will include location/place names in metadata"
+                : "AI will exclude location/place names from metadata"}
+            </span>
+          </div>
           <Switch
-            // checked={settings.includePlaceName}
-            // onCheckedChange={(checked) =>
-            //   setSettings({
-            //     ...settings,
-            //     includePlaceName: checked,
-            //   })
-            // }
+            checked={metadataOptions.includePlaceName}
+            onCheckedChange={(checked) =>
+              metadataOptions.setOptions({ includePlaceName: checked })
+            }
           />
         </div>
       </div>
