@@ -7,15 +7,8 @@
   ],
   "permissions": [
     {
-      "identifier": "opener:allow-open-path",
-      "allow": [
-        {
-          "path": "/path/to/file"
-        },
-        {
-          "path": "$APPDATA/file"
-        }
-      ]
+      "identifier": "opener:allow-open-path"
+      
     },
     "core:default",
     "opener:default",
