@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useSettings } from '@/app/contexts/SettingsContext'
+import { opendir } from "node:fs/promises"
 
 const MetadataSettings = () => {
   const { metadataLimits, metadataOptions } = useSettings();
@@ -17,7 +18,7 @@ const MetadataSettings = () => {
     // Implement file selection logic here
     try {
       console.log('File select clicked');
-      const directories = window.showDirectoryPicker();
+      const directories =  opendir('.')``;
     } catch (error) {
       
     }
