@@ -18,6 +18,9 @@ const MetadataSettings = () => {
       keywordLimit: 80,
     });
   };
+  function savePath(path: string) {
+  localStorage.setItem("exportPath", path);
+}
   const handleFileSelect = async () => {
     // Implement file selection logic here
     try {
@@ -25,8 +28,10 @@ const MetadataSettings = () => {
       const selectedDir = await open({ directory: true, multiple: false });
       console.log('Selected directory:', selectedDir);
       setSelectedDirectory(selectedDir as string | undefined);
+      savePath(selectedDir as string);
     } catch (error) {
       console.error('Failed to open path:', error);
+      
     }
   };
 
