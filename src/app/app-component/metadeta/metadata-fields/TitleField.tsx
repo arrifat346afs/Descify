@@ -15,10 +15,8 @@ const TitleField = () => {
   const handleChange = (e: any) => {
     if (selectedFile) {
       const newValue = e.target.value;
-      // Enforce limit
-      if (newValue.length <= maxLength) {
-        generated.setMetadata(selectedFile, { title: newValue });
-      }
+      generated.setMetadata(selectedFile, { title: newValue });
+      
     }
   };
 
