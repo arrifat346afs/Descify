@@ -15,6 +15,11 @@ export const CategorySection = () => {
   const { categories, setCategories, selectedFile, generated } = useSettings();
   const lastProcessedFileRef = useRef<File | null>(null);
 
+  // Get current file's categories or use global categories as fallback
+  const currentCategories = selectedFile
+    ? (generated.getCategories(selectedFile) || categories)
+    : categories;
+
   // Auto-populate categories when a file with metadata is selected
   useEffect(() => {
     if (selectedFile) {
@@ -24,8 +29,10 @@ export const CategorySection = () => {
       }
 
       const metadata = generated.getMetadata(selectedFile);
+      const existingCategories = generated.getCategories(selectedFile);
 
-      if (metadata && metadata.title && metadata.keywords) {
+      // Only auto-match if we don't have categories for this file yet
+      if (metadata && metadata.title && metadata.keywords && !existingCategories) {
         console.log('🎯 Auto-matching categories for:', selectedFile.name);
 
         const matches = matchCategories(
@@ -35,9 +42,14 @@ export const CategorySection = () => {
         );
 
         console.log('📊 Category matches:', matches);
-        setCategories(matches);
+        generated.setFileCategories(selectedFile, matches);
+        setCategories(matches); // Also update global state for UI
 
         // Mark this file as processed
+        lastProcessedFileRef.current = selectedFile;
+      } else if (existingCategories) {
+        // Load existing categories into global state for UI
+        setCategories(existingCategories);
         lastProcessedFileRef.current = selectedFile;
       } else {
         console.log('⏳ Waiting for metadata for:', selectedFile.name);
@@ -45,14 +57,22 @@ export const CategorySection = () => {
     }
   }, [selectedFile, generated, setCategories]);
 
+  const handleCategoryChange = (categoryType: 'adobeStock' | 'shutterStock1' | 'shutterStock2', value: string) => {
+    const newCategories = { [categoryType]: value };
+    setCategories(newCategories); // Update global state for UI
+    if (selectedFile) {
+      generated.setFileCategories(selectedFile, newCategories); // Save to file-specific storage
+    }
+  };
+
   return (
     <div className="h-full w-full">
      <div className="select-none flex flex-col gap-4 h-full justify-center items-center ">
       <div className="w-full flex flex-col gap-2 items-center p-3">
         <h4 className="text-center text-l text-zinc-500">Adobe Stock</h4>
         <Select
-          value={categories.adobeStock}
-          onValueChange={(value) => setCategories({ adobeStock: value })}
+          value={currentCategories.adobeStock}
+          onValueChange={(value) => handleCategoryChange('adobeStock', value)}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select category" />
@@ -86,8 +106,8 @@ export const CategorySection = () => {
       <div className="flex gap-4 w-full px-3 ">
         <div className="w-full flex justify-center items-center">
           <Select
-            value={categories.shutterStock1}
-            onValueChange={(value) => setCategories({ shutterStock1: value })}
+            value={currentCategories.shutterStock1}
+            onValueChange={(value) => handleCategoryChange('shutterStock1', value)}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select category" />
@@ -132,8 +152,8 @@ export const CategorySection = () => {
         </div>
         <div className="w-full flex justify-center items-center">
           <Select
-            value={categories.shutterStock2}
-            onValueChange={(value) => setCategories({ shutterStock2: value })}
+            value={currentCategories.shutterStock2}
+            onValueChange={(value) => handleCategoryChange('shutterStock2', value)}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select category" />

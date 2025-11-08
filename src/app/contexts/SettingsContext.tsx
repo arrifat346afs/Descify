@@ -17,6 +17,7 @@ type GeneratedMetadata = {
 type FileMetadata = {
   file: File;
   metadata: GeneratedMetadata;
+  categories?: CategorySelection;
 };
 
 type MetadataLimits = {
@@ -72,6 +73,8 @@ type SettingsContextType = {
     items: FileMetadata[];
     getMetadata: (file: File) => GeneratedMetadata | undefined;
     setMetadata: (file: File, metadata: Partial<GeneratedMetadata>) => void;
+    getCategories: (file: File) => CategorySelection | undefined;
+    setFileCategories: (file: File, categories: Partial<CategorySelection>) => void;
     clear: () => void;
   };
   generationProgress: GenerationProgress;
@@ -250,6 +253,49 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const getCategories = (file: File): CategorySelection | undefined => {
+    const found = generatedMetadata.find((fm) => fm.file === file);
+    return found?.categories;
+  };
+
+  const setFileCategories = (file: File, newCategories: Partial<CategorySelection>) => {
+    setGeneratedMetadata((prev) => {
+      const existing = prev.find((fm) => fm.file === file);
+      if (existing) {
+        // Update existing
+        return prev.map((fm) =>
+          fm.file === file
+            ? {
+                ...fm,
+                categories: {
+                  ...(fm.categories || { adobeStock: '', shutterStock1: '', shutterStock2: '' }),
+                  ...newCategories
+                }
+              }
+            : fm
+        );
+      } else {
+        // If file doesn't exist in metadata yet, create it with empty metadata
+        return [
+          ...prev,
+          {
+            file,
+            metadata: {
+              title: '',
+              description: '',
+              keywords: '',
+            },
+            categories: {
+              adobeStock: newCategories.adobeStock || '',
+              shutterStock1: newCategories.shutterStock1 || '',
+              shutterStock2: newCategories.shutterStock2 || '',
+            },
+          },
+        ];
+      }
+    });
+  };
+
   const clearGenerated = () => setGeneratedMetadata([]);
 
   // Load limits from localStorage with defaults
@@ -326,6 +372,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       items: generatedMetadata,
       getMetadata,
       setMetadata,
+      getCategories,
+      setFileCategories,
       clear: clearGenerated,
     },
     generationProgress,
