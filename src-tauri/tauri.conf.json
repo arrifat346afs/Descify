@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "tagpix-ai",
+        "title": "Tagpix AI",
         "width": 1024,
         "height": 728,
         "decorations": false

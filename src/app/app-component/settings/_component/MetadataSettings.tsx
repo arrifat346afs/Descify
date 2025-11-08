@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useSettings } from '@/app/contexts/SettingsContext'
-import { opendir } from "node:fs/promises"
+import { openPath } from '@tauri-apps/plugin-opener';
 
 const MetadataSettings = () => {
   const { metadataLimits, metadataOptions } = useSettings();
@@ -18,9 +18,9 @@ const MetadataSettings = () => {
     // Implement file selection logic here
     try {
       console.log('File select clicked');
-      const directories =  opendir('.')``;
+      openPath('/');
     } catch (error) {
-      
+      console.error('Failed to open path:', error);
     }
   };
 
