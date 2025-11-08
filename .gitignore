@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Auto-committer ignored files
+*.tmp
+*.temp
+*.cache
+*.dll
+*.exe
+*.env
