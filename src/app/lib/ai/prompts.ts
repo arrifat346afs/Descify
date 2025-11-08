@@ -16,9 +16,9 @@ export type MetadataLimits = {
  * @returns The formatted prompt string
  */
 export const generateMetadataPrompt = (limits?: MetadataLimits, includePlaceName?: boolean): string => {
-  const titleLimit = limits?.titleLimit || 200;
-  const descriptionLimit = limits?.descriptionLimit || 200;
-  const keywordLimit = limits?.keywordLimit || 80;
+  const titleLimit = limits?.titleLimit;
+  const descriptionLimit = limits?.descriptionLimit;
+  const keywordLimit = limits?.keywordLimit;
 
   const placeNameRule = includePlaceName
     ? "6. INCLUDE specific location or place names if they are identifiable in the image (e.g., 'Eiffel Tower', 'New York City', 'Grand Canyon')"
@@ -29,9 +29,9 @@ export const generateMetadataPrompt = (limits?: MetadataLimits, includePlaceName
 ANALYZE the provided image carefully and generate REAL, SPECIFIC metadata based on what you actually see.
 
 STRICT REQUIREMENTS:
-- Title: Maximum ${titleLimit} characters. Be specific and descriptive.
-- Description: Maximum ${descriptionLimit} characters. Describe what's actually in the image.
-- Keywords: Up to ${keywordLimit} relevant keywords, comma-separated.
+- Title: Exactly ${titleLimit} characters. Be specific and descriptive.
+- Description: Exactly ${descriptionLimit} characters. Describe what's actually in the image.
+- Keywords: Exactly ${keywordLimit} relevant keywords, comma-separated.
 
 IMPORTANT RULES:
 1. DO NOT use generic phrases like "Auto-generated description"

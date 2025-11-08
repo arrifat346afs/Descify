@@ -3,7 +3,7 @@
 Tagpix AI is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently.
 
 ## Features
-
+*   **Image Import:** Allows users to import images from their local filesystem.
 *   **Metadata Editing:** Allows users to view, edit, and save image metadata.
 *   **AI-Powered Tagging:** Integrates with AI models to automatically generate tags for images.
 *   **File Preview:** Provides a preview of the images.
