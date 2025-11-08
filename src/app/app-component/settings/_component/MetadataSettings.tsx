@@ -13,6 +13,15 @@ const MetadataSettings = () => {
       keywordLimit: 80,
     });
   };
+  const handleFileSelect = () => {
+    // Implement file selection logic here
+    try {
+      console.log('File select clicked');
+      const directories = window.showDirectoryPicker();
+    } catch (error) {
+      
+    }
+  };
 
   return (
      <div className="flex flex-col items-center gap-6 text-gray-400">
@@ -83,7 +92,7 @@ const MetadataSettings = () => {
             <Button
               variant="outline"
               className="w-30"
-              // onClick={handleFileSelect}
+              onClick={handleFileSelect}
             >
               Browse
             </Button>
