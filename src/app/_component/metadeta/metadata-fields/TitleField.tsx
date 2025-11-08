@@ -21,7 +21,7 @@ const TitleField = () => {
   };
 
   return (
-    <div>
+    <div className="flex flex-col">
       <div className="flex justify-between items-center mb-1">
         <label className="text-sm text-gray-500">Title</label>
         <span className={`text-xs ${isOverLimit ? 'text-red-500 font-bold' : 'text-gray-400'}`}>

@@ -10,14 +10,13 @@ import {
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { matchCategories } from "@/app/lib/categoryMatcher";
 
-
 export const CategorySection = () => {
   const { categories, setCategories, selectedFile, generated } = useSettings();
   const lastProcessedFileRef = useRef<File | null>(null);
 
   // Get current file's categories or use global categories as fallback
   const currentCategories = selectedFile
-    ? (generated.getCategories(selectedFile) || categories)
+    ? generated.getCategories(selectedFile) || categories
     : categories;
 
   // Auto-populate categories when a file with metadata is selected
@@ -32,8 +31,13 @@ export const CategorySection = () => {
       const existingCategories = generated.getCategories(selectedFile);
 
       // Only auto-match if we don't have categories for this file yet
-      if (metadata && metadata.title && metadata.keywords && !existingCategories) {
-        console.log('🎯 Auto-matching categories for:', selectedFile.name);
+      if (
+        metadata &&
+        metadata.title &&
+        metadata.keywords &&
+        !existingCategories
+      ) {
+        console.log("🎯 Auto-matching categories for:", selectedFile.name);
 
         const matches = matchCategories(
           metadata.title,
@@ -41,7 +45,7 @@ export const CategorySection = () => {
           metadata.description
         );
 
-        console.log('📊 Category matches:', matches);
+        console.log("📊 Category matches:", matches);
         generated.setFileCategories(selectedFile, matches);
         setCategories(matches); // Also update global state for UI
 
@@ -52,12 +56,15 @@ export const CategorySection = () => {
         setCategories(existingCategories);
         lastProcessedFileRef.current = selectedFile;
       } else {
-        console.log('⏳ Waiting for metadata for:', selectedFile.name);
+        console.log("⏳ Waiting for metadata for:", selectedFile.name);
       }
     }
   }, [selectedFile, generated, setCategories]);
 
-  const handleCategoryChange = (categoryType: 'adobeStock' | 'shutterStock1' | 'shutterStock2', value: string) => {
+  const handleCategoryChange = (
+    categoryType: "adobeStock" | "shutterStock1" | "shutterStock2",
+    value: string
+  ) => {
     const newCategories = { [categoryType]: value };
     setCategories(newCategories); // Update global state for UI
     if (selectedFile) {
@@ -66,13 +73,12 @@ export const CategorySection = () => {
   };
 
   return (
-    <div className="h-full w-full ">
-     <div className="select-none flex flex-col gap-4 h-full justify-center items-center ">
+    <div className="select-none flex flex-col gap-4 h-full justify-center items-center @container">
       <div className="w-full flex flex-col gap-2 items-center p-3">
         <h4 className="text-center text-l text-zinc-500">Adobe Stock</h4>
         <Select
           value={currentCategories.adobeStock}
-          onValueChange={(value) => handleCategoryChange('adobeStock', value)}
+          onValueChange={(value) => handleCategoryChange("adobeStock", value)}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select category" />
@@ -102,17 +108,19 @@ export const CategorySection = () => {
           </SelectContent>
         </Select>
       </div>
-        <h4 className="text-center text-l text-zinc-500">ShutterStock</h4>
-      <div className="flex gap-4 w-full px-3 sm:flex-row">
+      <h4 className="text-center text-l text-zinc-500">ShutterStock</h4>
+      <div className="flex @max-sm:flex-col gap-4 w-full px-3 ">
         <div className="w-full flex justify-center items-center">
           <Select
             value={currentCategories.shutterStock1}
-            onValueChange={(value) => handleCategoryChange('shutterStock1', value)}
+            onValueChange={(value) =>
+              handleCategoryChange("shutterStock1", value)
+            }
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
-            <SelectContent >
+            <SelectContent>
               <SelectItem value="Abstract">Abstract</SelectItem>
               <SelectItem value="Animals/Wildlife">Animals/Wildlife</SelectItem>
               <SelectItem value="Arts">Arts</SelectItem>
@@ -153,12 +161,14 @@ export const CategorySection = () => {
         <div className="w-full flex justify-center items-center">
           <Select
             value={currentCategories.shutterStock2}
-            onValueChange={(value) => handleCategoryChange('shutterStock2', value)}
+            onValueChange={(value) =>
+              handleCategoryChange("shutterStock2", value)
+            }
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
-            <SelectContent >
+            <SelectContent>
               <SelectItem value="Abstract">Abstract</SelectItem>
               <SelectItem value="Animals/Wildlife">Animals/Wildlife</SelectItem>
               <SelectItem value="Arts">Arts</SelectItem>
@@ -198,6 +208,5 @@ export const CategorySection = () => {
         </div>
       </div>
     </div>
-    </div>
-  )
-}
+  );
+};
