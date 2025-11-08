@@ -6,6 +6,17 @@
     "main"
   ],
   "permissions": [
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "/path/to/file"
+        },
+        {
+          "path": "$APPDATA/file"
+        }
+      ]
+    },
     "core:default",
     "opener:default",
     "upload:default",
