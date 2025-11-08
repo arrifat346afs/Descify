@@ -2,11 +2,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useSettings } from '@/app/contexts/SettingsContext'
-import { readFile } from '@tauri-apps/plugin-fs';
-import * as path from '@tauri-apps/api/path';
+import { open } from '@tauri-apps/plugin-dialog';
+import { useState } from 'react';
+// import { readFile } from '@tauri-apps/plugin-fs';
+// import * as path from '@tauri-apps/api/path';
 
 const MetadataSettings = () => {
   const { metadataLimits, metadataOptions } = useSettings();
+  const [selectedDirectory, setSelectedDirectory] = useState<string | undefined>(undefined);
 
   const handleReset = () => {
     metadataLimits.setLimits({
@@ -15,11 +18,13 @@ const MetadataSettings = () => {
       keywordLimit: 80,
     });
   };
-  const handleFileSelect = () => {
+  const handleFileSelect = async () => {
     // Implement file selection logic here
     try {
       console.log('File select clicked');
-      openPath('/');
+      const selectedDir = await open({ directory: true, multiple: false });
+      console.log('Selected directory:', selectedDir);
+      setSelectedDirectory(selectedDir as string | undefined);
     } catch (error) {
       console.error('Failed to open path:', error);
     }
@@ -87,7 +92,7 @@ const MetadataSettings = () => {
             <Input
               className="border-background/20 grow"
               type="text"
-              // value={selectedFilePath}
+              value={selectedDirectory || ''}
               readOnly
               placeholder="No directory selected"
             />
