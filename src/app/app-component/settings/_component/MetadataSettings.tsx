@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useSettings } from '@/app/contexts/SettingsContext'
-import { openPath } from '@tauri-apps/plugin-opener';
+import { readFile } from '@tauri-apps/plugin-fs';
+import * as path from '@tauri-apps/api/path';
 
 const MetadataSettings = () => {
   const { metadataLimits, metadataOptions } = useSettings();

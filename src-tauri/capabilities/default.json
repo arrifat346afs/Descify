@@ -6,10 +6,6 @@
     "main"
   ],
   "permissions": [
-    {
-      "identifier": "opener:allow-open-path"
-      
-    },
     "core:default",
     "opener:default",
     "upload:default",
