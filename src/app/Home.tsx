@@ -1,10 +1,11 @@
-import { ActionsSection } from "./_component/action/ ActionsSection"
-import { CategorySection } from "./_component/category/CategorySection"
-import FileSection from "./_component/file-preview/FileSection"
-import { MetadataSection } from "./_component/metadeta/MetadataSection"
-import { ProgressSection } from "./_component/progressbar/ProgressSection"
-import ThumbnailSection from "./_component/thumbnail/ThumbnailSection"
-import Navbar from "./_component/navigation/Navbar"
+
+import { ActionsSection } from "./_component/action/ ActionsSection";
+import { CategorySection } from "./_component/category/CategorySection";
+import FileSection from "./_component/file-preview/FileSection";
+import { MetadataSection } from "./_component/metadeta/MetadataSection";
+import Navbar from "./_component/navigation/Navbar";
+import { ProgressSection } from "./_component/progressbar/ProgressSection";
+import ThumbnailSection from "./_component/thumbnail/ThumbnailSection";
 import { useSettings } from "./contexts/SettingsContext"
 import { Separator } from "@/components/ui/separator"
 
