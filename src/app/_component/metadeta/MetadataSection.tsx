@@ -5,8 +5,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const MetadataSection = () => {
   return (
-    <ScrollArea className="h-full w-full p-2">
-      <div className="flex flex-col gap-4">
+    <ScrollArea >
+      <div className="flex flex-col gap-4 p-2">
         <TitleField />
         <DescriptionField />
         <KeywordsField />
