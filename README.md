@@ -18,23 +18,23 @@ Tagpix AI is a desktop application built with Tauri, React, and TypeScript, desi
 2.  **Clone the repository:**
 
     ```bash
-    git clone <repository_url>
+    git clone https://github.com/arrifat346afs/tagpix-ai.git
     cd tagpix-ai
     ```
 
 3.  **Install dependencies:**
 
     ```bash
-    npm install
+    bun install
     ```
 
 4.  **Run the application:**
 
     ```bash
-    npm run tauri dev
+    bun run tauri dev
     ```
 
-    This command will build and run the application in development mode.  For production builds, use `npm run tauri build`.
+    This command will build and run the application in development mode.  For production builds, use `bun run tauri build`.
 
 ## Usage
 
