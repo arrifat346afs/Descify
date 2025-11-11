@@ -4751,6 +4751,7 @@ name = "tauri-app"
 version = "0.1.0"
 dependencies = [
  "base64 0.21.7",
+ "image",
  "ruurd_photos_thumbnail_generation",
  "serde",
  "serde_json",
@@ -4760,6 +4761,7 @@ dependencies = [
  "tauri-plugin-fs",
  "tauri-plugin-opener",
  "tauri-plugin-upload",
+ "tokio",
  "uuid",
 ]
 

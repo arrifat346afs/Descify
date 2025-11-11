@@ -44,148 +44,6 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     }
   }, [selectedFile]);
 
-  const generateThumbnail = async (file: File) => {
-    try {
-      console.log("⚡ Creating optimized thumbnail for:", file.name);
-
-      const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
-
-      if (isImage) {
-        // Create a small, compressed thumbnail for images
-        const thumbnailUrl = await createImageThumbnail(file);
-        console.log("✓ Image thumbnail ready:", file.name);
-        thumbsCtx.upsert({ file, thumbnailUrl });
-        return thumbnailUrl;
-      } else if (isVideo) {
-        // For videos, capture a frame at 1 second
-        const thumbnailUrl = await createVideoThumbnail(file);
-        console.log("✓ Video thumbnail ready:", file.name);
-        thumbsCtx.upsert({ file, thumbnailUrl });
-        return thumbnailUrl;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("❌ Error creating thumbnail for", file.name, ":", error);
-      return null;
-    }
-  };
-
-  // Create optimized image thumbnail (512px max, 70% quality)
-  const createImageThumbnail = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-
-      img.onload = () => {
-        // Calculate new dimensions (max 512px on longest side)
-        const maxSize = 512;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxSize) {
-            height = (height * maxSize) / width;
-            width = maxSize;
-          }
-        } else {
-          if (height > maxSize) {
-            width = (width * maxSize) / height;
-            height = maxSize;
-          }
-        }
-
-        // Create canvas and draw resized image
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-
-        if (!ctx) {
-          URL.revokeObjectURL(objectUrl);
-          reject(new Error("Failed to get canvas context"));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convert to compressed JPEG (70% quality)
-        const thumbnailUrl = canvas.toDataURL("image/jpeg", 0.7);
-
-        URL.revokeObjectURL(objectUrl);
-        resolve(thumbnailUrl);
-      };
-
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error("Failed to load image"));
-      };
-
-      img.src = objectUrl;
-    });
-  };
-
-  // Create video thumbnail by capturing frame at 1 second
-  const createVideoThumbnail = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement("video");
-      const objectUrl = URL.createObjectURL(file);
-
-      video.onloadeddata = () => {
-        // Seek to 1 second (or 10% of duration, whichever is less)
-        video.currentTime = Math.min(1, video.duration * 0.1);
-      };
-
-      video.onseeked = () => {
-        // Calculate dimensions (max 512px)
-        const maxSize = 512;
-        let width = video.videoWidth;
-        let height = video.videoHeight;
-
-        if (width > height) {
-          if (width > maxSize) {
-            height = (height * maxSize) / width;
-            width = maxSize;
-          }
-        } else {
-          if (height > maxSize) {
-            width = (width * maxSize) / height;
-            height = maxSize;
-          }
-        }
-
-        // Create canvas and capture frame
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-
-        if (!ctx) {
-          URL.revokeObjectURL(objectUrl);
-          reject(new Error("Failed to get canvas context"));
-          return;
-        }
-
-        ctx.drawImage(video, 0, 0, width, height);
-
-        // Convert to compressed JPEG
-        const thumbnailUrl = canvas.toDataURL("image/jpeg", 0.7);
-
-        URL.revokeObjectURL(objectUrl);
-        resolve(thumbnailUrl);
-      };
-
-      video.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error("Failed to load video"));
-      };
-
-      video.src = objectUrl;
-      video.load();
-    });
-  };
-
   // Generate thumbnails when files change
   useEffect(() => {
     console.log("📁 Files changed:", files?.length, "files");
@@ -215,11 +73,32 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       `🚀 Starting generation of ${filesToGenerate.length} thumbnails...`
     );
 
-    // Generate thumbnails for all files that don't have one yet
-    filesToGenerate.forEach((file) => {
-      console.log("⚡ Triggering thumbnail generation for:", file.name);
-      generateThumbnail(file);
-    });
+    // Generate thumbnails in parallel using batch processing
+    // This runs asynchronously in the Rust backend and doesn't block the UI
+    (async () => {
+      try {
+        const { generateThumbnailsBatch } = await import("@/app/lib/thumbnailGenerator");
+
+        const results = await generateThumbnailsBatch(
+          filesToGenerate,
+          (completed, total, fileName) => {
+            console.log(`⚡ Progress: ${completed}/${total} - ${fileName}`);
+          },
+          4 // Process 4 thumbnails concurrently
+        );
+
+        // Update context with all generated thumbnails
+        results.forEach((thumbnailUrl, file) => {
+          thumbsCtx.upsert({ file, thumbnailUrl });
+        });
+
+        thumbsCtx.setIsGenerating(false);
+        console.log(`✅ Completed ${results.size} thumbnails`);
+      } catch (error) {
+        console.error("❌ Batch thumbnail generation failed:", error);
+        thumbsCtx.setIsGenerating(false);
+      }
+    })();
   }, [files]); // Only depend on files, not thumbnails to avoid infinite loop
 
   // Check if all thumbnails are done
@@ -240,10 +119,10 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   }, [thumbnails, files, thumbsCtx.isGenerating]);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full ">
       {(!files || files.length === 0) && (
         <div className="p-2">
-          <div className="h-[25vh] w-[17vw] border-2 rounded-md flex justify-center items-center text-7xl ">
+          <div className="h-[20vh] w-[17vw] border-2 rounded-md flex justify-center items-center text-7xl ">
             <MdOutlineImageNotSupported />
           </div>
         </div>
@@ -294,7 +173,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                     }
                   }}
                   onClick={() => onSelectFile(file)}
-                  className={`${borderClass} ${ringClass} rounded-md shadow overflow-hidden cursor-pointer hover:scale-105 transition-all duration-200 w-[30vh] shrink-0`}
+                  className={`${borderClass} ${ringClass} rounded-md shadow overflow-hidden cursor-pointer hover:scale-105 transition-all duration-200 w-[28vh] shrink-0`}
                 >
                   <AspectRatio ratio={12 / 9} className="hover:border-2 hover:border-blue-500">
                     <img

@@ -94,6 +94,7 @@ function generateShutterstockCSV(items: FileMetadata[], fallbackCategories: Cate
 
 /**
  * Exports metadata to CSV file based on the selected platform
+ * Uses the saved export path from settings, or shows a dialog if not configured
  */
 export async function exportToCSV(
   items: FileMetadata[],
@@ -117,19 +118,31 @@ export async function exportToCSV(
   try {
     // Check if there's a saved export path in localStorage
     const savedPath = localStorage.getItem('exportPath');
-    
-    // Open save dialog
-    const filePath = await save({
-      defaultPath: savedPath ? `${savedPath}/${defaultFilename}` : defaultFilename,
-      filters: [{
-        name: 'CSV',
-        extensions: ['csv']
-      }]
-    });
 
-    if (!filePath) {
-      // User cancelled the dialog
-      throw new Error('Export cancelled by user');
+    let filePath: string;
+
+    if (savedPath) {
+      // Use the saved path directly without showing dialog
+      // Ensure path separator is correct
+      const separator = savedPath.includes('\\') ? '\\' : '/';
+      filePath = `${savedPath}${separator}${defaultFilename}`;
+      console.log(`📁 Using saved export path: ${filePath}`);
+    } else {
+      // No saved path - show save dialog
+      const dialogResult = await save({
+        defaultPath: defaultFilename,
+        filters: [{
+          name: 'CSV',
+          extensions: ['csv']
+        }]
+      });
+
+      if (!dialogResult) {
+        // User cancelled the dialog
+        throw new Error('Export cancelled by user');
+      }
+
+      filePath = dialogResult;
     }
 
     // Write the CSV file

@@ -19,7 +19,7 @@ export const Home = () => {
 
   return (
     <div className="min-h-screen flex flex-col m-0 p-0">
-      <div className="h-[4vh]">
+      <div className="h-[35px]">
         <Navbar />
       </div>
       <Separator  />
@@ -35,7 +35,7 @@ export const Home = () => {
             <div className="h-[6vh] shrink-0 "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
              <Separator  />
             <div className="h-[29vh] w-full"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
-            <div className="h-[4vh] shrink-0 "><ProgressSection /></div>
+            <div className="h-[7vh] shrink-0 "><ProgressSection /></div>
         </div>
     </div>
   )

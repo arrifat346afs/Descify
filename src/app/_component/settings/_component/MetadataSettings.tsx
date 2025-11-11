@@ -3,13 +3,21 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useSettings } from '@/app/contexts/SettingsContext'
 import { open } from '@tauri-apps/plugin-dialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 // import { readFile } from '@tauri-apps/plugin-fs';
 // import * as path from '@tauri-apps/api/path';
 
 const MetadataSettings = () => {
   const { metadataLimits, metadataOptions } = useSettings();
   const [selectedDirectory, setSelectedDirectory] = useState<string | undefined>(undefined);
+
+  // Load saved export path on mount
+  useEffect(() => {
+    const savedPath = localStorage.getItem('exportPath');
+    if (savedPath) {
+      setSelectedDirectory(savedPath);
+    }
+  }, []);
 
   const handleReset = () => {
     metadataLimits.setLimits({
