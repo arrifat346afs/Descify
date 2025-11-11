@@ -89,7 +89,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
             thumbsCtx.upsert({ file, thumbnailUrl });
             console.log(`✨ Thumbnail ready: ${file.name}`);
           },
-          8 // Process 8 thumbnails concurrently for faster generation
+          4 // Process 4 thumbnails concurrently to avoid freezing
         );
 
         thumbsCtx.setIsGenerating(false);
