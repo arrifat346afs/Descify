@@ -1,50 +1,74 @@
 /**
  * Thumbnail Generation Module
- * Uses Sharp (via Tauri/Node.js) for fast, high-quality thumbnail generation
+ * Uses browser Canvas API for fast thumbnail generation
  */
 
-import { invoke } from '@tauri-apps/api/core';
-
 /**
- * Converts a File object to a base64 data URL
- */
-async function fileToDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-/**
- * Generates a thumbnail for an image file using Sharp (via Tauri/Node.js)
- * This runs asynchronously and uses Sharp for high-quality, fast image processing
+ * Generates a thumbnail for an image file using Canvas API
+ * This is fast and runs entirely in the browser
  *
  * @param file - The image file to generate a thumbnail for
  * @returns Promise<string> - Base64 data URL of the thumbnail
  */
 export async function generateImageThumbnail(file: File): Promise<string> {
-  try {
-    // Convert file to base64 data URL
-    const dataURL = await fileToDataURL(file);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
 
-    // Call Tauri command which runs Sharp via Node.js
-    const thumbnailURL = await invoke<string>('generate_sharp_thumbnail', {
-      fileData: dataURL
-    });
+    img.onload = () => {
+      // Calculate dimensions (max 512px, maintain aspect ratio)
+      const maxSize = 512;
+      let width = img.width;
+      let height = img.height;
 
-    return thumbnailURL;
-  } catch (error) {
-    console.error('Failed to generate thumbnail with Sharp:', error);
-    throw error;
-  }
+      if (width > height) {
+        if (width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        }
+      } else {
+        if (height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+      }
+
+      // Create canvas and draw resized image
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convert to JPEG (85% quality for good balance)
+      const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+      URL.revokeObjectURL(objectUrl);
+      resolve(thumbnailUrl);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to load image'));
+    };
+
+    img.src = objectUrl;
+  });
 }
 
 /**
  * Generates a video thumbnail by capturing a frame
- * Falls back to browser-based implementation for now
- * TODO: Implement video thumbnail generation in Rust backend
+ * Uses Canvas API for fast processing
+ *
+ * @param file - The video file to generate a thumbnail for
+ * @returns Promise<string> - Base64 data URL of the thumbnail
  */
 export async function generateVideoThumbnail(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -88,8 +112,8 @@ export async function generateVideoThumbnail(file: File): Promise<string> {
 
       ctx.drawImage(video, 0, 0, width, height);
 
-      // Convert to JPEG (70% quality)
-      const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+      // Convert to JPEG (85% quality)
+      const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.85);
 
       URL.revokeObjectURL(objectUrl);
       resolve(thumbnailUrl);

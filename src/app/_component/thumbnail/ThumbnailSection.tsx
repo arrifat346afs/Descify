@@ -133,7 +133,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
           <div className="flex space-x-4 px-2 py-2 w-max pb-4">
             {files.map((file, index) => {
               const thumbnail = thumbnails.find((t) => t.file === file);
-              const url = thumbnail?.thumbnailUrl || URL.createObjectURL(file);
+              const isGenerating = !thumbnail && thumbsCtx.isGenerating;
 
               // Check if this file has generated metadata
               const hasMetadata = generated.getMetadata(file) !== undefined;
@@ -176,11 +176,24 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                   className={`${borderClass} ${ringClass} rounded-md shadow overflow-hidden cursor-pointer hover:scale-105 transition-all duration-200 w-[28vh] shrink-0`}
                 >
                   <AspectRatio ratio={12 / 9} className="hover:border-2 hover:border-blue-500">
-                    <img
-                      src={url}
-                      alt={file.name}
-                      className="w-full h-45 object-fill"
-                    />
+                    {thumbnail ? (
+                      <img
+                        src={thumbnail.thumbnailUrl}
+                        alt={file.name}
+                        className="w-full h-45 object-fill"
+                      />
+                    ) : isGenerating ? (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                          <p className="text-xs text-gray-400">Generating...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                        <MdOutlineImageNotSupported className="text-4xl text-gray-500" />
+                      </div>
+                    )}
                     <p className="absolute bottom-0 left-0 right-0 p-2 text-sm truncate text-center text-gray-300">
                       {file.name}
                     </p>

@@ -58,7 +58,7 @@ This document describes the implementation of **Sharp** (Node.js image processin
 └─────────────────────────────────────────────────────────────┘
 ```
 
----
+-----------------------------------------------------------------
 
 ## Implementation Details
 
