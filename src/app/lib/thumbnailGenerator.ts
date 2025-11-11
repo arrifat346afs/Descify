@@ -131,15 +131,17 @@ export async function generateVideoThumbnail(file: File): Promise<string> {
 /**
  * Batch generates thumbnails for multiple files
  * Processes files in parallel with a concurrency limit to avoid overwhelming the system
- * 
+ *
  * @param files - Array of files to generate thumbnails for
  * @param onProgress - Optional callback for progress updates
- * @param concurrency - Maximum number of concurrent thumbnail generations (default: 4)
+ * @param onThumbnailReady - Callback when each individual thumbnail is ready
+ * @param concurrency - Maximum number of concurrent thumbnail generations (default: 8)
  */
 export async function generateThumbnailsBatch(
   files: File[],
   onProgress?: (completed: number, total: number, fileName: string) => void,
-  concurrency: number = 4
+  onThumbnailReady?: (file: File, thumbnailUrl: string) => void,
+  concurrency: number = 8
 ): Promise<Map<File, string>> {
   const results = new Map<File, string>();
   const queue = [...files];
@@ -161,9 +163,19 @@ export async function generateThumbnailsBatch(
           if (isImage) {
             const thumbnail = await generateImageThumbnail(file);
             results.set(file, thumbnail);
+
+            // Immediately notify that this thumbnail is ready
+            if (onThumbnailReady) {
+              onThumbnailReady(file, thumbnail);
+            }
           } else if (isVideo) {
             const thumbnail = await generateVideoThumbnail(file);
             results.set(file, thumbnail);
+
+            // Immediately notify that this thumbnail is ready
+            if (onThumbnailReady) {
+              onThumbnailReady(file, thumbnail);
+            }
           }
 
           completed++;

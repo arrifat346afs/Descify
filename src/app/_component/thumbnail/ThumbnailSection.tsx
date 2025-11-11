@@ -74,7 +74,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     );
 
     // Generate thumbnails in parallel using batch processing
-    // This runs asynchronously in the Rust backend and doesn't block the UI
+    // This runs asynchronously and doesn't block the UI
     (async () => {
       try {
         const { generateThumbnailsBatch } = await import("@/app/lib/thumbnailGenerator");
@@ -84,13 +84,13 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
           (completed, total, fileName) => {
             console.log(`⚡ Progress: ${completed}/${total} - ${fileName}`);
           },
-          4 // Process 4 thumbnails concurrently
+          (file, thumbnailUrl) => {
+            // Update UI immediately as each thumbnail is ready
+            thumbsCtx.upsert({ file, thumbnailUrl });
+            console.log(`✨ Thumbnail ready: ${file.name}`);
+          },
+          8 // Process 8 thumbnails concurrently for faster generation
         );
-
-        // Update context with all generated thumbnails
-        results.forEach((thumbnailUrl, file) => {
-          thumbsCtx.upsert({ file, thumbnailUrl });
-        });
 
         thumbsCtx.setIsGenerating(false);
         console.log(`✅ Completed ${results.size} thumbnails`);
