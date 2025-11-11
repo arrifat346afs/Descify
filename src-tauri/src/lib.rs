@@ -6,6 +6,45 @@ use uuid::Uuid;
 use base64::engine::general_purpose;
 use base64::Engine as _;
 
+/// Generate thumbnail using Rust image processing
+/// This is a simpler, more reliable approach than spawning Node.js
+#[tauri::command]
+async fn generate_sharp_thumbnail(file_data: String) -> Result<String, String> {
+    use image::ImageFormat;
+    use std::io::Cursor;
+
+    // Parse the data URL
+    if !file_data.starts_with("data:") {
+        return Err("Invalid data URL format".into());
+    }
+
+    let comma_idx = file_data.find(',')
+        .ok_or("Invalid data URL: missing comma")?;
+
+    let base64_data = &file_data[comma_idx + 1..];
+
+    // Decode base64
+    let image_bytes = general_purpose::STANDARD.decode(base64_data)
+        .map_err(|e| format!("Failed to decode base64: {}", e))?;
+
+    // Load image
+    let img = image::load_from_memory(&image_bytes)
+        .map_err(|e| format!("Failed to load image: {}", e))?;
+
+    // Resize to thumbnail (512x512 max, maintaining aspect ratio)
+    let thumbnail = img.thumbnail(512, 512);
+
+    // Encode as JPEG
+    let mut output_bytes = Vec::new();
+    thumbnail.write_to(&mut Cursor::new(&mut output_bytes), ImageFormat::Jpeg)
+        .map_err(|e| format!("Failed to encode thumbnail: {}", e))?;
+
+    // Convert to base64 data URL
+    let base64_output = general_purpose::STANDARD.encode(&output_bytes);
+    let data_url = format!("data:image/jpeg;base64,{}", base64_output);
+
+    Ok(data_url)
+}
 
 #[tauri::command]
 async fn make_thumbnail(file_path: String) -> Result<String, String> {
@@ -143,7 +182,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![make_thumbnail])
+        .invoke_handler(tauri::generate_handler![make_thumbnail, generate_sharp_thumbnail])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -28,3 +28,4 @@ tauri-plugin-fs = "2"
 ruurd_photos_thumbnail_generation = "0.3.2"
 uuid = { version = "1.18.1", features = ["v4"] }
 base64 = "0.21"
+image = { version = "0.25.8", features = ["jpeg"] }
