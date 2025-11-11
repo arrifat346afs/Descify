@@ -173,7 +173,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                     }
                   }}
                   onClick={() => onSelectFile(file)}
-                  className={`${borderClass} ${ringClass} rounded-md shadow overflow-hidden cursor-pointer hover:scale-105 transition-all duration-200 w-[28vh] shrink-0`}
+                  className={`${borderClass} ${ringClass} rounded-md shadow overflow-hidden cursor-pointer transition-all duration-200 w-[28vh] shrink-0`}
                 >
                   <AspectRatio ratio={12 / 9} className="hover:border-2 hover:border-blue-500">
                     {thumbnail ? (
