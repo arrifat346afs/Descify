@@ -1,10 +1,10 @@
-// import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettings } from '@/app/contexts/SettingsContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-
+import { fetchOpenRouterModels, fetchOpenAIModels, fetchGeminiModels, type ModelInfo } from '@/app/lib/modelFetcher';
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
 
@@ -17,44 +17,59 @@ const ApiSettings = () => {
   const apiKeys = api.apiKeys;
   const setApiKey = api.setApiKey;
 
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+
   const providers = [
     { value: 'openai', label: 'OpenAI' },
     { value: 'gemini', label: 'Google' },
-    { value: 'mistral', label: 'Mistral' },
-    { value: 'groq', label: 'Groq' },
     { value: 'openrouter', label: 'OpenRouter' },
   ];
 
-  const openaiModels = [
-    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-    { value: 'gpt-4', label: 'GPT-4' },
-  ];
+  // Fetch models when provider changes
+  useEffect(() => {
+    const loadModels = async () => {
+      if (!selectedProvider) {
+        setModels([]);
+        return;
+      }
 
-  const googleModels = [
-    { value: 'gemini-pro', label: 'Gemini Pro' },
-    { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
-  ];
+      setIsLoadingModels(true);
+      try {
+        let fetchedModels: ModelInfo[] = [];
 
-  const mistralModels = [
-    { value: 'mistral-small-latest', label: 'Mistral Small Latest' },
-    { value: 'mistral-medium-latest', label: 'Mistral Medium Latest' },
-  ];
+        switch (selectedProvider) {
+          case 'openai':
+            fetchedModels = await fetchOpenAIModels(apiKeys.openai);
+            break;
+          case 'gemini':
+            fetchedModels = await fetchGeminiModels(apiKeys.gemini);
+            break;
+          case 'openrouter':
+            fetchedModels = await fetchOpenRouterModels(apiKeys.openrouter);
+            break;
+          default:
+            fetchedModels = [];
+        }
 
-  const groqModels = [
-    { value: 'llama2-70b-4096', label: 'Llama2 70B 4096' },
-  ];
+        setModels(fetchedModels);
+      } catch (error) {
+        console.error('Error loading models:', error);
+        toast.error('Failed to load models');
+        setModels([]);
+      } finally {
+        setIsLoadingModels(false);
+      }
+    };
 
-  const openrouterModels = [
-    { value: 'openrouter/polaris-alpha', label: 'Polaris Alpha (Reasoning)' },
-    { value: 'openai/gpt-4o', label: 'GPT-4o' },
-    { value: 'openai/gpt-4-vision-preview', label: 'GPT-4 Vision' },
-    { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
-    { value: 'google/gemini-pro-vision', label: 'Gemini Pro Vision' },
-  ];
+    loadModels();
+  }, [selectedProvider, apiKeys]);
 
   const handleApiKeyChange = (provider: Provider, value: string) => {
-    setApiKey(provider, value);
-    toast("API Key saved!");
+    if (provider === 'openai' || provider === 'gemini' || provider === 'mistral' || provider === 'groq' || provider === 'openrouter') {
+      setApiKey(provider, value);
+      toast("API Key saved!");
+    }
   };
 
   return (
@@ -76,43 +91,34 @@ const ApiSettings = () => {
       </div>
       <div>
         <Label htmlFor="model">AI Model</Label>
-  <Select onValueChange={setSelectedModel} value={selectedModel || undefined}>
+        <Select
+          onValueChange={setSelectedModel}
+          value={selectedModel || undefined}
+          disabled={!selectedProvider || isLoadingModels}
+        >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select a model" />
+            <SelectValue placeholder={
+              isLoadingModels
+                ? "Loading models..."
+                : selectedProvider
+                  ? "Select a model"
+                  : "Select a provider first"
+            } />
           </SelectTrigger>
           <SelectContent>
-            {selectedProvider === 'openai' &&
-              openaiModels.map((model) => (
+            {models.length > 0 ? (
+              models.map((model) => (
                 <SelectItem key={model.value} value={model.value}>
                   {model.label}
                 </SelectItem>
-              ))}
-            {selectedProvider === 'gemini' &&
-              googleModels.map((model) => (
-                <SelectItem key={model.value} value={model.value}>
-                  {model.label}
-                </SelectItem>
-              ))}
-            {selectedProvider === 'mistral' &&
-              mistralModels.map((model) => (
-                <SelectItem key={model.value} value={model.value}>
-                  {model.label}
-                </SelectItem>
-              ))}
-            {selectedProvider === 'groq' &&
-              groqModels.map((model) => (
-                <SelectItem key={model.value} value={model.value}>
-                  {model.label}
-                </SelectItem>
-              ))}
-            {selectedProvider === 'openrouter' &&
-              openrouterModels.map((model) => (
-                <SelectItem key={model.value} value={model.value}>
-                  {model.label}
-                </SelectItem>
-              ))}
-        </SelectContent>
-      </Select>
+              ))
+            ) : (
+              <SelectItem value="no-models" disabled>
+                {isLoadingModels ? "Loading..." : "No models available"}
+              </SelectItem>
+            )}
+          </SelectContent>
+        </Select>
       </div>
       <div>
           <Label htmlFor="apiKey">
