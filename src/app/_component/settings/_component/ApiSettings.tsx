@@ -45,8 +45,11 @@ const ApiSettings = () => {
   ];
 
   const openrouterModels = [
-    { value: 'openai/gpt-3.5-turbo', label: 'OpenAI GPT-3.5 Turbo' },
-    { value: 'google/gemini-pro', label: 'Google Gemini Pro' },
+    { value: 'openrouter/polaris-alpha', label: 'Polaris Alpha (Reasoning)' },
+    { value: 'openai/gpt-4o', label: 'GPT-4o' },
+    { value: 'openai/gpt-4-vision-preview', label: 'GPT-4 Vision' },
+    { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+    { value: 'google/gemini-pro-vision', label: 'Gemini Pro Vision' },
   ];
 
   const handleApiKeyChange = (provider: Provider, value: string) => {

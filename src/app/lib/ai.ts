@@ -8,6 +8,7 @@ import { parseMetadataResponse} from './ai/response-parser';
 import { ensureBase64, callAIApi, createVisionMessageContent } from './ai/api-client';
 import { createOpenAIModel, isOpenAIProvider } from './ai/providers/openai';
 import { createGoogleModel, isGoogleProvider } from './ai/providers/google';
+import { createOpenRouterModel, isOpenRouterProvider } from './ai/providers/openrouter';
 
 export type GeneratedMetadata = {
   title: string;
@@ -27,7 +28,7 @@ export type GenerateMetadataOptions = {
 
 /**
  * Initializes the appropriate AI provider model based on the provider string
- * @param provider - The provider name (openai, gemini, etc.)
+ * @param provider - The provider name (openai, gemini, openrouter, etc.)
  * @param apiKey - The API key for the provider
  * @param model - The specific model to use (optional)
  * @returns The initialized model instance
@@ -37,6 +38,8 @@ const initializeModel = (provider?: string, apiKey?: string, model?: string): an
     return createOpenAIModel({ apiKey, model });
   } else if (isGoogleProvider(provider)) {
     return createGoogleModel({ apiKey, model });
+  } else if (isOpenRouterProvider(provider)) {
+    return createOpenRouterModel({ apiKey, model });
   } else {
     // Fallback to OpenAI if no provider specified
     return createOpenAIModel({ apiKey, model });
