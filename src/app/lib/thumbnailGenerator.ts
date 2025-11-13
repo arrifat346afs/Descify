@@ -229,7 +229,7 @@ export async function generateThumbnailsBatch(
   // Process files with concurrency limit
   const workers = Array(Math.min(concurrency, files.length))
     .fill(null)
-    .map(async (_, workerIndex) => {
+    .map(async (_, _workerIndex) => {
       while (queue.length > 0) {
         const file = queue.shift();
         if (!file) break;
