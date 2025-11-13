@@ -24,22 +24,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["appimage"],
-    "linux": {
-      
-      "appimage": {
-        "bundleMediaFramework": false,
-        "files": {}
-      },
-      "deb": {
-        "files": {}
-      },
-      "rpm": {
-        "epoch": 0,
-        "files": {},
-        "release": "1"
-      }
-    },
+    "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
