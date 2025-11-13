@@ -19,6 +19,8 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   } = useSettings();
   const thumbnails = thumbsCtx.items;
   const thumbnailRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const scrollTimeoutRef = useRef<number | null>(null);
+  const lastScrolledFileRef = useRef<string | null>(null);
 
   console.log(
     "ThumbnailSection render - files:",
@@ -27,21 +29,48 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     thumbnails?.length
   );
 
-  // Auto-scroll to selected thumbnail
+  // Auto-scroll to selected thumbnail (debounced to prevent excessive scrolling)
   useEffect(() => {
     if (selectedFile) {
       const fileName = selectedFile.name;
+
+      // Skip if we just scrolled to this file
+      if (lastScrolledFileRef.current === fileName) {
+        return;
+      }
+
       const thumbnailElement = thumbnailRefs.current.get(fileName);
 
       if (thumbnailElement) {
+        // Clear any pending scroll
+        if (scrollTimeoutRef.current) {
+          cancelAnimationFrame(scrollTimeoutRef.current);
+        }
+
         console.log("📜 Auto-scrolling to:", fileName);
-        thumbnailElement.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-          inline: "center",
+
+        // Use requestAnimationFrame to batch scroll operations
+        scrollTimeoutRef.current = requestAnimationFrame(() => {
+          thumbnailElement.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+            inline: "center",
+          });
+          lastScrolledFileRef.current = fileName;
+
+          // Reset after a delay to allow future scrolls
+          setTimeout(() => {
+            lastScrolledFileRef.current = null;
+          }, 1000);
         });
       }
     }
+
+    return () => {
+      if (scrollTimeoutRef.current) {
+        cancelAnimationFrame(scrollTimeoutRef.current);
+      }
+    };
   }, [selectedFile]);
 
   // Generate thumbnails when files change
@@ -85,11 +114,11 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
             console.log(`⚡ Progress: ${completed}/${total} - ${fileName}`);
           },
           (file, thumbnailUrl) => {
-            // Update UI immediately as each thumbnail is ready
+            // Update UI as each thumbnail is ready (batched in generator)
             thumbsCtx.upsert({ file, thumbnailUrl });
             console.log(`✨ Thumbnail ready: ${file.name}`);
           },
-          4 // Process 4 thumbnails concurrently to avoid freezing
+          2 // Process 2 thumbnails concurrently to avoid freezing (reduced from 4)
         );
 
         thumbsCtx.setIsGenerating(false);

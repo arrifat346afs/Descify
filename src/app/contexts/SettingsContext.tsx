@@ -1,4 +1,4 @@
-import  { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import  { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
@@ -166,32 +166,43 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
   const [pendingThumbnailCount, setPendingThumbnailCount] = useState(0);
 
-  const upsert = (t: ThumbnailData) => {
-    console.log('🔧 UPSERT called with file:', t.file.name, 'URL:', t.thumbnailUrl);
+  // Memoize upsert to prevent unnecessary re-renders
+  const upsert = useCallback((t: ThumbnailData) => {
+    console.log('🔧 UPSERT called with file:', t.file.name, 'URL:', t.thumbnailUrl.substring(0, 50) + '...');
     setThumbnails((prev) => {
-      console.log('🔧 Previous thumbnails count:', prev.length);
-      const other = prev.filter((p) => p.file !== t.file);
-      console.log('🔧 After filtering (removing duplicates):', other.length);
-      const newArray = [...other, t];
-      console.log('🔧 New thumbnails array count:', newArray.length);
-      return newArray;
+      // Check if already exists to avoid unnecessary updates
+      const existingIndex = prev.findIndex((p) => p.file === t.file);
+      if (existingIndex !== -1) {
+        // Update existing
+        const newArray = [...prev];
+        newArray[existingIndex] = t;
+        return newArray;
+      } else {
+        // Add new
+        return [...prev, t];
+      }
     });
     // Decrement pending count
     setPendingThumbnailCount(prev => Math.max(0, prev - 1));
-  };
-  const clearThumbs = () => {
+  }, []);
+
+  const clearThumbs = useCallback(() => {
     console.log('🗑️  Clearing all thumbnails');
     setThumbnails([]);
     setPendingThumbnailCount(0);
     setIsGeneratingThumbnails(false);
-  };
+  }, []);
 
-  // Track thumbnail state changes
+  // Track thumbnail state changes (throttled logging)
   useEffect(() => {
     console.log('📊 Thumbnails state updated! Count:', thumbnails.length);
-    thumbnails.forEach((t, i) => {
+    // Only log first 3 to reduce console spam
+    thumbnails.slice(0, 3).forEach((t, i) => {
       console.log(`  ${i + 1}. ${t.file.name} -> ${t.thumbnailUrl.substring(0, 50)}...`);
     });
+    if (thumbnails.length > 3) {
+      console.log(`  ... and ${thumbnails.length - 3} more`);
+    }
   }, [thumbnails]);
 
   const [generatedMetadata, setGeneratedMetadata] = useState<FileMetadata[]>([]);
@@ -221,21 +232,22 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setCategoriesState((prev) => ({ ...prev, ...newCategories }));
   };
 
-  const getMetadata = (file: File): GeneratedMetadata | undefined => {
+  const getMetadata = useCallback((file: File): GeneratedMetadata | undefined => {
     const found = generatedMetadata.find((fm) => fm.file === file);
     return found?.metadata;
-  };
+  }, [generatedMetadata]);
 
-  const setMetadata = (file: File, metadata: Partial<GeneratedMetadata>) => {
+  const setMetadata = useCallback((file: File, metadata: Partial<GeneratedMetadata>) => {
     setGeneratedMetadata((prev) => {
-      const existing = prev.find((fm) => fm.file === file);
-      if (existing) {
-        // Update existing
-        return prev.map((fm) =>
-          fm.file === file
-            ? { ...fm, metadata: { ...fm.metadata, ...metadata } }
-            : fm
-        );
+      const existingIndex = prev.findIndex((fm) => fm.file === file);
+      if (existingIndex !== -1) {
+        // Update existing - use index for better performance
+        const newArray = [...prev];
+        newArray[existingIndex] = {
+          ...newArray[existingIndex],
+          metadata: { ...newArray[existingIndex].metadata, ...metadata }
+        };
+        return newArray;
       } else {
         // Add new
         return [
@@ -251,29 +263,27 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         ];
       }
     });
-  };
+  }, []);
 
-  const getCategories = (file: File): CategorySelection | undefined => {
+  const getCategories = useCallback((file: File): CategorySelection | undefined => {
     const found = generatedMetadata.find((fm) => fm.file === file);
     return found?.categories;
-  };
+  }, [generatedMetadata]);
 
-  const setFileCategories = (file: File, newCategories: Partial<CategorySelection>) => {
+  const setFileCategories = useCallback((file: File, newCategories: Partial<CategorySelection>) => {
     setGeneratedMetadata((prev) => {
-      const existing = prev.find((fm) => fm.file === file);
-      if (existing) {
-        // Update existing
-        return prev.map((fm) =>
-          fm.file === file
-            ? {
-                ...fm,
-                categories: {
-                  ...(fm.categories || { adobeStock: '', shutterStock1: '', shutterStock2: '' }),
-                  ...newCategories
-                }
-              }
-            : fm
-        );
+      const existingIndex = prev.findIndex((fm) => fm.file === file);
+      if (existingIndex !== -1) {
+        // Update existing - use index for better performance
+        const newArray = [...prev];
+        newArray[existingIndex] = {
+          ...newArray[existingIndex],
+          categories: {
+            ...(newArray[existingIndex].categories || { adobeStock: '', shutterStock1: '', shutterStock2: '' }),
+            ...newCategories
+          }
+        };
+        return newArray;
       } else {
         // If file doesn't exist in metadata yet, create it with empty metadata
         return [
@@ -294,9 +304,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         ];
       }
     });
-  };
+  }, []);
 
-  const clearGenerated = () => setGeneratedMetadata([]);
+  const clearGenerated = useCallback(() => setGeneratedMetadata([]), []);
 
   // Load limits from localStorage with defaults
   const [limits, setLimitsState] = useState<MetadataLimits>(() => {
@@ -338,44 +348,59 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const value: SettingsContextType = {
-    api: {
-      selectedProvider,
-      setSelectedProvider,
-      selectedModel,
-      setSelectedModel,
-      apiKeys,
-      setApiKey,
-      requestDelay,
-      setRequestDelay,
-    },
-    metadataLimits: {
-      ...limits,
-      setLimits,
-    },
-    metadataOptions: {
-      ...options,
-      setOptions,
-    },
+  // Memoize API object to prevent unnecessary re-renders
+  const apiValue = useMemo(() => ({
+    selectedProvider,
+    setSelectedProvider,
+    selectedModel,
+    setSelectedModel,
+    apiKeys,
+    setApiKey,
+    requestDelay,
+    setRequestDelay,
+  }), [selectedProvider, selectedModel, apiKeys, requestDelay, setSelectedProvider, setSelectedModel, setApiKey, setRequestDelay]);
+
+  // Memoize thumbnails object
+  const thumbnailsValue = useMemo(() => ({
+    items: thumbnails,
+    setItems: setThumbnails,
+    upsert,
+    clear: clearThumbs,
+    isGenerating: isGeneratingThumbnails,
+    setIsGenerating: setIsGeneratingThumbnails,
+    pendingCount: pendingThumbnailCount,
+  }), [thumbnails, upsert, clearThumbs, isGeneratingThumbnails, pendingThumbnailCount]);
+
+  // Memoize generated object
+  const generatedValue = useMemo(() => ({
+    items: generatedMetadata,
+    getMetadata,
+    setMetadata,
+    getCategories,
+    setFileCategories,
+    clear: clearGenerated,
+  }), [generatedMetadata, getMetadata, setMetadata, getCategories, setFileCategories, clearGenerated]);
+
+  // Memoize metadata limits
+  const metadataLimitsValue = useMemo(() => ({
+    ...limits,
+    setLimits,
+  }), [limits, setLimits]);
+
+  // Memoize metadata options
+  const metadataOptionsValue = useMemo(() => ({
+    ...options,
+    setOptions,
+  }), [options, setOptions]);
+
+  const value: SettingsContextType = useMemo(() => ({
+    api: apiValue,
+    metadataLimits: metadataLimitsValue,
+    metadataOptions: metadataOptionsValue,
     files,
     setFiles,
-    thumbnails: {
-      items: thumbnails,
-      setItems: setThumbnails,
-      upsert,
-      clear: clearThumbs,
-      isGenerating: isGeneratingThumbnails,
-      setIsGenerating: setIsGeneratingThumbnails,
-      pendingCount: pendingThumbnailCount,
-    },
-    generated: {
-      items: generatedMetadata,
-      getMetadata,
-      setMetadata,
-      getCategories,
-      setFileCategories,
-      clear: clearGenerated,
-    },
+    thumbnails: thumbnailsValue,
+    generated: generatedValue,
     generationProgress,
     setGenerationProgress,
     selectedFile,
@@ -384,7 +409,18 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setHasAttemptedGeneration,
     categories,
     setCategories,
-  };
+  }), [
+    apiValue,
+    metadataLimitsValue,
+    metadataOptionsValue,
+    files,
+    thumbnailsValue,
+    generatedValue,
+    generationProgress,
+    selectedFile,
+    hasAttemptedGeneration,
+    categories,
+  ]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };
