@@ -33,9 +33,9 @@ type OpenRouterModel = {
 export async function fetchOpenRouterModels(apiKey?: string): Promise<ModelInfo[]> {
   try {
     const response = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: apiKey ? {
-        'Authorization': `Bearer ${apiKey}`,
-      } : {},
+      headers: apiKey
+        ? { Authorization: `Bearer ${apiKey}` }
+        : {},
     });
 
     if (!response.ok) {
@@ -47,11 +47,16 @@ export async function fetchOpenRouterModels(apiKey?: string): Promise<ModelInfo[
 
     console.log(`OpenRouter: Total models fetched: ${models.length}`);
 
-    // Filter for models with image input support ONLY via architecture.input_modalities
-    const imageModels = models
+    // Filter for models that accept image input but only output text
+    const imageToTextModels = models
       .filter((model) => {
-        // ONLY check if model supports image input via architecture.input_modalities
-        return model.architecture?.input_modalities?.includes('image');
+        const inputs = model.architecture?.input_modalities || [];
+        const outputs = model.architecture?.output_modalities || [];
+
+        const supportsImageInput = inputs.includes('image');
+        const outputsOnlyText = outputs.length === 1 && outputs.includes('text');
+
+        return supportsImageInput && outputsOnlyText;
       })
       .map((model) => {
         const isFree = model.id.includes(':free');
@@ -63,16 +68,16 @@ export async function fetchOpenRouterModels(apiKey?: string): Promise<ModelInfo[
       })
       .sort((a, b) => a.label.localeCompare(b.label));
 
-    console.log(`OpenRouter: Image-capable models found: ${imageModels.length}`);
-    console.log('OpenRouter models (first 10):', imageModels.slice(0, 10).map(m => m.label));
+    console.log(`OpenRouter: Image-to-text models found: ${imageToTextModels.length}`);
+    console.log('First 10 image-to-text models:', imageToTextModels.slice(0, 10).map(m => m.label));
 
-    return imageModels;
+    return imageToTextModels;
   } catch (error) {
     console.error('Error fetching OpenRouter models:', error);
-    // Return fallback models if API fails
     return getFallbackOpenRouterModels();
   }
 }
+
 
 /**
  * Fetches available models from OpenAI API
