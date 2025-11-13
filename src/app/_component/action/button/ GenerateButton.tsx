@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { useSettings } from '@/app/contexts/SettingsContext';
 import { generateMetadata } from '@/app/lib/ai';
+import { TextShimmer } from '@/components/motion-primitives/text-shimmer';
 
 export const GenerateButton = () => {
   const { files, thumbnails, api, metadataLimits, metadataOptions, generated, setHasAttemptedGeneration, setSelectedFile, generationProgress, setGenerationProgress } = useSettings();
@@ -153,7 +154,7 @@ export const GenerateButton = () => {
   const buttonText = thumbnails.isGenerating
     ? '⏳ Generating thumbnails...'
     : isGenerating
-    ? '🤖 Generating...'
+    ? <TextShimmer>Generating...</TextShimmer>
     : 'Generate';
 
   return (
