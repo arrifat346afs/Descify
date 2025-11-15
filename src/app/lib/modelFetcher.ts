@@ -165,7 +165,7 @@ function getFallbackOpenAIModels(): ModelInfo[] {
  */
 function getFallbackGeminiModels(): ModelInfo[] {
   return [
-    { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash Experimental', supportsVision: true },
+    { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite', supportsVision: true },
     { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro', supportsVision: true },
     { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', supportsVision: true },
   ];
