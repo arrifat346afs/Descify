@@ -39,11 +39,12 @@ export const ensureBase64 = (url: string): string => {
  */
 export const callAIApi = async (options: GenerateTextOptions): Promise<any> => {
   console.log('Sending to AI...');
-  
+
   const response = await generateText({
     model: options.model,
     messages: options.messages,
-  });
+    maxTokens: 500, // Limit output to 500 tokens (enough for title, description, keywords)
+  } as any); // Type assertion needed as maxTokens type varies by SDK version
 
   return response;
 };

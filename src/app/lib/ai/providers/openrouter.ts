@@ -22,7 +22,7 @@ export const DEFAULT_OPENROUTER_MODEL = 'openrouter/polaris-alpha';
  * @returns The configured OpenRouter model instance
  */
 export const createOpenRouterModel = (config: OpenRouterConfig): any => {
-  const openrouter = createOpenRouter({ 
+  const openrouter = createOpenRouter({
     apiKey: config.apiKey,
   });
   return openrouter(config.model || DEFAULT_OPENROUTER_MODEL);

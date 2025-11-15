@@ -21,32 +21,20 @@ export const generateMetadataPrompt = (limits?: MetadataLimits, includePlaceName
   const keywordLimit = limits?.keywordLimit;
 
   const placeNameRule = includePlaceName
-    ? "6. INCLUDE specific location or place names if they are identifiable in the image (e.g., 'Eiffel Tower', 'New York City', 'Grand Canyon')"
-    : "6. DO NOT include specific location or place names (e.g., city names, landmark names, country names). Use generic terms instead (e.g., 'city skyline' instead of 'New York skyline', 'mountain landscape' instead of 'Alps')";
+    ? "Include location names if visible."
+    : "Use generic terms, no location names.";
 
-  return `You are a professional metadata generator for stock photos and videos.
+  return `Generate stock photo metadata for this image.
 
-ANALYZE the provided image carefully and generate REAL, SPECIFIC metadata based on what you actually see.
+Requirements:
+- Title: ${titleLimit} chars max
+- Description: ${descriptionLimit} chars max
+- Keywords: ${keywordLimit} keywords max, comma-separated
+- ${placeNameRule}
+- Be specific about what you see
+- Use professional stock photo terms
 
-STRICT REQUIREMENTS:
-- Title: Exactly ${titleLimit} characters. Be specific and descriptive.
-- Description: Exactly ${descriptionLimit} characters. Describe what's actually in the image.
-- Keywords: Exactly ${keywordLimit} relevant keywords, comma-separated.
-
-IMPORTANT RULES:
-1. DO NOT use generic phrases like "Auto-generated description"
-2. DO NOT use placeholder text
-3. DESCRIBE what you actually see in the image
-4. BE SPECIFIC about colors, objects, actions, mood, composition
-5. Use professional stock photo terminology
-${placeNameRule}
-
-Return ONLY valid JSON with this exact format:
-{"title": "Your specific title here", "description": "Your detailed description here", "keywords": "keyword1, keyword2, keyword3"}
-
-Example for a sunset beach photo ${includePlaceName ? 'WITH place names' : 'WITHOUT place names'}:
-${includePlaceName
-  ? '{"title": "Golden Sunset Over Waikiki Beach with Diamond Head Volcano", "description": "Vibrant orange and pink sunset casting warm light over Waikiki Beach in Honolulu, Hawaii, with the iconic Diamond Head volcanic crater silhouetted against the sky and calm Pacific Ocean waves", "keywords": "sunset, Waikiki Beach, Hawaii, Diamond Head, Honolulu, tropical, palm trees, ocean, golden hour, nature, vacation, paradise, seascape, Pacific"}'
-  : '{"title": "Golden Sunset Over Tropical Beach with Palm Trees", "description": "Vibrant orange and pink sunset casting warm light over a pristine tropical beach with silhouetted palm trees and calm ocean waves", "keywords": "sunset, beach, tropical, palm trees, ocean, golden hour, nature, vacation, paradise, seascape"}'}`;
+Return ONLY JSON:
+{"title": "...", "description": "...", "keywords": "..."}`;
 };
 
