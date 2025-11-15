@@ -16,9 +16,9 @@ export type MetadataLimits = {
  * @returns The formatted prompt string
  */
 export const generateMetadataPrompt = (limits?: MetadataLimits, includePlaceName?: boolean): string => {
-  const titleLimit = limits?.titleLimit;
-  const descriptionLimit = limits?.descriptionLimit;
-  const keywordLimit = limits?.keywordLimit;
+  const titleLimit = limits?.titleLimit || 200;
+  const descriptionLimit = limits?.descriptionLimit || 200;
+  const keywordLimit = limits?.keywordLimit || 50;
 
   const placeNameRule = includePlaceName
     ? "Include location names if visible."
@@ -26,13 +26,27 @@ export const generateMetadataPrompt = (limits?: MetadataLimits, includePlaceName
 
   return `Generate stock photo metadata for this image.
 
+IMPORTANT: Write complete, natural text. End at complete words, never cut words in half.
+
 Requirements:
-- Title: ${titleLimit} chars max
-- Description: ${descriptionLimit} chars max
-- Keywords: ${keywordLimit} keywords max, comma-separated
-- ${placeNameRule}
-- Be specific about what you see
-- Use professional stock photo terms
+1. Title:
+   - Target approximately ${titleLimit} characters
+   - Write a complete, descriptive title
+   - End at a complete word (can be slightly over or under the target)
+   - No colons (:) or special characters
+   - ${placeNameRule}
+
+2. Description:
+   - Target under ${descriptionLimit} characters
+   - Write a complete, detailed description
+   - End at a complete word (can be slightly over or under the target)
+   - No colons (:) or special characters
+   - ${placeNameRule}
+
+3. Keywords:
+   - Provide approximately ${keywordLimit} keywords
+   - Comma-separated
+   - No colons (:) or special characters
 
 Return ONLY JSON:
 {"title": "...", "description": "...", "keywords": "..."}`;

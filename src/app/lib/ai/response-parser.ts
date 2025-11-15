@@ -67,26 +67,29 @@ export const validateMetadata = (metadata: any): void => {
 };
 
 /**
- * Applies character and keyword limits to the parsed metadata
+ * Applies keyword limits to the parsed metadata
+ * Note: Title and description limits are just guides for the AI, not enforced
  * @param metadata - The raw parsed metadata
- * @param limits - The limits to apply
- * @returns The metadata with limits applied
+ * @param limits - The limits to apply (only keywordLimit is enforced)
+ * @returns The metadata with keyword limit applied
  */
 export const applyLimits = (
   metadata: any,
   limits?: MetadataLimits
 ): ParsedMetadata => {
-  const titleLimit = limits?.titleLimit || 200;
-  const descriptionLimit = limits?.descriptionLimit || 200;
   const keywordLimit = limits?.keywordLimit || 80;
 
   const title = String(metadata.title || '').trim();
   const description = String(metadata.description || '').trim();
   const keywords = String(metadata.keywords || '').trim();
 
+  // Log the actual lengths for debugging
+  console.log(`📏 Title length: ${title.length} characters`);
+  console.log(`📏 Description length: ${description.length} characters`);
+
   return {
-    title: title.slice(0, titleLimit),
-    description: description.slice(0, descriptionLimit),
+    title: title,
+    description: description,
     keywords: keywords
       .split(',')
       .slice(0, keywordLimit)
