@@ -121,11 +121,13 @@ export const GenerateButton = () => {
         setSelectedFile(item.file);
         lastAutoSelectedIndexRef.current = i;
 
-        // Wait before next request (except for last item)
+        // Apply delay before next request (except for last item)
+        // This prevents rate limiting and makes UI updates feel more controlled
         if (i < items.length - 1 && api.requestDelay > 0) {
           console.log(`⏱️ Waiting ${api.requestDelay}ms before next request...`);
           await new Promise(resolve => setTimeout(resolve, api.requestDelay));
         }
+
       } catch (error) {
         console.error(`Failed to generate metadata for ${item.file.name}:`, error);
         // Store error state
@@ -139,6 +141,12 @@ export const GenerateButton = () => {
         console.log(`🎯 Auto-selecting file at index ${i} (error case):`, item.file.name);
         setSelectedFile(item.file);
         lastAutoSelectedIndexRef.current = i;
+
+        // Apply delay before next request even on error (except for last item)
+        if (i < items.length - 1 && api.requestDelay > 0) {
+          console.log(`⏱️ Waiting ${api.requestDelay}ms before next request (error case)...`);
+          await new Promise(resolve => setTimeout(resolve, api.requestDelay));
+        }
       }
     }
 
