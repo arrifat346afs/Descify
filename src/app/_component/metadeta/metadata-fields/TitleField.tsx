@@ -1,5 +1,6 @@
 import { Textarea } from "@/components/ui/textarea";
 import { useSettings } from '@/app/contexts/SettingsContext';
+import { extractKeywordsFromTitle } from "@/app/lib/keywordUtils";
 
 
 const TitleField = () => {
@@ -14,9 +15,26 @@ const TitleField = () => {
 
   const handleChange = (e: any) => {
     if (selectedFile) {
-      const newValue = e.target.value;
-      generated.setMetadata(selectedFile, { title: newValue });
-      
+      const newTitle = e.target.value;
+
+      // Get existing keywords
+      const currentKeywords = metadata?.keywords || '';
+      const existingKeywordList = currentKeywords.split(',').map(k => k.trim()).filter(Boolean);
+
+      // Extract new keywords from title
+      const titleKeywords = extractKeywordsFromTitle(newTitle);
+
+      // Merge keywords: title keywords first, then existing ones
+      // Use Set to remove duplicates
+      const mergedKeywords = Array.from(new Set([...titleKeywords, ...existingKeywordList]));
+
+      // Apply limit if needed (optional, but good practice)
+      const limitedKeywords = mergedKeywords.slice(0, metadataLimits.keywordLimit);
+
+      generated.setMetadata(selectedFile, {
+        title: newTitle,
+        keywords: limitedKeywords.join(', ')
+      });
     }
   };
 
@@ -32,8 +50,8 @@ const TitleField = () => {
         value={title}
         onChange={handleChange}
         placeholder={selectedFile ? "Generate metadata for this file..." : "Select a file to view metadata"}
-        
-        
+
+
       />
     </div>
   );

@@ -3,6 +3,8 @@
  * Handles extraction and parsing of JSON format from AI API responses
  */
 
+import { extractKeywordsFromTitle } from '../keywordUtils';
+
 export type ParsedMetadata = {
   title: string;
   description: string;
@@ -38,11 +40,11 @@ export const extractTextFromResponse = (response: any): string => {
 export const extractJsonFromText = (text: string): string | null => {
   const jsonStart = text.indexOf('{');
   const jsonEnd = text.lastIndexOf('}');
-  
+
   if (jsonStart !== -1 && jsonEnd !== -1) {
     return text.slice(jsonStart, jsonEnd + 1);
   }
-  
+
   return null;
 };
 
@@ -81,20 +83,31 @@ export const applyLimits = (
 
   const title = String(metadata.title || '').trim();
   const description = String(metadata.description || '').trim();
-  const keywords = String(metadata.keywords || '').trim();
+  let keywords = String(metadata.keywords || '').trim();
+
+  // Extract keywords from title
+  const titleKeywords = extractKeywordsFromTitle(title);
+
+  // Parse existing keywords
+  const existingKeywords = keywords
+    .split(',')
+    .map((k: string) => k.trim())
+    .filter(Boolean);
+
+  // Merge title keywords with existing keywords (title keywords first)
+  // Use a Set to remove duplicates
+  const mergedKeywords = Array.from(new Set([...titleKeywords, ...existingKeywords]));
 
   // Log the actual lengths for debugging
   console.log(`📏 Title length: ${title.length} characters`);
   console.log(`📏 Description length: ${description.length} characters`);
+  console.log(`🔑 Title keywords added: ${titleKeywords.join(', ')}`);
 
   return {
     title: title,
     description: description,
-    keywords: keywords
-      .split(',')
+    keywords: mergedKeywords
       .slice(0, keywordLimit)
-      .map((k: string) => k.trim())
-      .filter(Boolean)
       .join(', '),
   };
 };
@@ -116,7 +129,7 @@ export const parseMetadataResponse = (
 
   // Extract JSON from text
   const jsonStr = extractJsonFromText(text);
-  
+
   if (!jsonStr) {
     console.error('No JSON found in AI response:', text);
     throw new Error('AI did not return valid JSON format');
