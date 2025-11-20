@@ -1,12 +1,103 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSettings } from "./contexts/SettingsContext";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { readFile } from "@tauri-apps/plugin-fs";
 
 export const LandingPage = () => {
     const { setFiles, setHasAttemptedGeneration } = useSettings();
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Handle file paths from Tauri drag-drop
+    const handleFilePaths = async (paths: string[]) => {
+        console.log("🔧 handleFilePaths called with:", paths.length, "paths");
+
+        try {
+            // Convert file paths to File objects using Tauri fs plugin
+            const filePromises = paths.map(async (path) => {
+                console.log(`   Reading file: ${path}`);
+
+                // Read file as Uint8Array
+                const contents = await readFile(path);
+
+                // Get file name from path
+                const fileName = path.split('/').pop() || path.split('\\').pop() || 'unknown';
+
+                // Determine MIME type from extension
+                const ext = fileName.split('.').pop()?.toLowerCase();
+                let mimeType = 'application/octet-stream';
+                if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+                else if (ext === 'png') mimeType = 'image/png';
+                else if (ext === 'gif') mimeType = 'image/gif';
+                else if (ext === 'webp') mimeType = 'image/webp';
+                else if (ext === 'mp4') mimeType = 'video/mp4';
+                else if (ext === 'mov') mimeType = 'video/quicktime';
+                else if (ext === 'webm') mimeType = 'video/webm';
+
+                console.log(`      File: ${fileName}, Type: ${mimeType}, Size: ${(contents.length / 1024).toFixed(2)} KB`);
+
+                // Create File object from Uint8Array
+                const blob = new Blob([contents], { type: mimeType });
+                return new File([blob], fileName, { type: mimeType });
+            });
+
+            const files = await Promise.all(filePromises);
+            console.log("✅ Converted paths to File objects:", files.length);
+            handleFiles(files);
+        } catch (error) {
+            console.error("❌ Error converting file paths to File objects:", error);
+        }
+    };
+
+    // Setup Tauri file drop listener
+    useEffect(() => {
+        let unlisten: (() => void) | undefined;
+
+        const setupFileDropListener = async () => {
+            try {
+                // Check if we're running in Tauri
+                if (typeof window !== 'undefined' && '__TAURI__' in window) {
+                    console.log("🎯 Setting up Tauri file drop listener...");
+                    const webview = getCurrentWebview();
+
+                    unlisten = await webview.onDragDropEvent((event) => {
+                        console.log("📦 Tauri drag-drop event:", event);
+
+                        if (event.payload.type === 'over') {
+                            console.log("   🎯 DRAG OVER - Position:", event.payload.position);
+                            setIsDragging(true);
+                        } else if (event.payload.type === 'drop') {
+                            console.log("   🎁 DROP - Paths:", event.payload.paths);
+                            setIsDragging(false);
+                            handleFilePaths(event.payload.paths);
+                        } else {
+                            // 'leave' or 'enter' events
+                            console.log("   🚪 DRAG LEAVE/ENTER");
+                            setIsDragging(false);
+                        }
+                    });
+
+                    console.log("✅ Tauri file drop listener setup complete");
+                } else {
+                    console.log("ℹ️  Not running in Tauri, using HTML5 drag-drop");
+                }
+            } catch (error) {
+                console.error("❌ Failed to setup Tauri file drop listener:", error);
+                console.log("   Falling back to HTML5 drag-drop");
+            }
+        };
+
+        setupFileDropListener();
+
+        return () => {
+            if (unlisten) {
+                console.log("🧹 Cleaning up Tauri file drop listener");
+                unlisten();
+            }
+        };
+    }, []);
 
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
@@ -113,20 +204,21 @@ export const LandingPage = () => {
         >
             <div
                 className={`
-          w-full max-w-2xl h-[60vh] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-6 transition-all duration-200 pointer-events-none
+          w-full max-w-2xl h-[60vh] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-6 transition-all duration-200
           ${isDragging ? 'border-primary bg-primary/10 scale-105' : 'border-muted-foreground/25 hover:border-primary/50'}
         `}
+                style={{ pointerEvents: 'none' }}
             >
-                <div className="p-4 bg-primary/10 rounded-full pointer-events-none">
+                <div className="p-4 bg-primary/10 rounded-full">
                     <Upload className="w-12 h-12 text-primary" />
                 </div>
 
-                <div className="text-center space-y-2 pointer-events-none">
+                <div className="text-center space-y-2">
                     <h2 className="text-2xl font-semibold tracking-tight">Upload your files</h2>
                     <p className="text-muted-foreground">Drag and drop images or videos anywhere on the screen</p>
                 </div>
 
-                <div className="flex flex-col items-center gap-2 pointer-events-auto">
+                <div className="flex flex-col items-center gap-2" style={{ pointerEvents: 'auto' }}>
                     <span className="text-xs text-muted-foreground uppercase tracking-wider">OR</span>
                     <Button
                         onClick={() => fileInputRef.current?.click()}
