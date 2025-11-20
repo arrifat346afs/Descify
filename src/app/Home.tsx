@@ -20,8 +20,14 @@ export const Home = () => {
     setFiles(files);
   };
 
+  console.log("🏠 HOME COMPONENT RENDER");
+  console.log("   Files count:", files?.length || 0);
+  console.log("   Thumbnails count:", thumbnails.items.length);
+  console.log("   Is generating:", thumbnails.isGenerating);
+
   // 1. Landing Page: No files selected
   if (!files || files.length === 0) {
+    console.log("   📄 Rendering: LANDING PAGE (no files)");
     return (
       <>
         <div className="h-[35px]">
@@ -37,7 +43,14 @@ export const Home = () => {
   // We check if we have files but not all thumbnails are ready yet
   const isGenerating = files.length > 0 && thumbnails.items.length < files.length;
 
+  console.log("   🔄 Checking if generating:", {
+    filesLength: files.length,
+    thumbnailsLength: thumbnails.items.length,
+    isGenerating,
+  });
+
   if (isGenerating) {
+    console.log("   ⏳ Rendering: LOADING PAGE (generating thumbnails)");
     return (
       <>
         <div className="h-[35px]">
@@ -50,6 +63,7 @@ export const Home = () => {
   }
 
   // 3. Main Editor: All thumbnails generated
+  console.log("   ✅ Rendering: MAIN EDITOR (all thumbnails ready)");
   return (
     <div className="min-h-screen flex flex-col m-0 p-0">
       <div className="h-[35px]">

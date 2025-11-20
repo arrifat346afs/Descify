@@ -11,10 +11,15 @@ export const LandingPage = () => {
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        console.log("🎯 DRAG ENTER - Target:", e.target);
+        console.log("   DataTransfer types:", e.dataTransfer.types);
 
         // Check if the drag contains files
         if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
+            console.log("   ✅ Files detected in drag");
             setIsDragging(true);
+        } else {
+            console.log("   ❌ No files detected in drag");
         }
     };
 
@@ -31,45 +36,69 @@ export const LandingPage = () => {
     const handleDragLeave = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        console.log("🚪 DRAG LEAVE - Target:", e.target);
         setIsDragging(false);
     };
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        console.log("🎁 DROP EVENT DETECTED!");
+        console.log("   Target:", e.target);
+        console.log("   DataTransfer:", e.dataTransfer);
 
         setIsDragging(false);
 
-        console.log("Drop event detected");
-
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             const droppedFiles = Array.from(e.dataTransfer.files);
-            console.log("Files dropped:", droppedFiles.length);
+            console.log("   📦 Files dropped:", droppedFiles.length);
+            droppedFiles.forEach((file, i) => {
+                console.log(`      ${i + 1}. ${file.name} (${file.type}, ${(file.size / 1024).toFixed(2)} KB)`);
+            });
             handleFiles(droppedFiles);
+        } else {
+            console.log("   ❌ No files in dataTransfer!");
         }
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        console.log("📂 FILE SELECT triggered");
         if (e.target.files && e.target.files.length > 0) {
             const selectedFiles = Array.from(e.target.files);
+            console.log("   Selected files:", selectedFiles.length);
+            selectedFiles.forEach((file, i) => {
+                console.log(`      ${i + 1}. ${file.name} (${file.type}, ${(file.size / 1024).toFixed(2)} KB)`);
+            });
             handleFiles(selectedFiles);
+        } else {
+            console.log("   ❌ No files selected");
         }
     };
 
     const handleFiles = (files: File[]) => {
-        console.log("handleFiles called with:", files.length, "files");
+        console.log("🔧 handleFiles called with:", files.length, "files");
 
-        const mediaFiles = files.filter(file =>
-            file.type.startsWith('image/') || file.type.startsWith('video/')
-        );
+        const mediaFiles = files.filter(file => {
+            const isImage = file.type.startsWith('image/');
+            const isVideo = file.type.startsWith('video/');
+            console.log(`   Checking ${file.name}: type=${file.type}, isImage=${isImage}, isVideo=${isVideo}`);
+            return isImage || isVideo;
+        });
 
-        console.log("Filtered media files:", mediaFiles.length);
+        console.log("✅ Filtered media files:", mediaFiles.length);
 
         if (mediaFiles.length > 0) {
+            console.log("🚀 Calling setFiles with", mediaFiles.length, "media files");
+            mediaFiles.forEach((file, i) => {
+                console.log(`   ${i + 1}. ${file.name}`);
+            });
             setFiles(mediaFiles);
             setHasAttemptedGeneration(false);
+            console.log("✅ setFiles called successfully!");
         } else if (files.length > 0) {
-            console.warn("No valid media files found. Dropped files:", files.map(f => f.type));
+            console.warn("⚠️  No valid media files found. Dropped files:", files.map(f => `${f.name} (${f.type})`));
+        } else {
+            console.log("❌ No files provided to handleFiles");
         }
     };
 
