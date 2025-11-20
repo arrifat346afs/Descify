@@ -6,14 +6,11 @@ import { Upload } from "lucide-react";
 export const LandingPage = () => {
     const { setFiles, setHasAttemptedGeneration } = useSettings();
     const [isDragging, setIsDragging] = useState(false);
-    const [dragCounter, setDragCounter] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-
-        setDragCounter(prev => prev + 1);
 
         // Check if the drag contains files
         if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
@@ -34,14 +31,7 @@ export const LandingPage = () => {
     const handleDragLeave = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-
-        setDragCounter(prev => {
-            const newCounter = prev - 1;
-            if (newCounter === 0) {
-                setIsDragging(false);
-            }
-            return newCounter;
-        });
+        setIsDragging(false);
     };
 
     const handleDrop = (e: React.DragEvent) => {
@@ -49,7 +39,6 @@ export const LandingPage = () => {
         e.stopPropagation();
 
         setIsDragging(false);
-        setDragCounter(0);
 
         console.log("Drop event detected");
 
