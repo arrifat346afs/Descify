@@ -11,13 +11,17 @@ export const LandingPage = () => {
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(true);
+
+        // Check if the drag contains files
+        if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
+            setIsDragging(true);
+        }
     };
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!isDragging) {
+        if (!isDragging && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
             setIsDragging(true);
         }
     };
@@ -27,7 +31,7 @@ export const LandingPage = () => {
         e.stopPropagation();
 
         // Check if we're moving to a child element
-        if (e.currentTarget.contains(e.relatedTarget as Node)) {
+        if (e.relatedTarget && e.currentTarget.contains(e.relatedTarget as Node)) {
             return;
         }
 
@@ -38,9 +42,11 @@ export const LandingPage = () => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
+        console.log("Drop event detected");
 
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             const droppedFiles = Array.from(e.dataTransfer.files);
+            console.log("Files dropped:", droppedFiles.length);
             handleFiles(droppedFiles);
         }
     };
@@ -64,16 +70,19 @@ export const LandingPage = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+        <div
+            className="min-h-screen flex flex-col items-center justify-center bg-background p-4 transition-colors duration-200"
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            style={{ backgroundColor: isDragging ? 'rgba(var(--primary), 0.05)' : undefined }}
+        >
             <div
                 className={`
-          w-full max-w-2xl h-[60vh] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-6 transition-colors
-          ${isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
+          w-full max-w-2xl h-[60vh] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-6 transition-all duration-200
+          ${isDragging ? 'border-primary bg-primary/10 scale-105' : 'border-muted-foreground/25 hover:border-primary/50'}
         `}
-                onDragEnter={handleDragEnter}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
             >
                 <div className="p-4 bg-primary/10 rounded-full">
                     <Upload className="w-12 h-12 text-primary" />
@@ -81,7 +90,7 @@ export const LandingPage = () => {
 
                 <div className="text-center space-y-2">
                     <h2 className="text-2xl font-semibold tracking-tight">Upload your files</h2>
-                    <p className="text-muted-foreground">Drag and drop images or videos here</p>
+                    <p className="text-muted-foreground">Drag and drop images or videos anywhere on the screen</p>
                 </div>
 
                 <div className="flex flex-col items-center gap-2">
