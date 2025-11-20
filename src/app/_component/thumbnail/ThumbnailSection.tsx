@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { ScrollArea, ScrollBar } from "../../../components/ui/scroll-area";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
@@ -30,6 +30,8 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   );
 
   // Auto-scroll to selected thumbnail (debounced to prevent excessive scrolling)
+  const animationFrameRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (selectedFile) {
       const fileName = selectedFile.name;
@@ -51,11 +53,54 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
         // Use requestAnimationFrame to batch scroll operations
         scrollTimeoutRef.current = requestAnimationFrame(() => {
-          thumbnailElement.scrollIntoView({
-            behavior: "smooth",
-            block: "nearest",
-            inline: "center",
-          });
+          const container = thumbnailElement.closest('[data-slot="scroll-area-viewport"]') as HTMLElement;
+
+          if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const elementRect = thumbnailElement.getBoundingClientRect();
+
+            const currentScrollLeft = container.scrollLeft;
+            // Calculate target to center the element
+            // offset = distance from container left to element left
+            // We want this distance to be (containerWidth / 2) - (elementWidth / 2)
+            const offset = elementRect.left - containerRect.left;
+            const targetOffset = (containerRect.width / 2) - (elementRect.width / 2);
+            const scrollChange = offset - targetOffset;
+            const targetScrollLeft = currentScrollLeft + scrollChange;
+
+            const start = currentScrollLeft;
+            const change = targetScrollLeft - start;
+            const duration = 800; // ms
+            const startTime = performance.now();
+
+            if (animationFrameRef.current) {
+              cancelAnimationFrame(animationFrameRef.current);
+            }
+
+            const animate = (currentTime: number) => {
+              const elapsed = currentTime - startTime;
+              if (elapsed < duration) {
+                const t = elapsed / duration;
+                // Ease out cubic for smooth deceleration
+                const ease = 1 - Math.pow(1 - t, 3);
+                container.scrollLeft = start + change * ease;
+                animationFrameRef.current = requestAnimationFrame(animate);
+              } else {
+                container.scrollLeft = targetScrollLeft;
+                animationFrameRef.current = null;
+              }
+            };
+
+            animationFrameRef.current = requestAnimationFrame(animate);
+          } else {
+            // Fallback if container not found
+            thumbnailElement.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+              inline: "center",
+            });
+          }
+
           lastScrolledFileRef.current = fileName;
 
           // Reset after a delay to allow future scrolls
@@ -69,6 +114,9 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     return () => {
       if (scrollTimeoutRef.current) {
         cancelAnimationFrame(scrollTimeoutRef.current);
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
   }, [selectedFile]);
@@ -147,6 +195,25 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     }
   }, [thumbnails, files, thumbsCtx.isGenerating]);
 
+  // Create lookup maps for O(1) access
+  const thumbnailMap = useMemo(() => {
+    const map = new Map();
+    thumbnails.forEach(t => map.set(t.file, t));
+    return map;
+  }, [thumbnails]);
+
+  const metadataMap = useMemo(() => {
+    const map = new Map();
+    // We need to access generated.items directly or create a map from it
+    // Since generated.getMetadata is a function, we can't easily map it without access to the underlying array
+    // But we can use the generated.items array if available, or we can optimize by memoizing the result for each file if the list is stable
+    // However, generated.items is available in the context
+    if (generated.items) {
+      generated.items.forEach(item => map.set(item.file, true));
+    }
+    return map;
+  }, [generated.items]);
+
   return (
     <div className="w-full ">
       {(!files || files.length === 0) && (
@@ -161,11 +228,12 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         <ScrollArea className="p-2 w-full overflow-hidden">
           <div className="flex space-x-4 px-2 py-2 w-max pb-4">
             {files.map((file, index) => {
-              const thumbnail = thumbnails.find((t) => t.file === file);
+              const thumbnail = thumbnailMap.get(file);
               const isGenerating = !thumbnail && thumbsCtx.isGenerating;
 
               // Check if this file has generated metadata
-              const hasMetadata = generated.getMetadata(file) !== undefined;
+              // Use the optimized map lookup instead of calling getMetadata which might do a find()
+              const hasMetadata = metadataMap.has(file);
 
               // Check if this file is currently selected
               const isSelected = selectedFile === file;
@@ -231,7 +299,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               );
             })}
           </div>
-          <ScrollBar orientation="horizontal"/>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       )}
     </div>
