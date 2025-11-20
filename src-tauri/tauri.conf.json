@@ -15,7 +15,8 @@
         "title": "Tagpix AI",
         "width": 1024,
         "height": 728,
-        "decorations": false
+        "decorations": false,
+        "fileDropEnabled": false
       }
     ],
     "security": {
