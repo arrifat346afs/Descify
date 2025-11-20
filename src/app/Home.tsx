@@ -8,17 +8,70 @@ import { ProgressSection } from "./_component/progressbar/ProgressSection";
 import ThumbnailSection from "./_component/thumbnail/ThumbnailSection";
 import { useSettings } from "./contexts/SettingsContext"
 import { Separator } from "@/components/ui/separator"
-
+import { useCallback, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { Upload } from "lucide-react";
 
 import { LandingPage } from "./LandingPage";
 import { LoadingPage } from "./LoadingPage";
 
 export const Home = () => {
-  const { selectedFile, setSelectedFile, setFiles, files, thumbnails } = useSettings()
+  const { selectedFile, setSelectedFile, setFiles, files, thumbnails, setHasAttemptedGeneration } = useSettings()
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   const handleFilesSelected = (files: File[]) => {
     setFiles(files);
   };
+
+  // Drag and drop handler for main editor
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    console.log("🎁 Files dropped in main editor via react-dropzone!");
+    console.log("   📦 Files received:", acceptedFiles.length);
+
+    acceptedFiles.forEach((file, i) => {
+      console.log(`      ${i + 1}. ${file.name} (${file.type}, ${(file.size / 1024).toFixed(2)} KB)`);
+    });
+
+    // Filter for media files only
+    const mediaFiles = acceptedFiles.filter(file => {
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      return isImage || isVideo;
+    });
+
+    console.log("   🎬 Media files filtered:", mediaFiles.length);
+
+    if (mediaFiles.length > 0) {
+      // Append new files to existing files
+      const updatedFiles = [...(files || []), ...mediaFiles];
+      console.log("   🚀 Adding files to existing list. Total:", updatedFiles.length);
+      setFiles(updatedFiles);
+      setHasAttemptedGeneration(false);
+    } else {
+      console.log("   ⚠️ No valid media files found");
+    }
+
+    setIsDraggingOver(false);
+  }, [files, setFiles, setHasAttemptedGeneration]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+      'video/*': ['.mp4', '.mov', '.webm']
+    },
+    multiple: true,
+    noClick: true, // Disable click to open file dialog
+    noKeyboard: true, // Disable keyboard interaction
+    onDragEnter: () => {
+      console.log("🎯 Drag enter main editor");
+      setIsDraggingOver(true);
+    },
+    onDragLeave: () => {
+      console.log("🚪 Drag leave main editor");
+      setIsDraggingOver(false);
+    },
+  });
 
   console.log("🏠 HOME COMPONENT RENDER");
   console.log("   Files count:", files?.length || 0);
@@ -65,7 +118,18 @@ export const Home = () => {
   // 3. Main Editor: All thumbnails generated
   console.log("   ✅ Rendering: MAIN EDITOR (all thumbnails ready)");
   return (
-    <div className="min-h-screen flex flex-col m-0 p-0">
+    <div {...getRootProps()} className="min-h-screen flex flex-col m-0 p-0 relative">
+      <input {...getInputProps()} />
+
+      {/* Drag and Drop Overlay */}
+      {(isDragActive || isDraggingOver) && (
+        <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center border-4 border-dashed border-primary animate-in fade-in duration-200">
+          <Upload className="w-20 h-20 text-primary mb-4 animate-bounce" />
+          <p className="text-2xl font-semibold text-primary">Drop files here to add them</p>
+          <p className="text-sm text-muted-foreground mt-2">Images and videos will be added to your collection</p>
+        </div>
+      )}
+
       <div className="h-[35px]">
         <Navbar />
       </div>
