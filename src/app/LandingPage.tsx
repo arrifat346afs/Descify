@@ -6,11 +6,14 @@ import { Upload } from "lucide-react";
 export const LandingPage = () => {
     const { setFiles, setHasAttemptedGeneration } = useSettings();
     const [isDragging, setIsDragging] = useState(false);
+    const [dragCounter, setDragCounter] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
+        setDragCounter(prev => prev + 1);
 
         // Check if the drag contains files
         if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
@@ -21,8 +24,10 @@ export const LandingPage = () => {
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!isDragging && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
-            setIsDragging(true);
+
+        // Set dropEffect to allow dropping
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'copy';
         }
     };
 
@@ -30,18 +35,22 @@ export const LandingPage = () => {
         e.preventDefault();
         e.stopPropagation();
 
-        // Check if we're moving to a child element
-        if (e.relatedTarget && e.currentTarget.contains(e.relatedTarget as Node)) {
-            return;
-        }
-
-        setIsDragging(false);
+        setDragCounter(prev => {
+            const newCounter = prev - 1;
+            if (newCounter === 0) {
+                setIsDragging(false);
+            }
+            return newCounter;
+        });
     };
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
         setIsDragging(false);
+        setDragCounter(0);
+
         console.log("Drop event detected");
 
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
@@ -59,13 +68,19 @@ export const LandingPage = () => {
     };
 
     const handleFiles = (files: File[]) => {
+        console.log("handleFiles called with:", files.length, "files");
+
         const mediaFiles = files.filter(file =>
             file.type.startsWith('image/') || file.type.startsWith('video/')
         );
 
+        console.log("Filtered media files:", mediaFiles.length);
+
         if (mediaFiles.length > 0) {
             setFiles(mediaFiles);
             setHasAttemptedGeneration(false);
+        } else if (files.length > 0) {
+            console.warn("No valid media files found. Dropped files:", files.map(f => f.type));
         }
     };
 
@@ -80,20 +95,20 @@ export const LandingPage = () => {
         >
             <div
                 className={`
-          w-full max-w-2xl h-[60vh] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-6 transition-all duration-200
+          w-full max-w-2xl h-[60vh] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-6 transition-all duration-200 pointer-events-none
           ${isDragging ? 'border-primary bg-primary/10 scale-105' : 'border-muted-foreground/25 hover:border-primary/50'}
         `}
             >
-                <div className="p-4 bg-primary/10 rounded-full">
+                <div className="p-4 bg-primary/10 rounded-full pointer-events-none">
                     <Upload className="w-12 h-12 text-primary" />
                 </div>
 
-                <div className="text-center space-y-2">
+                <div className="text-center space-y-2 pointer-events-none">
                     <h2 className="text-2xl font-semibold tracking-tight">Upload your files</h2>
                     <p className="text-muted-foreground">Drag and drop images or videos anywhere on the screen</p>
                 </div>
 
-                <div className="flex flex-col items-center gap-2">
+                <div className="flex flex-col items-center gap-2 pointer-events-auto">
                     <span className="text-xs text-muted-foreground uppercase tracking-wider">OR</span>
                     <Button
                         onClick={() => fileInputRef.current?.click()}
