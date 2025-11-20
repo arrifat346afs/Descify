@@ -1,4 +1,4 @@
-import  { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
@@ -204,6 +204,80 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       console.log(`  ... and ${thumbnails.length - 3} more`);
     }
   }, [thumbnails]);
+
+  // Generate thumbnails when files change
+  useEffect(() => {
+    console.log("📁 Files changed:", files?.length, "files");
+    console.log("🖼️  Current thumbnails in context:", thumbnails.length);
+
+    if (!files || files.length === 0) {
+      setIsGeneratingThumbnails(false);
+      return;
+    }
+
+    // Count how many thumbnails need to be generated
+    const filesToGenerate = files.filter((file) => {
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+      const alreadyHasThumbnail = thumbnails.find((t) => t.file === file);
+      return (isImage || isVideo) && !alreadyHasThumbnail;
+    });
+
+    if (filesToGenerate.length === 0) {
+      setIsGeneratingThumbnails(false);
+      return;
+    }
+
+    // Set generating state
+    setIsGeneratingThumbnails(true);
+    console.log(
+      `🚀 Starting generation of ${filesToGenerate.length} thumbnails...`
+    );
+
+    // Generate thumbnails in parallel using batch processing
+    // This runs asynchronously and doesn't block the UI
+    (async () => {
+      try {
+        const { generateThumbnailsBatch } = await import("@/app/lib/thumbnailGenerator");
+
+        const results = await generateThumbnailsBatch(
+          filesToGenerate,
+          (completed, total, fileName) => {
+            console.log(`⚡ Progress: ${completed}/${total} - ${fileName}`);
+          },
+          (file, thumbnailUrl) => {
+            // Update UI as each thumbnail is ready (batched in generator)
+            upsert({ file, thumbnailUrl });
+            console.log(`✨ Thumbnail ready: ${file.name}`);
+          },
+          2 // Process 2 thumbnails concurrently to avoid freezing (reduced from 4)
+        );
+
+        setIsGeneratingThumbnails(false);
+        console.log(`✅ Completed ${results.size} thumbnails`);
+      } catch (error) {
+        console.error("❌ Batch thumbnail generation failed:", error);
+        setIsGeneratingThumbnails(false);
+      }
+    })();
+  }, [files]); // Only depend on files, not thumbnails to avoid infinite loop
+
+  // Check if all thumbnails are done
+  useEffect(() => {
+    if (isGeneratingThumbnails && files && files.length > 0) {
+      const allDone = files.every((file) => {
+        const isImage = file.type.startsWith("image/");
+        const isVideo = file.type.startsWith("video/");
+        if (!isImage && !isVideo) return true; // Skip non-media files
+        return thumbnails.find((t) => t.file === file) !== undefined;
+      });
+
+      if (allDone) {
+        console.log("✅ All thumbnails generated!");
+        setIsGeneratingThumbnails(false);
+      }
+    }
+  }, [thumbnails, files, isGeneratingThumbnails]);
 
   const [generatedMetadata, setGeneratedMetadata] = useState<FileMetadata[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

@@ -10,33 +10,66 @@ import { useSettings } from "./contexts/SettingsContext"
 import { Separator } from "@/components/ui/separator"
 
 
+import { LandingPage } from "./LandingPage";
+import { LoadingPage } from "./LoadingPage";
+
 export const Home = () => {
-  const { selectedFile, setSelectedFile, setFiles } = useSettings()
+  const { selectedFile, setSelectedFile, setFiles, files, thumbnails } = useSettings()
 
   const handleFilesSelected = (files: File[]) => {
     setFiles(files);
   };
 
+  // 1. Landing Page: No files selected
+  if (!files || files.length === 0) {
+    return (
+      <>
+        <div className="h-[35px]">
+          <Navbar />
+        </div>
+        <Separator />
+        <LandingPage />
+      </>
+    );
+  }
+
+  // 2. Loading Page: Files selected but thumbnails are still generating
+  // We check if we have files but not all thumbnails are ready yet
+  const isGenerating = files.length > 0 && thumbnails.items.length < files.length;
+
+  if (isGenerating) {
+    return (
+      <>
+        <div className="h-[35px]">
+          <Navbar />
+        </div>
+        <Separator />
+        <LoadingPage />
+      </>
+    );
+  }
+
+  // 3. Main Editor: All thumbnails generated
   return (
     <div className="min-h-screen flex flex-col m-0 p-0">
       <div className="h-[35px]">
         <Navbar />
       </div>
-      <Separator  />
-        <div className="flex h-[59vh] ">
-          <div className="w-[30vw] h-full "><CategorySection /></div>
-          <Separator orientation="vertical" />
-          <div className="w-[40vw] h-full"><FileSection file={selectedFile} /></div>
-          <Separator orientation="vertical" />
-          <div className="w-[30vw] h-full"><MetadataSection /></div>
-        </div>
-        <Separator  />
-        <div className="flex flex-col h-[40vh]">
-            <div className="h-[6vh] shrink-0 "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
-             <Separator  />
-            <div className="h-[29vh] w-full"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
-            <div className="h-[7vh] shrink-0 "><ProgressSection /></div>
-        </div>
+      <Separator />
+      <div className="flex h-[59vh] ">
+        <div className="w-[30vw] h-full "><CategorySection /></div>
+        <Separator orientation="vertical" />
+        <div className="w-[40vw] h-full"><FileSection file={selectedFile} /></div>
+        <Separator orientation="vertical" />
+        <div className="w-[30vw] h-full"><MetadataSection /></div>
+      </div>
+      <Separator />
+      <div className="flex flex-col h-[40vh]">
+        <div className="h-[6vh] shrink-0 "><ActionsSection onFilesSelected={handleFilesSelected} /></div>
+        <Separator />
+        <div className="h-[29vh] w-full"><ThumbnailSection onSelectFile={setSelectedFile} /></div>
+        <div className="h-[7vh] shrink-0 "><ProgressSection /></div>
+      </div>
     </div>
   )
 }

@@ -121,79 +121,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     };
   }, [selectedFile]);
 
-  // Generate thumbnails when files change
-  useEffect(() => {
-    console.log("📁 Files changed:", files?.length, "files");
-    console.log("🖼️  Current thumbnails in context:", thumbsCtx.items.length);
 
-    if (!files || files.length === 0) {
-      thumbsCtx.setIsGenerating(false);
-      return;
-    }
-
-    // Count how many thumbnails need to be generated
-    const filesToGenerate = files.filter((file) => {
-      const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
-      const alreadyHasThumbnail = thumbnails.find((t) => t.file === file);
-      return (isImage || isVideo) && !alreadyHasThumbnail;
-    });
-
-    if (filesToGenerate.length === 0) {
-      thumbsCtx.setIsGenerating(false);
-      return;
-    }
-
-    // Set generating state
-    thumbsCtx.setIsGenerating(true);
-    console.log(
-      `🚀 Starting generation of ${filesToGenerate.length} thumbnails...`
-    );
-
-    // Generate thumbnails in parallel using batch processing
-    // This runs asynchronously and doesn't block the UI
-    (async () => {
-      try {
-        const { generateThumbnailsBatch } = await import("@/app/lib/thumbnailGenerator");
-
-        const results = await generateThumbnailsBatch(
-          filesToGenerate,
-          (completed, total, fileName) => {
-            console.log(`⚡ Progress: ${completed}/${total} - ${fileName}`);
-          },
-          (file, thumbnailUrl) => {
-            // Update UI as each thumbnail is ready (batched in generator)
-            thumbsCtx.upsert({ file, thumbnailUrl });
-            console.log(`✨ Thumbnail ready: ${file.name}`);
-          },
-          2 // Process 2 thumbnails concurrently to avoid freezing (reduced from 4)
-        );
-
-        thumbsCtx.setIsGenerating(false);
-        console.log(`✅ Completed ${results.size} thumbnails`);
-      } catch (error) {
-        console.error("❌ Batch thumbnail generation failed:", error);
-        thumbsCtx.setIsGenerating(false);
-      }
-    })();
-  }, [files]); // Only depend on files, not thumbnails to avoid infinite loop
-
-  // Check if all thumbnails are done
-  useEffect(() => {
-    if (thumbsCtx.isGenerating && files && files.length > 0) {
-      const allDone = files.every((file) => {
-        const isImage = file.type.startsWith("image/");
-        const isVideo = file.type.startsWith("video/");
-        if (!isImage && !isVideo) return true; // Skip non-media files
-        return thumbnails.find((t) => t.file === file) !== undefined;
-      });
-
-      if (allDone) {
-        console.log("✅ All thumbnails generated!");
-        thumbsCtx.setIsGenerating(false);
-      }
-    }
-  }, [thumbnails, files, thumbsCtx.isGenerating]);
 
   // Create lookup maps for O(1) access
   const thumbnailMap = useMemo(() => {
