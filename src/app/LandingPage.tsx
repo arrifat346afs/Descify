@@ -53,9 +53,9 @@ export const LandingPage = () => {
     });
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-8">
+        <div className="min-h-screen flex flex-row items-center justify-center bg-background p-4 gap-8">
             {/* Upload Section */}
-            <div {...getRootProps()} className={`
+            <div>    <div {...getRootProps()} className={`
                 w-full max-w-2xl h-[40vh] border-2 border-dashed rounded-xl
                 flex flex-col items-center justify-center gap-6
                 transition-all duration-200 cursor-pointer
@@ -85,7 +85,8 @@ export const LandingPage = () => {
             <p className="text-sm text-muted-foreground text-center max-w-md">
                 Supported formats: JPG, PNG, WEBP, MP4, MOV.
                 Files will be processed locally to generate thumbnails.
-            </p>
+            </p></div>
+        
 
             {/* API Key Management Section */}
             <div className="w-full max-w-2xl">
