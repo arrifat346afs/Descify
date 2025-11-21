@@ -7,7 +7,6 @@ export const LandingPage = () => {
     const { setFiles, setHasAttemptedGeneration } = useSettings();
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
-        console.log("🎁 Files dropped via react-dropzone!");
         console.log("   📦 Files received:", acceptedFiles.length);
 
         acceptedFiles.forEach((file, i) => {
@@ -18,7 +17,6 @@ export const LandingPage = () => {
     }, []);
 
     const handleFiles = (files: File[]) => {
-        console.log("🔧 handleFiles called with:", files.length, "files");
 
         const mediaFiles = files.filter(file => {
             const isImage = file.type.startsWith('image/');
