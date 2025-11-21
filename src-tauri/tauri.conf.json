@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tagpix-ai",
-  "version": "0.1.0",
-  "identifier": "com.tagpix-ai.app",
+  "productName": "Tagpix AI",
+  "version": "0.1.2",
+  "identifier": "com.tagpix-ai.v0.1.2",
   "build": {
     "beforeDevCommand": "bun run dev --port 3000",
     "devUrl": "http://localhost:3000",
@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "Tagpix AI",
-        "width": 1024,
-        "height": 728,
+        "width": 1920,
+        "height": 1080,
         "decorations": false,
         "dragDropEnabled": false
       }
