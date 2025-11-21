@@ -1,8 +1,8 @@
 {
-  "name": "tauri-app",
+  "name": "tagpix-ai",
   "private": true,
-  "version": "0.1.101",
   "type": "module",
+  "description": "AI powered image metadata manager",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
