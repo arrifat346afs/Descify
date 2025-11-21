@@ -38,16 +38,15 @@ const ApiSettings = () => {
     setLocalRequestDelay(api.requestDelay);
   }, [api.selectedProvider, api.selectedModel, api.apiKeys, api.requestDelay]);
 
-  // Detect unsaved changes
+  // Detect unsaved changes (excluding API keys as they're managed in a separate tab)
   useEffect(() => {
     const hasChanges =
       localProvider !== api.selectedProvider ||
       localModel !== api.selectedModel ||
-      JSON.stringify(localApiKeys) !== JSON.stringify(api.apiKeys) ||
       localRequestDelay !== api.requestDelay;
 
     setHasUnsavedChanges(hasChanges);
-  }, [localProvider, localModel, localApiKeys, localRequestDelay, api]);
+  }, [localProvider, localModel, localRequestDelay, api]);
 
   // Fetch models when local provider changes
   useEffect(() => {
@@ -88,24 +87,13 @@ const ApiSettings = () => {
     loadModels();
   }, [localProvider, localApiKeys]);
 
-  const handleLocalApiKeyChange = (provider: Provider, value: string) => {
-    setLocalApiKeys(prev => ({ ...prev, [provider]: value }));
-  };
-
   const handleSave = () => {
     // Save all changes to context
-    // Note: Each setter in the context will show its own toast
     api.setSelectedProvider(localProvider);
     api.setSelectedModel(localModel);
-
-    // Save API keys only if changed
-    Object.entries(localApiKeys).forEach(([provider, key]) => {
-      if (key !== api.apiKeys[provider as Provider]) {
-        api.setApiKey(provider as Provider, key);
-      }
-    });
-
     api.setRequestDelay(localRequestDelay);
+
+    toast.success('Settings saved successfully!');
 
     // Show success indicator
     setShowSavedIndicator(true);
@@ -197,21 +185,11 @@ const ApiSettings = () => {
         </Select>
       </div>
 
-      <div>
-        <Label htmlFor="apiKey">
-          API Key {localProvider ? `for ${providers.find(p => p.value === localProvider)?.label}` : ''}
-        </Label>
-        <Input
-          type="password"
-          id="apiKey"
-          value={localProvider ? localApiKeys[localProvider] : ''}
-          placeholder={localProvider ? `Enter ${providers.find(p => p.value === localProvider)?.label} API Key` : 'Select a provider first'}
-          onChange={(e) => {
-            if (localProvider) {
-              handleLocalApiKeyChange(localProvider, e.target.value);
-            }
-          }}
-        />
+      {/* API Key input removed - now managed in dedicated API Keys tab */}
+      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
+        <p className="text-sm text-blue-600 dark:text-blue-400">
+          💡 <strong>Tip:</strong> Configure your API keys in the "API Keys" tab for better management.
+        </p>
       </div>
 
       <div>
