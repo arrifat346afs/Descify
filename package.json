@@ -2,7 +2,6 @@
   "name": "tagpix-ai",
   "private": true,
   "type": "module",
-  "description": "AI powered image metadata manager",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
