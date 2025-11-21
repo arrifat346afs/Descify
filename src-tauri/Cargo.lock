@@ -4639,6 +4639,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "tagpixai"
+version = "0.1.2"
+dependencies = [
+ "base64 0.21.7",
+ "image",
+ "ruurd_photos_thumbnail_generation",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-opener",
+ "tauri-plugin-upload",
+ "uuid",
+]
+
+[[package]]
 name = "tao"
 version = "0.34.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4744,24 +4762,6 @@ dependencies = [
  "webview2-com",
  "window-vibrancy",
  "windows",
-]
-
-[[package]]
-name = "tauri-app"
-version = "0.1.0"
-dependencies = [
- "base64 0.21.7",
- "image",
- "ruurd_photos_thumbnail_generation",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-opener",
- "tauri-plugin-upload",
- "uuid",
 ]
 
 [[package]]

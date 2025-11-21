@@ -1,5 +1,5 @@
 [package]
-name = "Tagpix AI"
+name = "tagpixai"
 version = "0.1.2"
 description = "AI powered image metadata manager"
 authors = ["arrifat346afs"]
