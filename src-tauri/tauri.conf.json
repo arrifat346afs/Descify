@@ -2,12 +2,13 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Tagpix AI",
   "version": "0.1.2",
-  "identifier": "com.tagpix-ai.v0.1.2",
+  "identifier": "io.github.arrifat346afs.tagpix_ai",
   "build": {
     "beforeDevCommand": "bun run dev --port 3000",
     "devUrl": "http://localhost:3000",
     "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
+    
   },
   "app": {
     "windows": [
@@ -23,6 +24,7 @@
       "csp": null
     }
   },
+   
   "bundle": {
     "active": true,
     "targets": ["appimage"],
