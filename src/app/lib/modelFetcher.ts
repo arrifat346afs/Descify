@@ -126,8 +126,19 @@ export async function fetchOpenAIModels(apiKey?: string): Promise<ModelInfo[]> {
  * Fetches available models from Google Gemini API
  */
 export async function fetchGeminiModels(_apiKey?: string): Promise<ModelInfo[]> {
-  // Google doesn't have a public models list endpoint, so we return curated list
-  return getFallbackGeminiModels();
+  // If no API key provided, return the fallback list immediately.
+  if (!_apiKey) {
+    return getFallbackGeminiModels();
+  }
+
+  try {
+    // No public Gemini models endpoint implemented here; return fallback for now.
+    // If you add a real Gemini API call later, ensure this try block returns ModelInfo[].
+    return getFallbackGeminiModels();
+  } catch (error) {
+    console.error('Error fetching Gemini models:', error);
+    return getFallbackGeminiModels();
+  }
 }
 
 /**
