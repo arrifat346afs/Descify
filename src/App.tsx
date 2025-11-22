@@ -5,7 +5,7 @@ import Navbar from "./app/_component/navigation/Navbar";
 
 function App() {
   return (
-    <main className="flex-1 ">
+    <main className="flex-1">
       <div className="h-[35px]">
         <Navbar />
       </div>
