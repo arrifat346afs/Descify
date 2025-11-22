@@ -49,7 +49,7 @@ const Navbar = () => {
           <VscChromeMinimize />
         </Button>
         <Button
-          onClick={() => appWindow.maximize()}
+          onClick={() => appWindow.toggleMaximize()}
           className=" bg-transparent text-white rounded-none hover:bg-zinc-500/30"
         >
           <VscChromeMaximize />
