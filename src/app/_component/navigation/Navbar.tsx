@@ -7,12 +7,34 @@ import {
   VscChromeClose,
   VscChromeMaximize,
   VscChromeMinimize,
+  VscChromeRestore,
 } from "react-icons/vsc";
 import { ItemMedia } from "@/components/ui/item";
 import logo from "../../../assets/tp.png";
+import { useEffect, useState } from "react";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  useEffect(() => {
+    // Check initial maximized state
+    const checkMaximized = async () => {
+      const maximized = await appWindow.isMaximized();
+      setIsMaximized(maximized);
+    };
+    checkMaximized();
+
+    // Listen for window resize events to update maximized state
+    const unlisten = appWindow.onResized(async () => {
+      const maximized = await appWindow.isMaximized();
+      setIsMaximized(maximized);
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [appWindow]);
   return (
     <div className="flex justify-between items-center h-full">
       <div data-tauri-drag-region className="flex w-full">
@@ -52,7 +74,7 @@ const Navbar = () => {
           onClick={() => appWindow.toggleMaximize()}
           className=" bg-transparent text-white rounded-none hover:bg-zinc-500/30"
         >
-          <VscChromeMaximize />
+          {isMaximized ? <VscChromeRestore /> : <VscChromeMaximize />}
         </Button>
         <Button
           onClick={() => appWindow.close()}
