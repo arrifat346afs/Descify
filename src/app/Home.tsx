@@ -63,23 +63,23 @@ export const Home = () => {
     noClick: true, // Disable click to open file dialog
     noKeyboard: true, // Disable keyboard interaction
     onDragEnter: () => {
-      console.log("🎯 Drag enter main editor");
+      console.log("Drag enter main editor");
       setIsDraggingOver(true);
     },
     onDragLeave: () => {
-      console.log("🚪 Drag leave main editor");
+      console.log(" Drag leave main editor");
       setIsDraggingOver(false);
     },
   });
 
-  console.log("🏠 HOME COMPONENT RENDER");
-  console.log("   Files count:", files?.length || 0);
-  console.log("   Thumbnails count:", thumbnails.items.length);
-  console.log("   Is generating:", thumbnails.isGenerating);
+  console.log("HOME COMPONENT RENDER");
+  console.log("Files count:", files?.length || 0);
+  console.log("Thumbnails count:", thumbnails.items.length);
+  console.log("Is generating:", thumbnails.isGenerating);
 
   // 1. Landing Page: No files selected
   if (!files || files.length === 0) {
-    console.log("   📄 Rendering: LANDING PAGE (no files)");
+    console.log(" Rendering: LANDING PAGE (no files)");
     return (
       <>
 
@@ -93,14 +93,14 @@ export const Home = () => {
   // We check if we have files but not all thumbnails are ready yet
   const isGenerating = files.length > 0 && thumbnails.items.length < files.length;
 
-  console.log("   🔄 Checking if generating:", {
+  console.log("  Checking if generating:", {
     filesLength: files.length,
     thumbnailsLength: thumbnails.items.length,
     isGenerating,
   });
 
   if (isGenerating) {
-    console.log("   ⏳ Rendering: LOADING PAGE (generating thumbnails)");
+    console.log(" Rendering: LOADING PAGE (generating thumbnails)");
     return (
       <>
 
@@ -111,7 +111,7 @@ export const Home = () => {
   }
 
   // 3. Main Editor: All thumbnails generated
-  console.log("   ✅ Rendering: MAIN EDITOR (all thumbnails ready)");
+  console.log("   ✅ Rendering: MAIN WINDOW (all thumbnails ready)");
   return (
     <div {...getRootProps()} className="min-h-screen flex flex-col m-0 p-0 relative">
       <input {...getInputProps()} />
