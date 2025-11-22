@@ -3,7 +3,6 @@ import { ActionsSection } from "./_component/action/ ActionsSection";
 import { CategorySection } from "./_component/category/CategorySection";
 import FileSection from "./_component/file-preview/FileSection";
 import { MetadataSection } from "./_component/metadeta/MetadataSection";
-import Navbar from "./_component/navigation/Navbar";
 import { ProgressSection } from "./_component/progressbar/ProgressSection";
 import ThumbnailSection from "./_component/thumbnail/ThumbnailSection";
 import { useSettings } from "./contexts/SettingsContext"
@@ -83,9 +82,7 @@ export const Home = () => {
     console.log("   📄 Rendering: LANDING PAGE (no files)");
     return (
       <>
-        <div className="h-[35px]">
-          <Navbar />
-        </div>
+
         <Separator />
         <LandingPage />
       </>
@@ -106,9 +103,7 @@ export const Home = () => {
     console.log("   ⏳ Rendering: LOADING PAGE (generating thumbnails)");
     return (
       <>
-        <div className="h-[35px]">
-          <Navbar />
-        </div>
+
         <Separator />
         <LoadingPage />
       </>
@@ -129,10 +124,6 @@ export const Home = () => {
           <p className="text-sm text-muted-foreground mt-2">Images and videos will be added to your collection</p>
         </div>
       )}
-
-      <div className="h-[35px]">
-        <Navbar />
-      </div>
       <Separator />
       <div className="flex h-[59vh] ">
         <div className="w-[30vw] h-full "><CategorySection /></div>
