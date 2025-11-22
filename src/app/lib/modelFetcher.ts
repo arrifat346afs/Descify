@@ -122,19 +122,62 @@ export async function fetchOpenAIModels(apiKey?: string): Promise<ModelInfo[]> {
   }
 }
 
+type GeminiModel = {
+  name: string;
+  displayName?: string;
+  description?: string;
+  supportedGenerationMethods?: string[];
+  inputTokenLimit?: number;
+  outputTokenLimit?: number;
+};
+
 /**
  * Fetches available models from Google Gemini API
  */
-export async function fetchGeminiModels(_apiKey?: string): Promise<ModelInfo[]> {
+export async function fetchGeminiModels(apiKey?: string): Promise<ModelInfo[]> {
   // If no API key provided, return the fallback list immediately.
-  if (!_apiKey) {
+  if (!apiKey) {
     return getFallbackGeminiModels();
   }
 
   try {
-    // No public Gemini models endpoint implemented here; return fallback for now.
-    // If you add a real Gemini API call later, ensure this try block returns ModelInfo[].
-    return getFallbackGeminiModels();
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const models: GeminiModel[] = data.models || [];
+
+    console.log(`Gemini: Total models fetched: ${models.length}`);
+
+    // Filter for models that support generateContent (vision-capable models)
+    const visionModels = models
+      .filter((model) => {
+        const methods = model.supportedGenerationMethods || [];
+        // Only include models that support generateContent
+        return methods.includes('generateContent');
+      })
+      .map((model) => {
+        // Extract the model ID from the full name (e.g., "models/gemini-1.5-pro" -> "gemini-1.5-pro")
+        const modelId = model.name.replace('models/', '');
+        const displayName = model.displayName || modelId;
+
+        return {
+          value: modelId,
+          label: displayName,
+          supportsVision: true,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    console.log(`Gemini: Vision-capable models found: ${visionModels.length}`);
+    console.log('Gemini models:', visionModels.map(m => m.label));
+
+    return visionModels.length > 0 ? visionModels : getFallbackGeminiModels();
   } catch (error) {
     console.error('Error fetching Gemini models:', error);
     return getFallbackGeminiModels();
@@ -178,7 +221,7 @@ function getFallbackGeminiModels(): ModelInfo[] {
   return [
     { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite', supportsVision: true },
     { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro', supportsVision: true },
-    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', supportsVision: true },
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash nai', supportsVision: true },
   ];
 }
 
