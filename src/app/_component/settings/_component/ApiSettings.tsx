@@ -184,14 +184,6 @@ const ApiSettings = () => {
           </SelectContent>
         </Select>
       </div>
-
-      {/* API Key input removed - now managed in dedicated API Keys tab */}
-      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
-        <p className="text-sm text-blue-600 dark:text-blue-400">
-          💡 <strong>Tip:</strong> Configure your API keys in the "API Keys" tab for better management.
-        </p>
-      </div>
-
       <div>
         <Label htmlFor="requestDelay">
           Request Delay (seconds)

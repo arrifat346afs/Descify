@@ -13,12 +13,12 @@ const Settings = () => {
       <div className="flex-1 overflow-y-auto pt-4">
         <Tabs defaultValue="api" className="w-full">
           <TabsList className="grid h-11 w-full grid-cols-3 border bg-background/50">
-            <TabsTrigger value="api">API Settings</TabsTrigger>
+            <TabsTrigger value="models">Model Selection</TabsTrigger>
             <TabsTrigger value="apikeys">API Keys</TabsTrigger>
             <TabsTrigger value="metadata">Metadata Settings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="api" className="mt-6">
+          <TabsContent value="models" className="mt-6">
             <ApiSettings />
           </TabsContent>
 
