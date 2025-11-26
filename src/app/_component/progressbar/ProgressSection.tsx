@@ -11,11 +11,6 @@ export const ProgressSection = () => {
   const progressValue = totalFiles > 0 ? (completedFiles / totalFiles) * 100 : 0;
 
   console.log('📊 Progress:', completedFiles, '/', totalFiles, '=', progressValue.toFixed(1) + '%');
-
-  // const isGenerating = generationProgress.isGenerating;
-  // const currentFileName = generationProgress.currentFileName;
-  // const currentIndex = generationProgress.currentIndex;
-
   return (
     <div className="w-full  flex flex-col gap-2 ">
       <div className="flex items-center gap-2">
