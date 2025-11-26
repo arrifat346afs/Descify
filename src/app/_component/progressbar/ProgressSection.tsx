@@ -3,7 +3,7 @@ import { useSettings } from "@/app/contexts/SettingsContext"
 
 
 export const ProgressSection = () => {
-  const { thumbnails, generated, generationProgress } = useSettings();
+  const { thumbnails, generated } = useSettings();
 
   // Calculate how many files have metadata generated
   const totalFiles = thumbnails.items.length;
@@ -12,9 +12,9 @@ export const ProgressSection = () => {
 
   console.log('📊 Progress:', completedFiles, '/', totalFiles, '=', progressValue.toFixed(1) + '%');
 
-  const isGenerating = generationProgress.isGenerating;
-  const currentFileName = generationProgress.currentFileName;
-  const currentIndex = generationProgress.currentIndex;
+  // const isGenerating = generationProgress.isGenerating;
+  // const currentFileName = generationProgress.currentFileName;
+  // const currentIndex = generationProgress.currentIndex;
 
   return (
     <div className="w-full  flex flex-col gap-2 ">
@@ -28,11 +28,6 @@ export const ProgressSection = () => {
           </span>
         )}
       </div>
-      {isGenerating && currentFileName && (
-        <div className="text-xs text-gray-400 text-center truncate pr-2 pb-4">
-          🤖 Processing {currentIndex}/{totalFiles}: {currentFileName}
-        </div>
-      )}
     </div>
   )
 }
