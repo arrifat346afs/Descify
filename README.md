@@ -1,5 +1,5 @@
 # Tagpix AI - Image Metadata Manager
-
+release
 Tagpix AI is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently.
 
 ## Features
