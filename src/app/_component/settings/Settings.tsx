@@ -3,15 +3,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApiSettings from "./_component/ApiSettings";
 import MetadataSettings from "./_component/MetadataSettings";
 import ApiKeyManagement from "./_component/ApiKeyManagement";
+import { useSettings } from "@/app/contexts/SettingsContext";
 
 const Settings = () => {
+  const { settingsDialog } = useSettings();
+
   return (
     <div className="flex flex-col h-full">
       <DialogHeader>
         <DialogTitle className="text-2xl font-bold">Settings</DialogTitle>
       </DialogHeader>
       <div className="flex-1 overflow-y-auto pt-4">
-        <Tabs defaultValue="api" className="w-full">
+        <Tabs value={settingsDialog.defaultTab} onValueChange={settingsDialog.setDefaultTab} className="w-full">
           <TabsList className="grid h-11 w-full grid-cols-3 border bg-background/50">
             <TabsTrigger value="models">Model Selection</TabsTrigger>
             <TabsTrigger value="apikeys">API Keys</TabsTrigger>

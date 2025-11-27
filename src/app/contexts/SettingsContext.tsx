@@ -54,6 +54,13 @@ type GenerationProgress = {
   totalFiles: number;
 };
 
+type SettingsDialogState = {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  defaultTab: string;
+  setDefaultTab: (tab: string) => void;
+};
+
 type SettingsContextType = {
   api: ApiSettingsState;
   metadataLimits: MetadataLimits & { setLimits: (l: Partial<MetadataLimits>) => void };
@@ -85,6 +92,8 @@ type SettingsContextType = {
   setHasAttemptedGeneration: (attempted: boolean) => void;
   categories: CategorySelection;
   setCategories: (categories: Partial<CategorySelection>) => void;
+  settingsDialog: SettingsDialogState;
+  hasApiKey: () => boolean;
 };
 
 const defaultApiKeys: Record<Provider, string> = {
@@ -160,6 +169,15 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setRequestDelayState(delay);
     saveToLocalStorage('requestDelay', delay);
   };
+
+  // Settings dialog state
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [settingsDialogDefaultTab, setSettingsDialogDefaultTab] = useState('models');
+
+  // Function to check if any API key is configured
+  const hasApiKey = useCallback(() => {
+    return Object.values(apiKeys).some(key => key && key.trim() !== '');
+  }, [apiKeys]);
 
   const [files, setFiles] = useState<File[]>([]);
   const [thumbnails, setThumbnails] = useState<ThumbnailData[]>([]);
@@ -467,6 +485,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setOptions,
   }), [options, setOptions]);
 
+  // Memoize settings dialog state
+  const settingsDialogValue = useMemo(() => ({
+    isOpen: settingsDialogOpen,
+    setIsOpen: setSettingsDialogOpen,
+    defaultTab: settingsDialogDefaultTab,
+    setDefaultTab: setSettingsDialogDefaultTab,
+  }), [settingsDialogOpen, settingsDialogDefaultTab]);
+
   const value: SettingsContextType = useMemo(() => ({
     api: apiValue,
     metadataLimits: metadataLimitsValue,
@@ -483,6 +509,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setHasAttemptedGeneration,
     categories,
     setCategories,
+    settingsDialog: settingsDialogValue,
+    hasApiKey,
   }), [
     apiValue,
     metadataLimitsValue,
@@ -494,6 +522,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     selectedFile,
     hasAttemptedGeneration,
     categories,
+    settingsDialogValue,
+    hasApiKey,
   ]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

@@ -12,10 +12,12 @@ import {
 import { ItemMedia } from "@/components/ui/item";
 import logo from "../../../assets/tp.png";
 import { useEffect, useState } from "react";
+import { useSettings } from "@/app/contexts/SettingsContext";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
+  const { settingsDialog } = useSettings();
 
   useEffect(() => {
     // Check initial maximized state
@@ -51,7 +53,7 @@ const Navbar = () => {
           </ItemMedia>
         </div>
         <div className="flex justify-center items-center">
-          <Dialog>
+          <Dialog open={settingsDialog.isOpen} onOpenChange={settingsDialog.setIsOpen}>
             <DialogTrigger asChild>
               <Button className="bg-transparent hover:bg-muted">
                 <SettingsIcon className="w-8 h-8 text-white text-3xl" />

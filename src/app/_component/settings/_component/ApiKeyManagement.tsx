@@ -99,8 +99,26 @@ const ApiKeyManagement = ({ compact = false, showTitle = true }: ApiKeyManagemen
     return localApiKeys[provider] ? 'configured' : 'missing';
   };
 
+  // Check if no API keys are configured
+  const hasNoApiKeys = !Object.values(localApiKeys).some(key => key && key.trim() !== '');
+
   const content = (
     <div className="space-y-4">
+      {/* No API Keys warning */}
+      {hasNoApiKeys && !hasUnsavedChanges && (
+        <div className="flex items-center gap-2 p-4 bg-red-500/10 border border-red-500/20 rounded-md">
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+              No API Keys Configured
+            </span>
+            <span className="text-xs text-red-600/80 dark:text-red-400/80">
+              Please configure at least one API key to use the AI features. Get your API keys from the respective provider websites.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Unsaved changes indicator */}
       {hasUnsavedChanges && (
         <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
