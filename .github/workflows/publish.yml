@@ -54,12 +54,16 @@ jobs:
       - name: install frontend dependencies
         run: bun install
 
+      # Set environment variables for Linux AppImage universal compatibility
+      - name: Set AppImage environment (Linux only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          echo "NO_STRIP=1" >> $GITHUB_ENV
+          echo "LINUXDEPLOY_EXCLUDE_LIBS=libEGL.so,libGL.so,libgbm.so,libGLESv2.so" >> $GITHUB_ENV
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Linux AppImage universal compatibility - exclude GPU libs to use system Mesa
-          NO_STRIP: ${{ matrix.platform == 'ubuntu-22.04' && '1' || '' }}
-          LINUXDEPLOY_EXCLUDE_LIBS: ${{ matrix.platform == 'ubuntu-22.04' && 'libEGL.so,libGL.so,libgbm.so,libGLESv2.so' || '' }}
         with:
           tagName: app-v__VERSION__ # the action automatically replaces __VERSION__ with the app version.
           releaseName: 'Tagpix AI v__VERSION__'
