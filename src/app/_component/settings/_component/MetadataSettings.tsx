@@ -44,16 +44,16 @@ const MetadataSettings = () => {
   };
 
   return (
-     <div className="flex flex-col items-center gap-6 text-gray-400">
+     <div className="flex flex-col items-center gap-6 ">
       {/* <h2 className="text-2xl font-bold text-gray-400">Metadata Settings</h2> */}
       <div className="w-full max-w-md flex flex-col gap-4">
         <div>
           <div className="flex gap-3 p-2">
             <h4>Title Limit</h4>
-            <span className="text-xs text-gray-500">(characters)</span>
+            <span className="text-xs ">(characters)</span>
           </div>
           <Input
-            className="border-background/20"
+           
             type="number"
             value={metadataLimits.titleLimit}
             onChange={(e) =>
@@ -66,10 +66,10 @@ const MetadataSettings = () => {
         <div>
           <div className="flex gap-3 p-2">
             <h4>Description Limit</h4>
-            <span className="text-xs text-gray-500">(characters)</span>
+            <span className="text-xs ">(characters)</span>
           </div>
           <Input
-            className="border-background/20"
+           
             type="number"
             value={metadataLimits.descriptionLimit}
             onChange={(e) => metadataLimits.setLimits({ descriptionLimit: parseInt(e.target.value || '1') })}
@@ -80,10 +80,10 @@ const MetadataSettings = () => {
         <div>
           <div className="flex gap-3 p-2">
             <h4>Keyword Limit</h4>
-            <span className="text-xs text-gray-500">(number of keywords)</span>
+            <span className="text-xs ">(number of keywords)</span>
           </div>
           <Input
-            className="border-background/20"
+            
             type="number"
             value={metadataLimits.keywordLimit}
             onChange={(e) => metadataLimits.setLimits({ keywordLimit: parseInt(e.target.value || '1') })}
@@ -96,14 +96,14 @@ const MetadataSettings = () => {
             Reset to Defaults
           </Button>
         </div>
-        <div className="text-xs text-gray-500 text-center">
+        <div className="text-xs text-center">
           Current: Title={metadataLimits.titleLimit}, Description={metadataLimits.descriptionLimit}, Keywords={metadataLimits.keywordLimit}
         </div>
         <div className="flex flex-col gap-2">
           <h4 className="p-2">Select Output Directory</h4>
           <div className="flex gap-2">
             <Input
-              className="border-background/20 grow"
+             
               type="text"
               value={selectedDirectory || ''}
               readOnly
@@ -121,7 +121,7 @@ const MetadataSettings = () => {
         <div className="flex justify-between items-center p-2">
           <div className="flex flex-col gap-1">
             <h4>Include Place Names</h4>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs ">
               {metadataOptions.includePlaceName
                 ? "AI will include location/place names in metadata"
                 : "AI will exclude location/place names from metadata"}

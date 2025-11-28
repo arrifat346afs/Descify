@@ -13,6 +13,7 @@ import { ItemMedia } from "@/components/ui/item";
 import logo from "../../../assets/tp.png";
 import { useEffect, useState } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
+import { ThemeToggle } from "@/components/mode-toggle";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
@@ -47,13 +48,16 @@ const Navbar = () => {
               alt="logo"
               style={{
                 width: "25px",
-                height: "auto", 
+                height: "auto",
               }}
             />
           </ItemMedia>
         </div>
         <div className="flex justify-center items-center">
-          <Dialog open={settingsDialog.isOpen} onOpenChange={settingsDialog.setIsOpen}>
+          <Dialog
+            open={settingsDialog.isOpen}
+            onOpenChange={settingsDialog.setIsOpen}
+          >
             <DialogTrigger asChild>
               <Button variant={"ghost"}>
                 <SettingsIcon className="w-8 h-8 text-3xl" />
@@ -64,23 +68,27 @@ const Navbar = () => {
             </DialogContent>
           </Dialog>
         </div>
+        <ThemeToggle />
       </div>
       <div className="flex">
         <Button
+          variant={"ghost"}
           onClick={() => appWindow.minimize()}
-          className=" bg-transparent text-white rounded-none  hover:bg-zinc-500/30"
+          className=" rounded-none  hover:bg-zinc-500/30"
         >
           <VscChromeMinimize />
         </Button>
         <Button
+          variant={"ghost"}
           onClick={() => appWindow.toggleMaximize()}
-          className=" bg-transparent text-white rounded-none hover:bg-zinc-500/30"
+          className=" rounded-none hover:bg-zinc-500/30"
         >
           {isMaximized ? <VscChromeRestore /> : <VscChromeMaximize />}
         </Button>
         <Button
+          variant={"ghost"}
           onClick={() => appWindow.close()}
-          className=" bg-transparent text-white rounded-none hover:bg-red-500 hover:text-black"
+          className=" rounded-none hover:bg-red-500 hover:text-black"
         >
           <VscChromeClose />
         </Button>
