@@ -45,7 +45,7 @@ export const UploadButton = ({ onFilesSelected }: { onFilesSelected: (files: Fil
       <Button
         
         onClick={handleClick}
-        className="bg-transparent text-white hover:bg-accent"
+        variant={"outline"}
               >
         Upload
       </Button>
