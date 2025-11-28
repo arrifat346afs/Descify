@@ -55,8 +55,8 @@ const Navbar = () => {
         <div className="flex justify-center items-center">
           <Dialog open={settingsDialog.isOpen} onOpenChange={settingsDialog.setIsOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-transparent hover:bg-muted">
-                <SettingsIcon className="w-8 h-8 text-white text-3xl" />
+              <Button variant={"ghost"}>
+                <SettingsIcon className="w-8 h-8 text-3xl" />
               </Button>
             </DialogTrigger>
             <DialogContent>

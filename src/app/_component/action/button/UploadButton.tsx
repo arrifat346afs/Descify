@@ -45,7 +45,7 @@ export const UploadButton = ({ onFilesSelected }: { onFilesSelected: (files: Fil
       <Button
         
         onClick={handleClick}
-        variant={"outline"}
+        variant={"ghost"}
               >
         Upload
       </Button>

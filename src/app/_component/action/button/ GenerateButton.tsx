@@ -169,7 +169,7 @@ export const GenerateButton = () => {
     <div>
       <Button
         onClick={handleGenerate}
-        className="bg-transparent text-white hover:bg-accent"
+        variant={"ghost"}
         disabled={thumbnails.isGenerating || isGenerating}
       >
         {buttonText}

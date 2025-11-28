@@ -18,7 +18,7 @@ export const ProgressSection = () => {
           <Progress value={progressValue} key={`progress-${completedFiles}-${totalFiles}`} className="h-2" />
         </div>
         {totalFiles > 0 && (
-          <span className="text-sm text-gray-500 whitespace-nowrap font-medium pr-3">
+          <span className="text-sm whitespace-nowrap font-medium pr-3">
             {completedFiles} / {totalFiles}
           </span>
         )}

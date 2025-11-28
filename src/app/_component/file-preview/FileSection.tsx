@@ -31,7 +31,7 @@ export default function FileSection({ file }: FileSectionProps) {
           controls
         />
       )}
-      <p className="mt-2 text-sm text-gray-600 text-center truncate max-w-full">{file.name}</p>
+      {/* <p className="mt-2 text-sm text-gray-600 text-center truncate max-w-full">{file.name}</p> */}
     </div>
   );
 }
