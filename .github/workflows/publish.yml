@@ -56,6 +56,7 @@ jobs:
 
       - name: Get commit messages since last tag
         id: changelog
+        shell: bash
         run: |
           # Get the latest tag
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
