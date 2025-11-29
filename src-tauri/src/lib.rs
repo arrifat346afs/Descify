@@ -1,10 +1,12 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use ruurd_photos_thumbnail_generation::{generate_thumbnails, ThumbOptions, VideoOutputFormat, VideoThumbOptions, AvifOptions};
-use std::path::{Path, PathBuf};
-use std::io::Write;
-use uuid::Uuid;
 use base64::engine::general_purpose;
 use base64::Engine as _;
+use ruurd_photos_thumbnail_generation::{
+    generate_thumbnails, AvifOptions, ThumbOptions, VideoOutputFormat, VideoThumbOptions,
+};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 /// Generate thumbnail using Rust image processing
 /// This is a simpler, more reliable approach than spawning Node.js
@@ -18,13 +20,15 @@ async fn generate_sharp_thumbnail(file_data: String) -> Result<String, String> {
         return Err("Invalid data URL format".into());
     }
 
-    let comma_idx = file_data.find(',')
+    let comma_idx = file_data
+        .find(',')
         .ok_or("Invalid data URL: missing comma")?;
 
     let base64_data = &file_data[comma_idx + 1..];
 
     // Decode base64
-    let image_bytes = general_purpose::STANDARD.decode(base64_data)
+    let image_bytes = general_purpose::STANDARD
+        .decode(base64_data)
         .map_err(|e| format!("Failed to decode base64: {}", e))?;
 
     // Load image
@@ -36,7 +40,8 @@ async fn generate_sharp_thumbnail(file_data: String) -> Result<String, String> {
 
     // Encode as JPEG
     let mut output_bytes = Vec::new();
-    thumbnail.write_to(&mut Cursor::new(&mut output_bytes), ImageFormat::Jpeg)
+    thumbnail
+        .write_to(&mut Cursor::new(&mut output_bytes), ImageFormat::Jpeg)
         .map_err(|e| format!("Failed to encode thumbnail: {}", e))?;
 
     // Convert to base64 data URL
@@ -126,7 +131,10 @@ async fn make_thumbnail(file_path: String) -> Result<String, String> {
     // Ensure output directory exists
     let out_dir = output_dir.join("vid_thumbs");
     if let Err(e) = std::fs::create_dir_all(&out_dir) {
-        return Err(format!("Failed to create output directory {:?}: {}", out_dir, e));
+        return Err(format!(
+            "Failed to create output directory {:?}: {}",
+            out_dir, e
+        ));
     }
 
     // Call the async thumbnail generator
@@ -173,16 +181,18 @@ async fn make_thumbnail(file_path: String) -> Result<String, String> {
     Ok(first.to_string_lossy().to_string())
 }
 
-
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![make_thumbnail, generate_sharp_thumbnail])
+        .invoke_handler(tauri::generate_handler![
+            make_thumbnail,
+            generate_sharp_thumbnail
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
