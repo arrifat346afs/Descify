@@ -37,10 +37,9 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "CONTENT FROM PUBLICKEY.PEM",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM4QzZCNzI3MDc4QzI5QzgKUldUSUtZd0hKN2ZHeUtwR2JUcko5WHFHcWN6SFlPUWtrYnZ0cy84eUlKUzZMbE1STlkxNzZTT3AK",
       "endpoints": [
-        "https://releases.myapp.com/{{target}}/{{arch}}/{{current_version}}",
-        "https://github.com/user/repo/releases/latest/download/latest.json"
+        "https://github.com/arrifat346afs/tagpix-ai/releases/latest/download/latest.json"
       ]
     }
   }

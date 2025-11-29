@@ -20,6 +20,8 @@
     "core:window:allow-is-maximized",
     "fs:default",
     "fs:allow-write-text-file",
+    "updater:default",
+    "process:allow-restart",
     {
       "identifier": "fs:scope",
       "allow": [
