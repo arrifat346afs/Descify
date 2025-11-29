@@ -88,7 +88,7 @@ const Navbar = () => {
         <Button
           variant={"ghost"}
           onClick={() => appWindow.close()}
-          className="  hover:bg-red-600"
+          className="rounded-none hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white"
         >
           <VscChromeClose />
         </Button>
