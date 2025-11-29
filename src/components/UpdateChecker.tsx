@@ -15,14 +15,12 @@ import { Download, RefreshCw } from "lucide-react";
 
 export function UpdateChecker() {
   const [update, setUpdate] = useState<Update | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const checkForUpdates = async () => {
-    setIsChecking(true);
     setError(null);
     try {
       const updateResult = await check();
@@ -33,8 +31,6 @@ export function UpdateChecker() {
     } catch (err) {
       console.error("Failed to check for updates:", err);
       setError(err instanceof Error ? err.message : "Failed to check for updates");
-    } finally {
-      setIsChecking(false);
     }
   };
 
