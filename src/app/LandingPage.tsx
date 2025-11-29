@@ -2,6 +2,7 @@ import { useSettings } from "./contexts/SettingsContext";
 import { Upload } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useCallback } from "react";
+import { UpdateChecker } from "@/components/UpdateChecker";
 // import { ModeToggle } from "@/components/mode-toggle";
 // import { Button } from "@/components/ui/button";
 // import { useTheme } from "@/components/theme-provider";
@@ -59,6 +60,7 @@ export const LandingPage = () => {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-8">
             {/* Upload Section */}
+            <UpdateChecker />
             {/* <Button onClick={() => setTheme("light")}>Theame</Button> */}
             
             <div {...getRootProps()} className={`

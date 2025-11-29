@@ -4,7 +4,7 @@ import { Toaster } from "./components/ui/sonner";
 import Navbar from "./app/_component/navigation/Navbar";
 import { useEffect } from "react";
 import { useSettings } from "./app/contexts/SettingsContext";
-import { UpdateChecker } from "./components/UpdateChecker";
+
 
 function App() {
   const { hasApiKey, settingsDialog } = useSettings();
@@ -25,7 +25,7 @@ function App() {
       </div>
       <Home />
       <Toaster />
-      <UpdateChecker />
+      
     </main>
   );
 }

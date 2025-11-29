@@ -14,6 +14,7 @@ import logo from "../../../assets/tp.png";
 import { useEffect, useState } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { ThemeToggle } from "@/components/mode-toggle";
+import { UpdateChecker } from "@/components/UpdateChecker";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
@@ -71,6 +72,7 @@ const Navbar = () => {
         <ThemeToggle />
       </div>
       <div className="flex">
+        <UpdateChecker />
         <Button
           variant={"ghost"}
           onClick={() => appWindow.minimize()}

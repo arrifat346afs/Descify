@@ -30,3 +30,15 @@ dist-ssr
 *.dll
 *.exe
 *.env
+
+# Auto-committer ignored files
+.vscode/**
+.idea/**
+.vs/**
+node_modules/**
+.git/**
+dist/**
+build/**
+*.swp
+*.swo
+Thumbs.db
