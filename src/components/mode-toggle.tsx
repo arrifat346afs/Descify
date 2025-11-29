@@ -18,7 +18,7 @@ export function ThemeToggle({ className, ...props }: ThemeToggleProps) {
   return (
     <TooltipWrapper label="Toggle theme" asChild>
       <Button variant={"ghost"} className={cn("cursor-pointer", className)} {...props} onClick={handleThemeToggle}>
-        {theme === "light" ? <Sun /> : <Moon />}
+        {theme === "light" ? <Moon /> : <Sun />}
       </Button>
     </TooltipWrapper>
   );

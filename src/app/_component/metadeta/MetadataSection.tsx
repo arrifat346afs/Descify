@@ -60,7 +60,7 @@ export const MetadataSection = () => {
   };
 
   return (
-    <ScrollArea >
+    <ScrollArea className="h-full w-full">
       <div className="flex flex-col gap-4 p-2 h-full">
         <TitleField />
         <DescriptionField />
