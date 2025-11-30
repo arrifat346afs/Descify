@@ -1,5 +1,5 @@
-# Tagpix AI - Image Metadata Manager
-release
+# Tagpix AI - Image Metadata Generator
+
 Tagpix AI is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently.
 
 ## Features
@@ -39,11 +39,12 @@ Tagpix AI is a desktop application built with Tauri, React, and TypeScript, desi
 ## Usage
 
 1.  **Open the application.**
-2.  **Import Images:** Use the "Upload" button to select images.
-3.  **View and Edit Metadata:** The application will display the image and its metadata. Edit the fields as needed.
-4.  **Generate Tags:** Use the "Generate" button to generate tags using AI.
-5.  **Save Metadata:** Click the "Save" button to save the changes.
-6.  **Export Metadata:** Use the "Export" button to export the metadata.
+2.  **Open Settings:** Click the "Settings" button to configure API keys and other settings.
+3.  **Import Images:** Use the "Upload" button to select images.
+4.  **View and Edit Metadata:** The application will display the image and its metadata. Edit the fields as needed.
+5.  **Generate Tags:** Use the "Generate" button to generate tags using AI.
+6.  **Save Metadata:** Click the "Save" button to save the changes.
+7.  **Export Metadata:** Use the "Export" button to export the metadata.
 
 ## Technologies Used
 
