@@ -11,8 +11,8 @@ import type {
   MetadataOperationResult,
   BulkOperationResult,
   BulkOperationProgress,
-  DEFAULT_WRITE_OPTIONS,
 } from './types';
+import { DEFAULT_WRITE_OPTIONS } from './types';
 
 // Singleton ExifTool instance for better performance
 let exifToolInstance: ExifTool | null = null;
