@@ -1,9 +1,10 @@
 /**
  * Metadata Service Module
  * Handles all ExifTool operations for reading/writing image metadata
+ * Uses Tauri's shell command API to run ExifTool
  */
 
-import { ExifTool, Tags } from 'exiftool-vendored';
+import { Command } from '@tauri-apps/plugin-shell';
 import type {
   ImageMetadata,
   EmbeddedMetadata,
@@ -14,71 +15,86 @@ import type {
 } from './types';
 import { DEFAULT_WRITE_OPTIONS } from './types';
 
-// Singleton ExifTool instance for better performance
-let exifToolInstance: ExifTool | null = null;
-
-/**
- * Get or create the ExifTool instance
- */
-export function getExifTool(): ExifTool {
-  if (!exifToolInstance) {
-    exifToolInstance = new ExifTool({
-      maxProcs: 4, // Allow parallel processing
-      taskTimeoutMillis: 30000, // 30 second timeout per task
-    });
-  }
-  return exifToolInstance;
+// ExifTool JSON output type
+interface ExifToolJsonOutput {
+  Title?: string;
+  Headline?: string;
+  ObjectName?: string;
+  ImageDescription?: string;
+  Description?: string;
+  Caption?: string;
+  'Caption-Abstract'?: string;
+  Keywords?: string | string[];
+  Subject?: string | string[];
+  UserComment?: string;
+  [key: string]: unknown;
 }
 
 /**
- * Close the ExifTool instance (call on app shutdown)
+ * Close the ExifTool instance (no-op for shell-based implementation)
  */
 export async function closeExifTool(): Promise<void> {
-  if (exifToolInstance) {
-    await exifToolInstance.end();
-    exifToolInstance = null;
+  // No cleanup needed for shell-based implementation
+}
+
+/**
+ * Run ExifTool command and return output
+ */
+async function runExifTool(args: string[]): Promise<string> {
+  try {
+    const command = Command.create('exiftool', args);
+    const output = await command.execute();
+
+    if (output.code !== 0) {
+      throw new Error(output.stderr || `ExifTool exited with code ${output.code}`);
+    }
+
+    return output.stdout;
+  } catch (error) {
+    console.error('ExifTool command failed:', error);
+    throw error;
   }
 }
 
 /**
- * Extract normalized metadata from ExifTool tags
+ * Extract normalized metadata from ExifTool JSON output
  */
-function extractMetadataFromTags(tags: Tags): EmbeddedMetadata {
+function extractMetadataFromJson(data: ExifToolJsonOutput): EmbeddedMetadata {
   // Extract title from various sources (priority: XMP > IPTC > EXIF)
-  const title = 
-    tags.Title?.toString() ||
-    tags.Headline?.toString() ||
-    tags.ObjectName?.toString() ||
-    tags.ImageDescription?.toString() ||
+  const title =
+    data.Title?.toString() ||
+    data.Headline?.toString() ||
+    data.ObjectName?.toString() ||
+    data.ImageDescription?.toString() ||
     '';
 
   // Extract description from various sources
   const description =
-    tags.Description?.toString() ||
-    (tags as Record<string, unknown>)['Caption']?.toString() ||
-    tags['Caption-Abstract']?.toString() ||
-    tags.ImageDescription?.toString() ||
+    data.Description?.toString() ||
+    data.Caption?.toString() ||
+    data['Caption-Abstract']?.toString() ||
+    data.ImageDescription?.toString() ||
     '';
 
   // Extract keywords from various sources
   let keywordsArray: string[] = [];
-  if (tags.Keywords) {
-    keywordsArray = Array.isArray(tags.Keywords) 
-      ? tags.Keywords.map(k => String(k))
-      : [String(tags.Keywords)];
-  } else if (tags.Subject) {
-    keywordsArray = Array.isArray(tags.Subject)
-      ? tags.Subject.map(k => String(k))
-      : [String(tags.Subject)];
+  if (data.Keywords) {
+    keywordsArray = Array.isArray(data.Keywords)
+      ? data.Keywords.map(k => String(k))
+      : [String(data.Keywords)];
+  } else if (data.Subject) {
+    keywordsArray = Array.isArray(data.Subject)
+      ? data.Subject.map(k => String(k))
+      : [String(data.Subject)];
   }
   const keywords = keywordsArray.join(', ');
 
   // Determine source
   let source: EmbeddedMetadata['source'] = 'none';
-  const hasXmp = !!(tags.Title || tags.Description || tags.Subject);
-  const hasIptc = !!(tags.Headline || (tags as Record<string, unknown>)['Caption'] || tags.Keywords);
-  const hasExif = !!(tags.ImageDescription);
-  
+  const hasXmp = !!(data.Title || data.Description || data.Subject);
+  const hasIptc = !!(data.Headline || data.Caption || data.Keywords);
+  const hasExif = !!(data.ImageDescription);
+
   if (hasXmp && hasIptc) source = 'mixed';
   else if (hasXmp) source = 'xmp';
   else if (hasIptc) source = 'iptc';
@@ -90,20 +106,20 @@ function extractMetadataFromTags(tags: Tags): EmbeddedMetadata {
     keywords,
     source,
     exif: {
-      imageDescription: tags.ImageDescription?.toString(),
-      userComment: tags.UserComment?.toString(),
+      imageDescription: data.ImageDescription?.toString(),
+      userComment: data.UserComment?.toString(),
     },
     iptc: {
-      headline: tags.Headline?.toString(),
-      caption: tags['Caption-Abstract']?.toString(),
+      headline: data.Headline?.toString(),
+      caption: data['Caption-Abstract']?.toString(),
       keywords: keywordsArray,
-      objectName: tags.ObjectName?.toString(),
+      objectName: data.ObjectName?.toString(),
     },
     xmp: {
-      title: tags.Title?.toString(),
-      description: tags.Description?.toString(),
-      subject: Array.isArray(tags.Subject) ? tags.Subject.map(String) : undefined,
-      headline: tags.Headline?.toString(),
+      title: data.Title?.toString(),
+      description: data.Description?.toString(),
+      subject: Array.isArray(data.Subject) ? data.Subject.map(String) : undefined,
+      headline: data.Headline?.toString(),
     },
   };
 }
@@ -112,11 +128,23 @@ function extractMetadataFromTags(tags: Tags): EmbeddedMetadata {
  * Read metadata from an image file
  */
 export async function readMetadata(filePath: string): Promise<EmbeddedMetadata> {
-  const exiftool = getExifTool();
-  
   try {
-    const tags = await exiftool.read(filePath);
-    return extractMetadataFromTags(tags);
+    // Use ExifTool to read metadata in JSON format
+    const output = await runExifTool(['-json', '-Title', '-Headline', '-ObjectName',
+      '-ImageDescription', '-Description', '-Caption', '-Caption-Abstract',
+      '-Keywords', '-Subject', '-UserComment', filePath]);
+
+    const jsonData = JSON.parse(output);
+    if (Array.isArray(jsonData) && jsonData.length > 0) {
+      return extractMetadataFromJson(jsonData[0] as ExifToolJsonOutput);
+    }
+
+    return {
+      title: '',
+      description: '',
+      keywords: '',
+      source: 'none',
+    };
   } catch (error) {
     console.error(`Failed to read metadata from ${filePath}:`, error);
     throw new Error(`Failed to read metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -131,9 +159,8 @@ export async function writeMetadata(
   metadata: ImageMetadata,
   options: WriteMetadataOptions = {}
 ): Promise<MetadataOperationResult> {
-  const exiftool = getExifTool();
   const opts = { ...DEFAULT_WRITE_OPTIONS, ...options };
-  
+
   try {
     // Prepare keywords as array
     const keywordsArray = metadata.keywords
@@ -141,33 +168,34 @@ export async function writeMetadata(
       .map(k => k.trim())
       .filter(Boolean);
 
-    // Build the tags to write
-    const tagsToWrite: Partial<Tags> = {};
+    // Build ExifTool arguments
+    const args: string[] = ['-overwrite_original'];
 
     // Write to XMP (most universal and modern)
     if (opts.writeXmp) {
-      tagsToWrite.Title = metadata.title;
-      tagsToWrite.Description = metadata.description;
-      tagsToWrite.Subject = keywordsArray;
+      args.push(`-XMP:Title=${metadata.title}`);
+      args.push(`-XMP:Description=${metadata.description}`);
+      keywordsArray.forEach(kw => args.push(`-XMP:Subject+=${kw}`));
     }
 
     // Write to IPTC (widely supported by stock sites)
     if (opts.writeIptc) {
-      tagsToWrite.Headline = metadata.title;
-      tagsToWrite['Caption-Abstract'] = metadata.description;
-      tagsToWrite.Keywords = keywordsArray;
-      tagsToWrite.ObjectName = metadata.title.substring(0, 64); // IPTC limit
+      args.push(`-IPTC:Headline=${metadata.title}`);
+      args.push(`-IPTC:Caption-Abstract=${metadata.description}`);
+      keywordsArray.forEach(kw => args.push(`-IPTC:Keywords+=${kw}`));
+      args.push(`-IPTC:ObjectName=${metadata.title.substring(0, 64)}`);
     }
 
     // Write to EXIF
     if (opts.writeExif) {
-      tagsToWrite.ImageDescription = metadata.title;
+      args.push(`-EXIF:ImageDescription=${metadata.title}`);
     }
 
-    // Write the metadata
-    await exiftool.write(filePath, tagsToWrite, {
-      writeArgs: ['-overwrite_original'], // Don't create backup file
-    });
+    // Add the file path
+    args.push(filePath);
+
+    // Run ExifTool
+    await runExifTool(args);
 
     return {
       success: true,

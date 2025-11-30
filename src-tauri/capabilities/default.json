@@ -24,6 +24,8 @@
     "fs:allow-write",
     "fs:allow-write-text-file",
     "fs:allow-stat",
+    "shell:allow-execute",
+    "shell:allow-spawn",
     "updater:default",
     "process:allow-restart",
     {
@@ -37,6 +39,12 @@
         { "path": "$PICTURE/**" },
         { "path": "$VIDEO/**" },
         { "path": "**" }
+      ]
+    },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        { "name": "exiftool", "cmd": "exiftool", "args": true }
       ]
     }
   ]
