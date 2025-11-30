@@ -6,4 +6,5 @@
 export * from './types';
 export * from './metadataService';
 export * from './useMetadataSync';
+export * from './useAutoSync';
 

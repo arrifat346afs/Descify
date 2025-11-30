@@ -53,9 +53,9 @@ function extractMetadataFromTags(tags: Tags): EmbeddedMetadata {
     '';
 
   // Extract description from various sources
-  const description = 
+  const description =
     tags.Description?.toString() ||
-    tags.Caption?.toString() ||
+    (tags as Record<string, unknown>)['Caption']?.toString() ||
     tags['Caption-Abstract']?.toString() ||
     tags.ImageDescription?.toString() ||
     '';
@@ -76,7 +76,7 @@ function extractMetadataFromTags(tags: Tags): EmbeddedMetadata {
   // Determine source
   let source: EmbeddedMetadata['source'] = 'none';
   const hasXmp = !!(tags.Title || tags.Description || tags.Subject);
-  const hasIptc = !!(tags.Headline || tags.Caption || tags.Keywords);
+  const hasIptc = !!(tags.Headline || (tags as Record<string, unknown>)['Caption'] || tags.Keywords);
   const hasExif = !!(tags.ImageDescription);
   
   if (hasXmp && hasIptc) source = 'mixed';
@@ -193,6 +193,7 @@ export async function readMetadataBulk(
 ): Promise<Map<string, EmbeddedMetadata>> {
   const results = new Map<string, EmbeddedMetadata>();
   const total = filePaths.length;
+  let failedCount = 0;
 
   for (let i = 0; i < filePaths.length; i++) {
     const filePath = filePaths[i];
@@ -200,6 +201,7 @@ export async function readMetadataBulk(
 
     onProgress?.({
       completed: i,
+      failed: failedCount,
       total,
       currentFile: fileName,
       status: 'reading',
@@ -210,6 +212,7 @@ export async function readMetadataBulk(
       results.set(filePath, metadata);
     } catch (error) {
       console.error(`Failed to read ${filePath}:`, error);
+      failedCount++;
       // Store empty metadata for failed reads
       results.set(filePath, {
         title: '',
@@ -222,6 +225,7 @@ export async function readMetadataBulk(
 
   onProgress?.({
     completed: total,
+    failed: failedCount,
     total,
     currentFile: '',
     status: 'complete',
@@ -247,7 +251,8 @@ export async function writeMetadataBulk(
     const fileName = filePath.split(/[/\\]/).pop() || filePath;
 
     onProgress?.({
-      completed: i,
+      completed: successful.length,
+      failed: failed.length,
       total,
       currentFile: fileName,
       status: 'writing',
@@ -263,7 +268,8 @@ export async function writeMetadataBulk(
   }
 
   onProgress?.({
-    completed: total,
+    completed: successful.length,
+    failed: failed.length,
     total,
     currentFile: '',
     status: 'complete',

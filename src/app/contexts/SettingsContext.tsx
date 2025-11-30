@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import type { EmbeddedMetadata, MetadataSyncStatus, ImageMetadata } from '@/app/lib/metadata/types';
+import type { EmbeddedMetadata, MetadataSyncStatus } from '@/app/lib/metadata/types';
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
 

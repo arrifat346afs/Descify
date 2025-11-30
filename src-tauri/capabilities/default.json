@@ -10,6 +10,7 @@
     "opener:default",
     "upload:default",
     "dialog:default",
+    "dialog:allow-open",
     "core:window:default",
     "core:window:allow-start-dragging",
     "core:window:allow-close",
@@ -19,17 +20,23 @@
     "core:window:allow-internal-toggle-maximize",
     "core:window:allow-is-maximized",
     "fs:default",
+    "fs:allow-read",
+    "fs:allow-write",
     "fs:allow-write-text-file",
+    "fs:allow-stat",
     "updater:default",
     "process:allow-restart",
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$APPDATA/*" },
-        { "path": "$DOWNLOAD/*" },
-        { "path": "$DOCUMENT/*" },
-        { "path": "$DESKTOP/*" },
-        { "path": "$HOME/*" }
+        { "path": "$APPDATA/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "$HOME/**" },
+        { "path": "$PICTURE/**" },
+        { "path": "$VIDEO/**" },
+        { "path": "**" }
       ]
     }
   ]

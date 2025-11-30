@@ -9,20 +9,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { 
-  Download, 
-  Upload, 
-  RefreshCw, 
-  AlertCircle, 
-  CheckCircle2, 
+import {
+  Download,
+  Upload,
+  AlertCircle,
+  CheckCircle2,
   Clock,
   FileWarning,
-  Loader2
+  Loader2,
+  ChevronDown
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown } from 'lucide-react';
 
 export function EmbeddedMetadataPanel() {
   const { selectedFile, embedded, generated } = useSettings();
@@ -62,7 +60,7 @@ export function EmbeddedMetadataPanel() {
   // Handle reading metadata from file
   const handleReadFromFile = async () => {
     if (!selectedFile || !embeddedState?.filePath) return;
-    
+
     setIsReading(true);
     try {
       await readFromFile(selectedFile, embeddedState.filePath);
@@ -76,7 +74,7 @@ export function EmbeddedMetadataPanel() {
   // Handle writing metadata to file
   const handleWriteToFile = async () => {
     if (!selectedFile) return;
-    
+
     setIsWriting(true);
     try {
       await syncSelectedFile();
@@ -92,8 +90,12 @@ export function EmbeddedMetadataPanel() {
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-md p-2 mt-2">
-      <CollapsibleTrigger className="flex items-center justify-between w-full">
+    <div className="border rounded-md p-2 mt-2">
+      {/* Header - clickable to toggle */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-full text-left"
+      >
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Embedded Metadata</span>
           <Badge variant={statusInfo.badgeVariant} className="flex items-center gap-1">
@@ -102,68 +104,71 @@ export function EmbeddedMetadataPanel() {
           </Badge>
         </div>
         <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </CollapsibleTrigger>
-      
-      <CollapsibleContent className="pt-3 space-y-3">
-        {/* File Path Info */}
-        {hasFilePath && (
-          <div className="text-xs text-muted-foreground truncate">
-            Path: {embeddedState?.filePath}
+      </button>
+
+      {/* Content - shown when open */}
+      {isOpen && (
+        <div className="pt-3 space-y-3">
+          {/* File Path Info */}
+          {hasFilePath && (
+            <div className="text-xs text-muted-foreground truncate">
+              Path: {embeddedState?.filePath}
+            </div>
+          )}
+
+          {/* Error Message */}
+          {syncStatus === 'error' && embeddedState?.lastSyncError && (
+            <div className="text-xs text-red-500 bg-red-50 dark:bg-red-950 p-2 rounded">
+              {embeddedState.lastSyncError}
+            </div>
+          )}
+
+          {/* Embedded Metadata Source */}
+          {embeddedMetadata && (
+            <div className="text-xs text-muted-foreground">
+              Source: <Badge variant="outline" className="ml-1">{embeddedMetadata.source.toUpperCase()}</Badge>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReadFromFile}
+              disabled={!hasFilePath || isReading}
+              className="flex-1"
+            >
+              {isReading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+              Read
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleWriteToFile}
+              disabled={!hasFilePath || isWriting || !generated.getMetadata(selectedFile)}
+              className="flex-1"
+            >
+              {isWriting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+              Write
+            </Button>
           </div>
-        )}
 
-        {/* Error Message */}
-        {syncStatus === 'error' && embeddedState?.lastSyncError && (
-          <div className="text-xs text-red-500 bg-red-50 dark:bg-red-950 p-2 rounded">
-            {embeddedState.lastSyncError}
+          {/* Auto-sync Toggle */}
+          <div className="flex items-center justify-between pt-2">
+            <Label htmlFor="auto-sync" className="text-xs">Auto-sync on change</Label>
+            <Switch
+              id="auto-sync"
+              checked={autoSyncEnabled}
+              onCheckedChange={setAutoSyncEnabled}
+              disabled={!hasFilePath}
+            />
           </div>
-        )}
-
-        {/* Embedded Metadata Source */}
-        {embeddedMetadata && (
-          <div className="text-xs text-muted-foreground">
-            Source: <Badge variant="outline" className="ml-1">{embeddedMetadata.source.toUpperCase()}</Badge>
-          </div>
-        )}
-
-        <Separator />
-
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleReadFromFile}
-            disabled={!hasFilePath || isReading}
-            className="flex-1"
-          >
-            {isReading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
-            Read
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleWriteToFile}
-            disabled={!hasFilePath || isWriting || !generated.getMetadata(selectedFile)}
-            className="flex-1"
-          >
-            {isWriting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
-            Write
-          </Button>
         </div>
-
-        {/* Auto-sync Toggle */}
-        <div className="flex items-center justify-between pt-2">
-          <Label htmlFor="auto-sync" className="text-xs">Auto-sync on change</Label>
-          <Switch
-            id="auto-sync"
-            checked={autoSyncEnabled}
-            onCheckedChange={setAutoSyncEnabled}
-            disabled={!hasFilePath}
-          />
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+      )}
+    </div>
   );
 }
 

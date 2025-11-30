@@ -1,6 +1,7 @@
 import TitleField from "./metadata-fields/TitleField";
 import { DescriptionField } from "./metadata-fields/DescriptionField";
 import KeywordsField from "./metadata-fields/KeywordsField";
+import { EmbeddedMetadataPanel } from "./EmbeddedMetadataPanel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useSettings } from '@/app/contexts/SettingsContext';
@@ -81,6 +82,9 @@ export const MetadataSection = () => {
             "Generate Metadata for this File"
           )}
         </Button>
+
+        {/* Embedded Metadata Panel */}
+        <EmbeddedMetadataPanel />
       </div>
     </ScrollArea>
   );

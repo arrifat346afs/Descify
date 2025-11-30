@@ -85,6 +85,7 @@ export interface MetadataOperationResult {
 // Bulk operation progress callback
 export type BulkOperationProgress = {
   completed: number;
+  failed: number;
   total: number;
   currentFile: string;
   status: 'reading' | 'writing' | 'complete' | 'error';
