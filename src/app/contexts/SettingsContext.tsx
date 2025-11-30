@@ -1,18 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import type { EmbeddedMetadata, MetadataSyncStatus } from '@/app/lib/metadata/types';
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
-
-// Embedded metadata tracking for a file
-type FileEmbeddedState = {
-  file: File;
-  filePath?: string;
-  embeddedMetadata?: EmbeddedMetadata;
-  syncStatus: MetadataSyncStatus;
-  lastSyncError?: string;
-  lastSyncTime?: Date;
-};
 
 type ThumbnailData = {
   file: File;
@@ -94,18 +83,6 @@ type SettingsContextType = {
     getCategories: (file: File) => CategorySelection | undefined;
     setFileCategories: (file: File, categories: Partial<CategorySelection>) => void;
     clear: () => void;
-  };
-  // Embedded metadata state (for reading/writing to files)
-  embedded: {
-    items: FileEmbeddedState[];
-    getEmbedded: (file: File) => FileEmbeddedState | undefined;
-    setFilePath: (file: File, filePath: string) => void;
-    setEmbeddedMetadata: (file: File, metadata: EmbeddedMetadata) => void;
-    setSyncStatus: (file: File, status: MetadataSyncStatus, error?: string) => void;
-    clear: () => void;
-    // Auto-sync settings
-    autoSyncEnabled: boolean;
-    setAutoSyncEnabled: (enabled: boolean) => void;
   };
   generationProgress: GenerationProgress;
   setGenerationProgress: (progress: Partial<GenerationProgress>) => void;
@@ -423,79 +400,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const clearGenerated = useCallback(() => setGeneratedMetadata([]), []);
 
-  // Embedded metadata state
-  const [embeddedMetadataState, setEmbeddedMetadataState] = useState<FileEmbeddedState[]>([]);
-  const [autoSyncEnabled, setAutoSyncEnabledState] = useState<boolean>(() =>
-    loadFromLocalStorage('autoSyncEnabled', false)
-  );
-
-  const setAutoSyncEnabled = useCallback((enabled: boolean) => {
-    setAutoSyncEnabledState(enabled);
-    saveToLocalStorage('autoSyncEnabled', enabled);
-  }, []);
-
-  const getEmbedded = useCallback((file: File): FileEmbeddedState | undefined => {
-    return embeddedMetadataState.find((item) => item.file === file);
-  }, [embeddedMetadataState]);
-
-  const setFilePath = useCallback((file: File, filePath: string) => {
-    setEmbeddedMetadataState((prev) => {
-      const existingIndex = prev.findIndex((item) => item.file === file);
-      if (existingIndex !== -1) {
-        const newArray = [...prev];
-        newArray[existingIndex] = { ...newArray[existingIndex], filePath };
-        return newArray;
-      }
-      return [...prev, { file, filePath, syncStatus: 'unsynced' as MetadataSyncStatus }];
-    });
-  }, []);
-
-  const setEmbeddedMetadata = useCallback((file: File, metadata: EmbeddedMetadata) => {
-    setEmbeddedMetadataState((prev) => {
-      const existingIndex = prev.findIndex((item) => item.file === file);
-      if (existingIndex !== -1) {
-        const newArray = [...prev];
-        newArray[existingIndex] = {
-          ...newArray[existingIndex],
-          embeddedMetadata: metadata,
-          syncStatus: 'synced' as MetadataSyncStatus,
-          lastSyncTime: new Date(),
-        };
-        return newArray;
-      }
-      return [...prev, {
-        file,
-        embeddedMetadata: metadata,
-        syncStatus: 'synced' as MetadataSyncStatus,
-        lastSyncTime: new Date(),
-      }];
-    });
-  }, []);
-
-  const setSyncStatus = useCallback((file: File, status: MetadataSyncStatus, error?: string) => {
-    setEmbeddedMetadataState((prev) => {
-      const existingIndex = prev.findIndex((item) => item.file === file);
-      if (existingIndex !== -1) {
-        const newArray = [...prev];
-        newArray[existingIndex] = {
-          ...newArray[existingIndex],
-          syncStatus: status,
-          lastSyncError: error,
-          lastSyncTime: new Date(),
-        };
-        return newArray;
-      }
-      return [...prev, {
-        file,
-        syncStatus: status,
-        lastSyncError: error,
-        lastSyncTime: new Date(),
-      }];
-    });
-  }, []);
-
-  const clearEmbedded = useCallback(() => setEmbeddedMetadataState([]), []);
-
   // Load limits from localStorage with defaults
   const [limits, setLimitsState] = useState<MetadataLimits>(() => {
     const saved = loadFromLocalStorage('metadataLimits', null) as MetadataLimits | null;
@@ -569,18 +473,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     clear: clearGenerated,
   }), [generatedMetadata, getMetadata, setMetadata, getCategories, setFileCategories, clearGenerated]);
 
-  // Memoize embedded metadata object
-  const embeddedValue = useMemo(() => ({
-    items: embeddedMetadataState,
-    getEmbedded,
-    setFilePath,
-    setEmbeddedMetadata,
-    setSyncStatus,
-    clear: clearEmbedded,
-    autoSyncEnabled,
-    setAutoSyncEnabled,
-  }), [embeddedMetadataState, getEmbedded, setFilePath, setEmbeddedMetadata, setSyncStatus, clearEmbedded, autoSyncEnabled, setAutoSyncEnabled]);
-
   // Memoize metadata limits
   const metadataLimitsValue = useMemo(() => ({
     ...limits,
@@ -609,7 +501,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setFiles,
     thumbnails: thumbnailsValue,
     generated: generatedValue,
-    embedded: embeddedValue,
     generationProgress,
     setGenerationProgress,
     selectedFile,
@@ -627,7 +518,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     files,
     thumbnailsValue,
     generatedValue,
-    embeddedValue,
     generationProgress,
     selectedFile,
     hasAttemptedGeneration,
