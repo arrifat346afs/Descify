@@ -10,7 +10,7 @@ export const LandingPage = () => {
     // const { setTheme } = useTheme()
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
-        console.log("   📦 Files received:", acceptedFiles.length);
+        console.log("   � Files received:", acceptedFiles.length);
 
         acceptedFiles.forEach((file, i) => {
             console.log(`      ${i + 1}. ${file.name} (${file.type}, ${(file.size / 1024).toFixed(2)} KB)`);
@@ -31,7 +31,7 @@ export const LandingPage = () => {
         console.log("✅ Filtered media files:", mediaFiles.length);
 
         if (mediaFiles.length > 0) {
-            console.log("🚀 Calling setFiles with", mediaFiles.length, "media files");
+            console.log("� Calling setFiles with", mediaFiles.length, "media files");
             mediaFiles.forEach((file, i) => {
                 console.log(`   ${i + 1}. ${file.name}`);
             });

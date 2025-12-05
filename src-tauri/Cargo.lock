@@ -1204,6 +1204,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "exiftool"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c83266540c36c7a6f8c8711d6273f4c55f073cea2b21c418daaab5fba33cc61d"
+dependencies = [
+ "chrono",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "tempfile",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "exr"
 version = "1.73.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4326,6 +4341,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_path_to_error"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10a9ff822e371bb5403e391ecd83e182e0e77ba7f6fe0160b795797109d1b457"
+dependencies = [
+ "itoa",
+ "serde",
+ "serde_core",
+]
+
+[[package]]
 name = "serde_repr"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4702,6 +4728,7 @@ name = "tagpixai"
 version = "0.1.4"
 dependencies = [
  "base64 0.21.7",
+ "exiftool",
  "image",
  "ruurd_photos_thumbnail_generation",
  "serde",
