@@ -60,16 +60,16 @@ const Navbar = () => {
             onOpenChange={settingsDialog.setIsOpen}
           >
             <DialogTrigger asChild>
-              <Button variant={"ghost"}>
-                <SettingsIcon className="w-8 h-8 text-3xl" />
+              <Button variant={"ghost"} className="cursor-pointer">
+                <SettingsIcon />
               </Button>
             </DialogTrigger>
             <DialogContent>
               <Settings />
             </DialogContent>
           </Dialog>
-        </div>
         <ThemeToggle />
+        </div>
       </div>
       <div className="flex">
         <UpdateChecker />
