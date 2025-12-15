@@ -1,4 +1,4 @@
-# Tagpix AI - Image Metadata Generator
+# Tagpix AI - Image Metadata Generato r
 
 Tagpix AI is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently.
 
