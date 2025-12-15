@@ -1,6 +1,6 @@
 [package]
 name = "tagpixai"
-version = "0.2.0"
+version = "0.2.1"
 description = "AI powered image metadata manager"
 authors = ["arrifat346afs"]
 edition = "2021"
