@@ -9,6 +9,7 @@
     "main"
   ],
   "permissions": [
-    "updater:default"
+    "updater:default",
+    "updater:allow-download-and-install"
   ]
 }

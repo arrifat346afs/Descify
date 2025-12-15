@@ -21,6 +21,7 @@
     "fs:default",
     "fs:allow-write-text-file",
     "updater:default",
+    "updater:allow-download-and-install",
     "process:allow-restart",
     {
       "identifier": "fs:scope",
