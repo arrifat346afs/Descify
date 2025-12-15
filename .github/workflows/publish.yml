@@ -61,10 +61,13 @@ jobs:
 
           if [ -z "$LATEST_TAG" ]; then
             # No previous tag, get all commits
-            COMMITS=$(git log --pretty=format:"- %s" --no-merges)
+            # Format: 'Author|Message (Hash)'
+            # Filter out github-actions[bot]
+            # Convert to list format
+            COMMITS=$(git log --oneline --pretty=format:"%an|%s (%h)" | grep -v "^github-actions\[bot\]|" | sed 's/^[^|]*|/- /')
           else
             # Get commits since last tag
-            COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"- %s" --no-merges)
+            COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline --pretty=format:"%an|%s (%h)" | grep -v "^github-actions\[bot\]|" | sed 's/^[^|]*|/- /')
           fi
 
           # Handle empty commits
