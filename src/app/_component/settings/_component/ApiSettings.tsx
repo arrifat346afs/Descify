@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { fetchOpenRouterModels, fetchOpenAIModels, fetchGeminiModels, type ModelInfo } from '@/app/lib/modelFetcher';
+import { ModelSelector } from './ModelSelector';
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
 
@@ -155,34 +156,20 @@ const ApiSettings = () => {
 
       <div>
         <Label htmlFor="model">AI Model</Label>
-        <Select
+        <ModelSelector
+          models={models}
+          value={localModel}
           onValueChange={setLocalModel}
-          value={localModel || undefined}
-          disabled={!localProvider || isLoadingModels}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder={
-              isLoadingModels
-                ? "Loading models..."
-                : localProvider
-                  ? "Select a model"
-                  : "Select a provider first"
-            } />
-          </SelectTrigger>
-          <SelectContent>
-            {models.length > 0 ? (
-              models.map((model) => (
-                <SelectItem key={model.value} value={model.value}>
-                  {model.label}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="no-models" disabled>
-                {isLoadingModels ? "Loading..." : "No models available"}
-              </SelectItem>
-            )}
-          </SelectContent>
-        </Select>
+          isLoading={isLoadingModels}
+          disabled={!localProvider}
+          placeholder={
+            !localProvider
+              ? "Select a provider first"
+              : models.length === 0 && !isLoadingModels
+                ? "No models available"
+                : "Select a model"
+          }
+        />
       </div>
       <div>
         <Label htmlFor="requestDelay">
