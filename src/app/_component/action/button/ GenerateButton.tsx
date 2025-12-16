@@ -1,5 +1,3 @@
-// import React from 'react'
-
 import { useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { useSettings } from '@/app/contexts/SettingsContext';
