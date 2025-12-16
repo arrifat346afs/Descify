@@ -11,7 +11,7 @@ import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload } from "lucide-react";
 
-import { LandingPage } from "./LandingPage";
+import { LandingPage } from "./Landingpage";
 import { LoadingPage } from "./LoadingPage";
 
 export const Home = () => {
