@@ -30,6 +30,15 @@ type MetadataOptions = {
   includePlaceName: boolean;
 };
 
+type EmbedSettings = {
+  enabled: boolean;
+  fields: {
+    title: boolean;
+    description: boolean;
+    keywords: boolean;
+  };
+};
+
 type ApiSettingsState = {
   selectedProvider: Provider | '';
   setSelectedProvider: (p: Provider | '') => void;
@@ -65,8 +74,12 @@ type SettingsContextType = {
   api: ApiSettingsState;
   metadataLimits: MetadataLimits & { setLimits: (l: Partial<MetadataLimits>) => void };
   metadataOptions: MetadataOptions & { setOptions: (o: Partial<MetadataOptions>) => void };
+  embedSettings: EmbedSettings & { setEmbedSettings: (s: Partial<EmbedSettings>) => void };
   files: File[];
   setFiles: (files: File[]) => void;
+  filePaths: Map<File, string>;
+  setFilePath: (file: File, path: string) => void;
+  getFilePath: (file: File) => string | undefined;
   thumbnails: {
     items: ThumbnailData[];
     setItems: (items: ThumbnailData[]) => void;
@@ -180,9 +193,57 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   }, [apiKeys]);
 
   const [files, setFiles] = useState<File[]>([]);
+  const [filePaths, setFilePaths] = useState<Map<File, string>>(new Map());
   const [thumbnails, setThumbnails] = useState<ThumbnailData[]>([]);
   const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
   const [pendingThumbnailCount, setPendingThumbnailCount] = useState(0);
+
+  // Load embed settings from localStorage with defaults
+  const [embedSettings, setEmbedSettingsState] = useState<EmbedSettings>(() => {
+    const saved = loadFromLocalStorage('embedSettings', null) as EmbedSettings | null;
+    if (saved) {
+      return {
+        enabled: saved.enabled ?? true,
+        fields: {
+          title: saved.fields?.title ?? true,
+          description: saved.fields?.description ?? true,
+          keywords: saved.fields?.keywords ?? true,
+        },
+      };
+    }
+    return {
+      enabled: true,
+      fields: {
+        title: true,
+        description: true,
+        keywords: true,
+      },
+    };
+  });
+
+  const setEmbedSettings = (s: Partial<EmbedSettings>) => {
+    setEmbedSettingsState((prev) => {
+      const newSettings = {
+        enabled: s.enabled ?? prev.enabled,
+        fields: {
+          title: s.fields?.title ?? prev.fields.title,
+          description: s.fields?.description ?? prev.fields.description,
+          keywords: s.fields?.keywords ?? prev.fields.keywords,
+        },
+      };
+      saveToLocalStorage('embedSettings', newSettings);
+      return newSettings;
+    });
+  };
+
+  // File path management functions
+  const setFilePath = useCallback((file: File, path: string) => {
+    setFilePaths((prev) => new Map(prev.set(file, path)));
+  }, []);
+
+  const getFilePath = useCallback((file: File): string | undefined => {
+    return filePaths.get(file);
+  }, [filePaths]);
 
   // Memoize upsert to prevent unnecessary re-renders
   const upsert = useCallback((t: ThumbnailData) => {
@@ -485,6 +546,19 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setOptions,
   }), [options, setOptions]);
 
+  // Memoize embed settings
+  const embedSettingsValue = useMemo(() => ({
+    ...embedSettings,
+    setEmbedSettings,
+  }), [embedSettings, setEmbedSettings]);
+
+  // Memoize file paths
+  const filePathsValue = useMemo(() => ({
+    filePaths,
+    setFilePath,
+    getFilePath,
+  }), [filePaths, setFilePath, getFilePath]);
+
   // Memoize settings dialog state
   const settingsDialogValue = useMemo(() => ({
     isOpen: settingsDialogOpen,
@@ -497,8 +571,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     api: apiValue,
     metadataLimits: metadataLimitsValue,
     metadataOptions: metadataOptionsValue,
+    embedSettings: embedSettingsValue,
     files,
     setFiles,
+    ...filePathsValue,
     thumbnails: thumbnailsValue,
     generated: generatedValue,
     generationProgress,
@@ -515,7 +591,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     apiValue,
     metadataLimitsValue,
     metadataOptionsValue,
+    embedSettingsValue,
     files,
+    filePathsValue,
     thumbnailsValue,
     generatedValue,
     generationProgress,

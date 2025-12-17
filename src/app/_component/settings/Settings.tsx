@@ -2,6 +2,7 @@ import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApiSettings from "./_component/ApiSettings";
 import MetadataSettings from "./_component/MetadataSettings";
+import { EmbedSettings } from "./_component/EmbedSettings";
 import ApiKeyManagement from "./_component/ApiKeyManagement";
 import { useSettings } from "@/app/contexts/SettingsContext";
 
@@ -15,10 +16,11 @@ const Settings = () => {
       </DialogHeader>
       <div className="flex-1 overflow-y-auto pt-4">
         <Tabs value={settingsDialog.defaultTab} onValueChange={settingsDialog.setDefaultTab} className="w-full">
-          <TabsList className="grid h-11 w-full grid-cols-3 border bg-background/50">
+          <TabsList className="grid h-11 w-full grid-cols-4 border bg-background/50">
             <TabsTrigger value="models">Model Selection</TabsTrigger>
             <TabsTrigger value="apikeys">API Keys</TabsTrigger>
             <TabsTrigger value="metadata">Metadata Settings</TabsTrigger>
+            <TabsTrigger value="embed">Embed Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="models" className="mt-6">
@@ -31,6 +33,10 @@ const Settings = () => {
 
           <TabsContent value="metadata">
             <MetadataSettings />
+          </TabsContent>
+
+          <TabsContent value="embed">
+            <EmbedSettings />
           </TabsContent>
         </Tabs>
       </div>

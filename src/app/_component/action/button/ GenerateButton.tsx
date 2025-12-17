@@ -2,10 +2,24 @@ import { useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { useSettings } from '@/app/contexts/SettingsContext';
 import { generateMetadata } from '@/app/lib/ai';
+import { embedMetadata } from '@/app/lib/tauri-commands';
 import { TextShimmer } from '@/components/motion-primitives/text-shimmer';
 
 export const GenerateButton = () => {
-  const { files, thumbnails, api, metadataLimits, metadataOptions, generated, setHasAttemptedGeneration, setSelectedFile, generationProgress, setGenerationProgress } = useSettings();
+  const { 
+    files, 
+    thumbnails, 
+    api, 
+    metadataLimits, 
+    metadataOptions, 
+    embedSettings,
+    generated, 
+    setHasAttemptedGeneration, 
+    setSelectedFile, 
+    generationProgress, 
+    setGenerationProgress,
+    getFilePath 
+  } = useSettings();
   const lastAutoSelectedIndexRef = useRef(-1);
   const isGenerating = generationProgress.isGenerating;
 
@@ -113,6 +127,37 @@ export const GenerateButton = () => {
 
         console.log(`✓ Generated metadata for ${item.file.name} (index ${i})`);
         console.log(`📊 Total generated items now:`, generated.items.length);
+
+        // Embed metadata into file if enabled
+        if (embedSettings.enabled) {
+          const filePath = getFilePath(item.file);
+          if (filePath) {
+            try {
+              console.log(`🔧 Embedding metadata for ${item.file.name}...`);
+              
+              const embedRequest = {
+                file_path: filePath,
+                title: embedSettings.fields.title ? result.title : undefined,
+                description: embedSettings.fields.description ? result.description : undefined,
+                keywords: embedSettings.fields.keywords ? result.keywords : undefined,
+              };
+
+              const embedResult = await embedMetadata(embedRequest);
+              
+              if (embedResult.success) {
+                console.log(`✅ Successfully embedded metadata for ${item.file.name}: ${embedResult.message}`);
+              } else {
+                console.warn(`⚠️ Failed to embed metadata for ${item.file.name}: ${embedResult.message}`);
+              }
+            } catch (error) {
+              console.error(`❌ Error embedding metadata for ${item.file.name}:`, error);
+            }
+          } else {
+            console.warn(`⚠️ No file path found for ${item.file.name}, skipping metadata embedding`);
+          }
+        } else {
+          console.log(`⏭️ Metadata embedding disabled, skipping for ${item.file.name}`);
+        }
 
         // Auto-select this file immediately after generating its metadata
         console.log(`🎯 Auto-selecting file at index ${i}:`, item.file.name);

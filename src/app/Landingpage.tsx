@@ -34,7 +34,7 @@ const fileFromPath = async (path: string): Promise<File> => {
 };
 
 export const LandingPage = () => {
-  const { setFiles, setHasAttemptedGeneration } = useSettings();
+  const { setFiles, setHasAttemptedGeneration, setFilePath } = useSettings();
   const [isDragActive, setIsDragActive] = useState(false);
 
   // Handle files - matches LandingPage.tsx pattern
@@ -102,6 +102,10 @@ export const LandingPage = () => {
               console.log(`      [${index + 1}] Original path: ${path}`);
               const file = await fileFromPath(path);
               console.log(`      [${index + 1}] Created File: name="${file.name}", type="${file.type}", size=${(file.size / 1024).toFixed(2)}KB`);
+              
+              // Store the original file path for metadata embedding
+              setFilePath(file, path);
+              
               return file;
             })
           );
@@ -149,6 +153,10 @@ export const LandingPage = () => {
         console.log(`      [${index + 1}] Original path: ${path}`);
         const file = await fileFromPath(path);
         console.log(`      [${index + 1}] Created File: name="${file.name}", type="${file.type}", size=${(file.size / 1024).toFixed(2)}KB`);
+        
+        // Store the original file path for metadata embedding
+        setFilePath(file, path);
+        
         return file;
       })
     );
