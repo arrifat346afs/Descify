@@ -19,8 +19,8 @@ const Settings = () => {
           <TabsList className="grid h-11 w-full grid-cols-4 border bg-background/50">
             <TabsTrigger value="models">Model Selection</TabsTrigger>
             <TabsTrigger value="apikeys">API Keys</TabsTrigger>
-            <TabsTrigger value="metadata">Metadata Settings</TabsTrigger>
-            <TabsTrigger value="embed">Embed Settings</TabsTrigger>
+            <TabsTrigger value="metadata">Metadata </TabsTrigger>
+            <TabsTrigger value="embed">Embed </TabsTrigger>
           </TabsList>
 
           <TabsContent value="models" className="mt-6">
@@ -31,11 +31,11 @@ const Settings = () => {
             <ApiKeyManagement compact={true} showTitle={false} />
           </TabsContent>
 
-          <TabsContent value="metadata">
+          <TabsContent value="metadata" className="mt-6">
             <MetadataSettings />
           </TabsContent>
 
-          <TabsContent value="embed">
+          <TabsContent value="embed" className="mt-6">
             <EmbedSettings />
           </TabsContent>
         </Tabs>
