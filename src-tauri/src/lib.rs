@@ -4,10 +4,10 @@ use base64::Engine as _;
 use ruurd_photos_thumbnail_generation::{
     generate_thumbnails, AvifOptions, ThumbOptions, VideoOutputFormat, VideoThumbOptions,
 };
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmbedMetadataRequest {
@@ -201,7 +201,7 @@ async fn make_thumbnail(file_path: String) -> Result<String, String> {
 #[tauri::command]
 async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataResult, String> {
     let file_path = Path::new(&request.file_path);
-    
+
     // Check if file exists
     if !file_path.exists() {
         return Ok(EmbedMetadataResult {
@@ -222,10 +222,10 @@ async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataRe
 
     // Use std::process to run exiftool command
     use std::process::Command;
-    
+
     // Build exiftool command arguments
     let mut cmd = Command::new("exiftool");
-    
+
     // Add title tags if provided
     if let Some(ref title) = request.title {
         if !title.trim().is_empty() {
@@ -234,7 +234,7 @@ async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataRe
             cmd.arg(format!("-EXIF:ImageDescription={}", title));
         }
     }
-    
+
     // Add description tags if provided
     if let Some(ref description) = request.description {
         if !description.trim().is_empty() {
@@ -243,7 +243,7 @@ async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataRe
             cmd.arg(format!("-IPTC:Caption-Abstract={}", description));
         }
     }
-    
+
     // Add keywords tags if provided
     if let Some(ref keywords) = request.keywords {
         if !keywords.trim().is_empty() {
@@ -253,13 +253,13 @@ async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataRe
                 .map(|k| k.trim())
                 .filter(|k| !k.is_empty())
                 .collect();
-            
+
             if !keyword_list.is_empty() {
                 // Add each keyword individually for XMP:Subject
                 for keyword in &keyword_list {
                     cmd.arg(format!("-XMP:Subject={}", keyword));
                 }
-                
+
                 // Add keywords as a single string for IPTC:Keywords
                 cmd.arg(format!("-IPTC:Keywords={}", keywords));
             }
@@ -277,22 +277,26 @@ async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataRe
 
     // Set the output file (overwrite the original file)
     cmd.arg("-overwrite_original");
-    
+
     // Add the file path as the last argument
     cmd.arg(&request.file_path);
-    
+
     // Execute the command
     match cmd.output() {
         Ok(output) => {
             let _stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
-            
+
             if output.status.success() {
                 Ok(EmbedMetadataResult {
                     success: true,
                     message: format!(
-                        "Metadata successfully embedded{}", 
-                        if !stderr.is_empty() { format!(" Warning: {}", stderr) } else { String::new() }
+                        "Metadata successfully embedded{}",
+                        if !stderr.is_empty() {
+                            format!(" Warning: {}", stderr)
+                        } else {
+                            String::new()
+                        }
                     ),
                     file_path: request.file_path,
                 })
@@ -300,26 +304,26 @@ async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataRe
                 Ok(EmbedMetadataResult {
                     success: false,
                     message: format!(
-                        "Failed to embed metadata. Exit code: {}. Stderr: {}", 
-                        output.status.code().unwrap_or(-1), stderr
+                        "Failed to embed metadata. Exit code: {}. Stderr: {}",
+                        output.status.code().unwrap_or(-1),
+                        stderr
                     ),
                     file_path: request.file_path,
                 })
             }
         }
-        Err(e) => {
-            Ok(EmbedMetadataResult {
-                success: false,
-                message: format!("Failed to execute exiftool: {}", e),
-                file_path: request.file_path,
-            })
-        }
+        Err(e) => Ok(EmbedMetadataResult {
+            success: false,
+            message: format!("Failed to execute exiftool: {}", e),
+            file_path: request.file_path,
+        }),
     }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_fs::init())

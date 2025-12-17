@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { check, Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { platform } from "@tauri-apps/plugin-os";
 import {
   Dialog,
   DialogContent,
@@ -11,183 +12,183 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Download, RefreshCw, AlertCircle } from "lucide-react";
 
-type DownloadEvent = {
-  event: "Started" | "Progress" | "Finished";
-  progress?: number;
-};
+type Status =
+  | "idle"
+  | "checking"
+  | "available"
+  | "downloading"
+  | "installing"
+  | "error";
 
 export function UpdateChecker() {
+  const [open, setOpen] = useState(false);
   const [update, setUpdate] = useState<Update | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [showDialog, setShowDialog] = useState(false);
+  const [status, setStatus] = useState<Status>("idle");
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>("Checking for updates...");
+  const [osInfo, setOsInfo] = useState<{
+    platform: string;
+    fileType: string;
+    osName: string;
+  } | null>(null);
 
-  const checkForUpdates = async () => {
-    setError(null);
-    setStatus("Checking for updates...");
-    try {
-      console.log("Checking for updates...");
-      const updateResult = await check();
-      if (updateResult) {
-        console.log("Update found:", updateResult.version);
-        setStatus("Update available!");
-        setUpdate(updateResult);
-        setShowDialog(true);
-      } else {
-        console.log("No updates available");
-        setStatus("No updates available");
-      }
-    } catch (err) {
-      console.error("Failed to check for updates:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to check for updates";
-      setError(errorMessage);
-      setStatus("Error checking for updates");
-      setShowDialog(true);
-    }
-  };
-
-  // Check for updates on app start
+  // check on app start
   useEffect(() => {
+    detectOS();
     checkForUpdates();
   }, []);
 
-  const handleDownloadAndInstall = async () => {
+  const detectOS = async () => {
+    try {
+      const platformType = await platform();
+      
+      let fileType = "";
+      let osName = "";
+      
+      switch (platformType) {
+        case "linux":
+          // Check which package format based on common patterns
+          osName = "Linux";
+          fileType = ".deb / .rpm / .AppImage";
+          break;
+        case "windows":
+          osName = "Windows";
+          fileType = ".exe / .msi";
+          break;
+        case "macos":
+          osName = "macOS";
+          fileType = ".dmg / .app";
+          break;
+        default:
+          osName = platformType;
+          fileType = "Unknown";
+      }
+      
+      setOsInfo({ platform: platformType, fileType, osName });
+    } catch (err) {
+      console.error("Failed to detect OS:", err);
+    }
+  };
+
+  const checkForUpdates = async () => {
+    try {
+      setStatus("checking");
+      const result = await check();
+      if (result) {
+        setUpdate(result);
+        setStatus("available");
+        setOpen(true);
+        console.log("Update result:", result);
+      } else {
+        setStatus("idle");
+      }
+    } catch (err) {
+      setError(String(err));
+      setStatus("error");
+      setOpen(true);
+    }
+  };
+
+  const updateNow = async () => {
     if (!update) return;
 
-    setIsDownloading(true);
-    setError(null);
-    setStatus("Preparing download...");
-    console.log("Starting download and install for version:", update.version);
+    let downloaded = 0;
+    let contentLength: number | undefined;
 
     try {
-      setStatus("Downloading update...");
-      await update.downloadAndInstall((event: DownloadEvent) => {
-        console.log("Update event:", event);
+      setStatus("downloading");
+      setProgress(0);
+
+      await update.downloadAndInstall((event) => {
         switch (event.event) {
           case "Started":
-            setStatus("Downloading update...");
+            contentLength = event.data.contentLength;
             break;
+
           case "Progress":
-            // Use the progress from the event if available, otherwise estimate
-            if (event.progress !== undefined) {
-              setDownloadProgress(event.progress);
-              setStatus(`Downloading update... ${event.progress}%`);
+            downloaded += event.data.chunkLength;
+
+            if (contentLength && contentLength > 0) {
+              const percent = Math.round((downloaded / contentLength) * 100);
+              setProgress(percent);
             }
             break;
+
           case "Finished":
-            setDownloadProgress(100);
-            console.log("Download finished");
-            setStatus("Installing update...");
+            setProgress(100);
+            setStatus("installing");
             break;
         }
       });
 
-      console.log("Update installation completed successfully, attempting to relaunch...");
-      setStatus("Restarting application...");
-      // Relaunch the app after update
       await relaunch();
     } catch (err) {
-      console.error("Failed to download/install update:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to install update";
-      setError(errorMessage);
-      setIsDownloading(false);
-      setStatus("Update failed");
-      
-      // Provide more specific error messages based on common issues
-      if (errorMessage.includes("permission") || errorMessage.includes("Permission")) {
-        setError("Permission denied. Please try running the application as administrator or check your file permissions.");
-      } else if (errorMessage.includes("network") || errorMessage.includes("Network")) {
-        setError("Network error. Please check your internet connection and try again.");
-      } else if (errorMessage.includes("not found") || errorMessage.includes("Not found")) {
-        setError("Update file not found. Please try again later or contact support.");
-      } else if (errorMessage.includes("signature") || errorMessage.includes("Signature")) {
-        setError("Update signature verification failed. The update may be corrupted.");
-      } else if (errorMessage.includes("install") || errorMessage.includes("Install")) {
-        setError("Failed to install the update. The application may be in use. Please close any instances and try again.");
-      } else if (errorMessage.includes("locked") || errorMessage.includes("in use")) {
-        setError("The application is in use. Please close all instances and try again.");
-      } else if (errorMessage.includes("disk") || errorMessage.includes("Disk")) {
-        setError("Disk space error. Please ensure you have enough disk space for the update.");
-      } else {
-        setError(errorMessage);
-      }
+      setError(String(err));
+      setStatus("error");
     }
   };
 
-  const handleClose = () => {
-    if (!isDownloading) {
-      setShowDialog(false);
-    }
-  };
-
+  // ---- UI ----
   return (
-    <Dialog open={showDialog} onOpenChange={handleClose}>
-      <DialogContent showCloseButton={!isDownloading}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent
+        showCloseButton={status !== "downloading" && status !== "installing"}
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {error ? (
-              <AlertCircle className="h-5 w-5 text-destructive" />
-            ) : (
-              <Download className="h-5 w-5" />
-            )}
-            {error ? "Update Error" : "Update Available"}
+          <DialogTitle>
+            {status === "error" ? "Update Failed" : "Update Available"}
           </DialogTitle>
+
           <DialogDescription>
-            {update && !error && (
+            {status === "available" && update && (
               <>
                 A new version <strong>{update.version}</strong> is available.
-                {update.body && (
-                  <div className="mt-2 max-h-32 overflow-y-auto text-left text-xs bg-muted p-2 rounded">
-                    {update.body}
-                  </div>
+                {osInfo && (
+                  <span className="block mt-2 text-xs">
+                    Detected OS: <strong>{osInfo.osName}</strong> ({osInfo.fileType})
+                  </span>
                 )}
               </>
             )}
-            {error && (
-              <div className="text-destructive">
-                {error}
-              </div>
-            )}
+
+            {status === "downloading" && "Downloading update…"}
+            {status === "installing" && "Installing update…"}
+            {status === "error" && error}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {isDownloading && (
-            <div className="space-y-2">
-              <Progress value={downloadProgress} className="w-full" />
-              <p className="text-sm text-center text-muted-foreground">
-                {status}
+        {update?.body && status === "available" && (
+          <div className="max-h-40 overflow-auto rounded-md bg-muted p-3 text-sm">
+            {update.body}
+          </div>
+        )}
+
+        {(status === "downloading" || status === "installing") && (
+          <div className="space-y-2">
+            <Progress value={progress} />
+            {progress > 0 && (
+              <p className="text-center text-sm text-muted-foreground">
+                {progress}%
               </p>
-            </div>
-          )}
-          
-          {error && (
-            <div className="space-y-2">
-              <p className="text-sm text-center text-destructive">
-                {error}
-              </p>
-              <p className="text-xs text-center text-muted-foreground">
-                Please check your internet connection and try again. If the problem persists, please contact support.
-              </p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         <DialogFooter>
-          {!isDownloading && (
+          {status === "available" && (
             <>
-              <Button variant="outline" onClick={handleClose}>
+              <Button variant="outline" onClick={() => setOpen(false)}>
                 Later
               </Button>
-              <Button onClick={handleDownloadAndInstall}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Update Now
-              </Button>
+              <Button onClick={updateNow}>Update & Restart</Button>
             </>
+          )}
+
+          {status === "error" && (
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Close
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>
