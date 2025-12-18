@@ -170,7 +170,7 @@ export const LandingPage = () => {
       <div
         onClick={openFiles}
         className={`
-          w-full max-w-2xl h-[40vh] border-2 border-dashed rounded-xl
+          w-full max-w-4xl h-[60vh] border-2 border-dashed rounded-xl
           flex flex-col items-center justify-center gap-6
           transition-all duration-200 cursor-pointer
           ${isDragActive
