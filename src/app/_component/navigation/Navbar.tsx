@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { ThemeToggle } from "@/components/mode-toggle";
 import { UpdateChecker } from "@/components/UpdateChecker";
+import { ConsolePopover } from "../ConsolePopover";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
@@ -69,6 +70,7 @@ const Navbar = () => {
             </DialogContent>
           </Dialog>
         <ThemeToggle />
+        <ConsolePopover />
         </div>
       </div>
       <div className="flex">
