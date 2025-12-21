@@ -197,6 +197,43 @@ async fn make_thumbnail(file_path: String) -> Result<String, String> {
     Ok(first.to_string_lossy().to_string())
 }
 
+/// Get the path to the bundled exiftool binary
+fn get_exiftool_path() -> PathBuf {
+    // Try to find exiftool in the following order:
+    // 1. Bundled with the app (in resources)
+    // 2. System PATH (fallback)
+
+    // Get the resource directory path
+    if let Ok(resource_dir) = std::env::current_exe().and_then(|exe_path| {
+        exe_path
+            .parent()
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "No parent"))
+            .map(|p| p.to_path_buf())
+    }) {
+        // Check for platform-specific exiftool binary
+        #[cfg(target_os = "windows")]
+        let exiftool_name = "exiftool.exe";
+
+        #[cfg(not(target_os = "windows"))]
+        let exiftool_name = "exiftool";
+
+        // Try in the same directory as the executable
+        let bundled_path = resource_dir.join(exiftool_name);
+        if bundled_path.exists() {
+            return bundled_path;
+        }
+
+        // Try in a resources subdirectory
+        let resources_path = resource_dir.join("resources").join(exiftool_name);
+        if resources_path.exists() {
+            return resources_path;
+        }
+    }
+
+    // Fallback to system PATH
+    PathBuf::from("exiftool")
+}
+
 /// Embed metadata into image/video files using exiftool
 #[tauri::command]
 async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataResult, String> {
@@ -223,8 +260,11 @@ async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataRe
     // Use std::process to run exiftool command
     use std::process::Command;
 
+    // Get the exiftool path (bundled or system)
+    let exiftool_path = get_exiftool_path();
+
     // Build exiftool command arguments
-    let mut cmd = Command::new("exiftool");
+    let mut cmd = Command::new(&exiftool_path);
 
     // Add title tags if provided
     if let Some(ref title) = request.title {
@@ -312,11 +352,23 @@ async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetadataRe
                 })
             }
         }
-        Err(e) => Ok(EmbedMetadataResult {
-            success: false,
-            message: format!("Failed to execute exiftool: {}", e),
-            file_path: request.file_path,
-        }),
+        Err(e) => {
+            let error_msg = if e.kind() == std::io::ErrorKind::NotFound {
+                format!(
+                    "Failed to execute exiftool: {} - ExifTool not found. Please install ExifTool or ensure it's bundled with the application. Tried path: {:?}",
+                    e,
+                    exiftool_path
+                )
+            } else {
+                format!("Failed to execute exiftool: {}", e)
+            };
+
+            Ok(EmbedMetadataResult {
+                success: false,
+                message: error_msg,
+                file_path: request.file_path,
+            })
+        }
     }
 }
 
