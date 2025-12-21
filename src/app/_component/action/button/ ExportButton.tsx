@@ -32,7 +32,7 @@ function ExportButton() {
   return (
     <div className="flex justify-center items-center h-full ">
       <Button
-        variant={"ghost"}
+        variant="ghost"
         onClick={handleExport}
         disabled={isExporting || generated.items.length === 0}
       >

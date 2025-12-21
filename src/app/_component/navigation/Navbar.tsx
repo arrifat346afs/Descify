@@ -17,6 +17,7 @@ import { ThemeToggle } from "@/components/mode-toggle";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { ConsolePopover } from "../ConsolePopover";
 
+
 const Navbar = () => {
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
@@ -42,8 +43,8 @@ const Navbar = () => {
   }, [appWindow]);
   return (
     <div className="flex justify-between items-center h-full">
-      <div data-tauri-drag-region className="flex w-full">
-        <div className="flex justify-center items-center">
+      <div className="flex w-full">
+        <div data-tauri-drag-region className="flex justify-center items-center">
           <ItemMedia variant="image">
             <img
               src={logo}
@@ -72,6 +73,7 @@ const Navbar = () => {
         <ThemeToggle />
         <ConsolePopover />
         </div>
+        <div data-tauri-drag-region className="flex-1" />
       </div>
       <div className="flex">
         <UpdateChecker />
