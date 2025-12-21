@@ -101,5 +101,6 @@ jobs:
             See the assets below to download this version and install.
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} --debug
+          tauriScript: bun run tauri
 
