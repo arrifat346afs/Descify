@@ -4,6 +4,7 @@ import App from "./App";
 import { ThemeProvider } from "./components/theme-provider";
 import { SettingsProvider } from "./app/contexts/SettingsContext";
 
+//
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
