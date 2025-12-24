@@ -29,7 +29,7 @@ jobs:
 
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
-        # FIXED: Removed 'libayatana-appindicator3-dev' to prevent conflict
+        # FIXED: Removed 'libayatana-appindicator3-dev' to fix the conflict error
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm libxdo3 libxdo-dev
@@ -39,9 +39,8 @@ jobs:
         with:
           node-version: lts/*
 
-      # --- COMMENTED OUT UNTIL FILE IS ADDED ---
-      # This step caused the crash because .github/replace-config.js does not exist in your repo.
-      # If you have this file, add it to your repo and uncomment these lines.
+      # FIXED: Commented out because this file is missing from your repo
+      # If you add .github/replace-config.js to your repo, you can uncomment these lines.
       # - name: Replace environment variables in config
       #   env:
       #     TAURI_GOOGLE_CLIENT_ID: ${{ secrets.TAURI_GOOGLE_CLIENT_ID }}
@@ -52,6 +51,7 @@ jobs:
         id: get-package
         shell: bash
         run: |
+          # We use jq for safer parsing if available, or node fallback
           echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
           echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
           echo "description=$(node -p "require('./package.json').description")" >> $GITHUB_OUTPUT
@@ -98,7 +98,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Linux AppImage universal compatibility - exclude GPU libs to use system Mesa
           NO_STRIP: ${{ matrix.platform == 'ubuntu-22.04' && '1' || '' }}
           LINUXDEPLOY_EXCLUDE_LIBS: ${{ matrix.platform == 'ubuntu-22.04' && 'libEGL.so,libGL.so,libgbm.so,libGLESv2.so' || '' }}
         with:
@@ -106,27 +105,36 @@ jobs:
           releaseName: 'Tagpix AI v__VERSION__'
           releaseBody: |
             ## What's Changed
-
             ${{ steps.changelog.outputs.changelog }}
-
             ---
             See the assets below to download this version and install.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
 
-      # --- ARCH LINUX SUPPORT ---
+      # --- ARCH LINUX SUPPORT START ---
+
+      - name: Debug Output (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+           echo "Detected Version: ${{ steps.get-package.outputs.version }}"
+           echo "Listing generated .deb files to verify filename:"
+           ls -R ./src-tauri/target/release/bundle/deb/
 
       - name: copy deb package && create PKGBUILD file (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         env:
+          # We use the name and version extracted earlier
           NAME_BIN: ${{ steps.get-package.outputs.name }}-bin
+          # NOTE: If your deb file has a different name structure, check the Debug Output step above
           DEB_PKG_NAME: ${{ steps.get-package.outputs.name }}_${{ steps.get-package.outputs.version }}_amd64.deb
           DEB_PKG_PATH: ./src-tauri/target/release/bundle/deb/
           DEB_PKG_RENAMED: ${{ steps.get-package.outputs.name }}-${{ steps.get-package.outputs.version }}-${{ env.ARCH }}.deb
           TAG_NAME: app-v${{ steps.get-package.outputs.version }}
         run: |
           mkdir -p ${{ env.NAME_BIN }}
+          echo "Copying ${{ env.DEB_PKG_PATH }}${{ env.DEB_PKG_NAME }} to ${{ env.NAME_BIN }}/${{ env.DEB_PKG_RENAMED }}"
+          
           cp -fr ${{ env.DEB_PKG_PATH }}${{ env.DEB_PKG_NAME }} ${{ env.NAME_BIN }}/${{ env.DEB_PKG_RENAMED }} 
           
           cat <<EOF > ./${{ env.NAME_BIN }}/PKGBUILD
