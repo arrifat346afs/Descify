@@ -29,7 +29,7 @@ jobs:
 
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
-        # FIXED: Removed 'libayatana-appindicator3-dev' to fix the conflict error
+        # FIXED: Removed 'libayatana-appindicator3-dev' to prevent conflict error
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm libxdo3 libxdo-dev
@@ -39,8 +39,8 @@ jobs:
         with:
           node-version: lts/*
 
-      # FIXED: Commented out because this file is missing from your repo
-      # If you add .github/replace-config.js to your repo, you can uncomment these lines.
+      # FIXED: Commented out because the file .github/replace-config.js is missing in your repo.
+      # Only uncomment this if you add that file.
       # - name: Replace environment variables in config
       #   env:
       #     TAURI_GOOGLE_CLIENT_ID: ${{ secrets.TAURI_GOOGLE_CLIENT_ID }}
@@ -51,11 +51,21 @@ jobs:
         id: get-package
         shell: bash
         run: |
-          # We use jq for safer parsing if available, or node fallback
-          echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
-          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-          echo "description=$(node -p "require('./package.json').description")" >> $GITHUB_OUTPUT
-          echo "license=$(node -p "require('./package.json').license")" >> $GITHUB_OUTPUT
+          # Try to get version from package.json, default to 0.0.0 if missing
+          VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.0")
+          NAME=$(node -p "require('./package.json').name" 2>/dev/null || echo "app")
+          DESC=$(node -p "require('./package.json').description" 2>/dev/null || echo "App description")
+          LICENSE=$(node -p "require('./package.json').license" 2>/dev/null || echo "MIT")
+          
+          # Handle 'undefined' string output from node
+          if [ "$VERSION" == "undefined" ]; then VERSION="0.0.0"; fi
+          
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "description=$DESC" >> $GITHUB_OUTPUT
+          echo "license=$LICENSE" >> $GITHUB_OUTPUT
+          
+          echo "Detected Version: $VERSION"
 
       - name: setup bun
         uses: oven-sh/setup-bun@v2
@@ -117,25 +127,28 @@ jobs:
       - name: Debug Output (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-           echo "Detected Version: ${{ steps.get-package.outputs.version }}"
-           echo "Listing generated .deb files to verify filename:"
-           ls -R ./src-tauri/target/release/bundle/deb/
+           echo "Debug: Listing generated .deb files to verify filename:"
+           ls -R ./src-tauri/target/release/bundle/deb/ || echo "Directory not found"
 
       - name: copy deb package && create PKGBUILD file (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         env:
-          # We use the name and version extracted earlier
           NAME_BIN: ${{ steps.get-package.outputs.name }}-bin
-          # NOTE: If your deb file has a different name structure, check the Debug Output step above
+          # Uses the version extracted earlier. If this still fails, check the Debug Output step above.
           DEB_PKG_NAME: ${{ steps.get-package.outputs.name }}_${{ steps.get-package.outputs.version }}_amd64.deb
           DEB_PKG_PATH: ./src-tauri/target/release/bundle/deb/
           DEB_PKG_RENAMED: ${{ steps.get-package.outputs.name }}-${{ steps.get-package.outputs.version }}-${{ env.ARCH }}.deb
           TAG_NAME: app-v${{ steps.get-package.outputs.version }}
         run: |
           mkdir -p ${{ env.NAME_BIN }}
-          echo "Copying ${{ env.DEB_PKG_PATH }}${{ env.DEB_PKG_NAME }} to ${{ env.NAME_BIN }}/${{ env.DEB_PKG_RENAMED }}"
           
-          cp -fr ${{ env.DEB_PKG_PATH }}${{ env.DEB_PKG_NAME }} ${{ env.NAME_BIN }}/${{ env.DEB_PKG_RENAMED }} 
+          # Attempt copy. If specifically named file fails, try wildcard fallback
+          if [ -f "${{ env.DEB_PKG_PATH }}${{ env.DEB_PKG_NAME }}" ]; then
+             cp -fr ${{ env.DEB_PKG_PATH }}${{ env.DEB_PKG_NAME }} ${{ env.NAME_BIN }}/${{ env.DEB_PKG_RENAMED }}
+          else
+             echo "Exact match not found. Trying wildcard copy..."
+             cp -fr ${{ env.DEB_PKG_PATH }}*.deb ${{ env.NAME_BIN }}/${{ env.DEB_PKG_RENAMED }}
+          fi
           
           cat <<EOF > ./${{ env.NAME_BIN }}/PKGBUILD
             pkgname=${{ env.NAME_BIN }}
