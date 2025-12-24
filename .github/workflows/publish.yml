@@ -39,14 +39,6 @@ jobs:
         with:
           node-version: lts/*
 
-      # FIXED: Commented out because the file .github/replace-config.js is missing in your repo.
-      # Only uncomment this if you add that file.
-      # - name: Replace environment variables in config
-      #   env:
-      #     TAURI_GOOGLE_CLIENT_ID: ${{ secrets.TAURI_GOOGLE_CLIENT_ID }}
-      #     TAURI_GOOGLE_CLIENT_SECRET: ${{ secrets.TAURI_GOOGLE_CLIENT_SECRET }}
-      #   run: node ./.github/replace-config.js
-
       - name: get package info
         id: get-package
         shell: bash
