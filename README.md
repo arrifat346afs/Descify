@@ -14,8 +14,8 @@ Tagpix AI is a desktop application built with Tauri, React, and TypeScript, desi
 > [!WARNING]
 > OpenAI isn't supported because it's "ClosedAI" and I don't have access to it.
 >
-> **For Gemini:** [Get API Key](https://aistudio.google.com/api-keys)
-> **For OpenRouter:** [Get API Key](https://openrouter.ai/api-keys)
+ **For Gemini:** [Get API Key](https://aistudio.google.com/api-keys)
+ **For OpenRouter:** [Get API Key](https://openrouter.ai/api-keys)
 ## Installation
 
 1.  **Prerequisites:**
