@@ -3,6 +3,11 @@ name: 'publish'
 on:
   workflow_dispatch:
 
+# 1. ADD THIS SECTION (Environment variables for Arch)
+env:
+  ARCH: x86_64
+  DEPENDENCIES_ARCH: "'libappindicator-gtk3' 'webkit2gtk-4.1' 'gtk3' 'xdotool'"
+
 jobs:
   publish-tauri:
     permissions:
@@ -11,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+          - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
           - platform: 'ubuntu-22.04'
             args: ''
@@ -24,14 +29,37 @@ jobs:
 
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
+        # 2. UPDATED: Added libxdo-dev (often needed for automation tools)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm libxdo-dev
 
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+
+      # 3. ADD THIS STEP (Crucial: Extracts version/name for the Arch script)
+      - name: get package info
+        id: get-package
+        shell: bash
+        run: |
+          # Try to get version from package.json, default to 0.0.0 if missing
+          VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "undefined")
+          NAME=$(node -p "require('./package.json').name" 2>/dev/null || echo "undefined")
+          
+          # Fallback: Check tauri.conf.json if package.json is missing info
+          if [ "$VERSION" == "undefined" ]; then
+            VERSION=$(grep -oP '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json || echo "0.0.0")
+          fi
+          if [ "$NAME" == "undefined" ]; then
+             NAME="tagpix-ai"
+          fi
+
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "description=$(node -p "require('./package.json').description" 2>/dev/null || echo "App")" >> $GITHUB_OUTPUT
+          echo "license=$(node -p "require('./package.json').license" 2>/dev/null || echo "MIT")" >> $GITHUB_OUTPUT
 
       - name: setup bun
         uses: oven-sh/setup-bun@v2
@@ -41,7 +69,6 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Rust cache
@@ -56,26 +83,15 @@ jobs:
         id: changelog
         shell: bash
         run: |
-          # Get the latest tag
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
           if [ -z "$LATEST_TAG" ]; then
-            # No previous tag, get all commits
-            # Format: 'Author|Message (Hash)'
-            # Filter out github-actions[bot]
-            # Convert to list format
             COMMITS=$(git log --oneline --pretty=format:"%an|%s (%h)" | grep -v "^github-actions\[bot\]|" | sed 's/^[^|]*|/- /')
           else
-            # Get commits since last tag
             COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline --pretty=format:"%an|%s (%h)" | grep -v "^github-actions\[bot\]|" | sed 's/^[^|]*|/- /')
           fi
-
-          # Handle empty commits
           if [ -z "$COMMITS" ]; then
             COMMITS="- No new changes"
           fi
-
-          # Escape for GitHub Actions output (handle multiline)
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
           echo "changelog<<$EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
@@ -86,11 +102,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Linux AppImage universal compatibility - exclude GPU libs to use system Mesa
           NO_STRIP: ${{ matrix.platform == 'ubuntu-22.04' && '1' || '' }}
           LINUXDEPLOY_EXCLUDE_LIBS: ${{ matrix.platform == 'ubuntu-22.04' && 'libEGL.so,libGL.so,libgbm.so,libGLESv2.so' || '' }}
         with:
-          tagName: app-v__VERSION__ # the action automatically replaces __VERSION__ with the app version.
+          tagName: app-v__VERSION__
           releaseName: 'Tagpix AI v__VERSION__'
           releaseBody: |
             ## What's Changed
@@ -102,3 +117,61 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      # 4. ADD THIS ENTIRE SECTION (Arch Linux Build Steps)
+      
+      - name: copy deb package && create PKGBUILD file (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        env:
+          NAME_BIN: ${{ steps.get-package.outputs.name }}-bin
+          DEB_PKG_PATH: ./src-tauri/target/release/bundle/deb/
+          DEB_PKG_RENAMED: ${{ steps.get-package.outputs.name }}-${{ steps.get-package.outputs.version }}-${{ env.ARCH }}.deb
+          TAG_NAME: app-v${{ steps.get-package.outputs.version }}
+        run: |
+          mkdir -p ${{ env.NAME_BIN }}
+          
+          # Find the .deb file safely
+          DEB_FILE=$(find ${{ env.DEB_PKG_PATH }} -name "*.deb" | head -n 1)
+          if [ -z "$DEB_FILE" ]; then echo "Error: .deb file not found"; exit 1; fi
+          
+          cp -fr "$DEB_FILE" ${{ env.NAME_BIN }}/${{ env.DEB_PKG_RENAMED }} 
+          
+          cat <<EOF > ./${{ env.NAME_BIN }}/PKGBUILD
+            pkgname=${{ env.NAME_BIN }}
+            pkgver=${{ steps.get-package.outputs.version }}
+            md5sums=('$(md5sum ${{ env.NAME_BIN }}/${{ env.DEB_PKG_RENAMED }}  | awk '{print $1}')')
+            pkgrel=1
+            depends=(${{ env.DEPENDENCIES_ARCH }})
+            pkgdesc='${{ steps.get-package.outputs.description }}'
+            arch=('${{ env.ARCH }}')
+            url="https://github.com/${{ github.repository }}"
+            license=('${{ steps.get-package.outputs.license }}')
+            source=("\$url/releases/download/${{ env.TAG_NAME }}/${{ env.DEB_PKG_RENAMED }}")
+
+            build() {
+                rm control.tar.gz
+                tar xvf data.tar.gz
+            }
+
+            package() {
+                cp -fr usr/ \${pkgdir}
+            }
+          EOF
+          cat ${{ env.NAME_BIN }}/PKGBUILD
+
+      - name: create arch package (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: 2m/arch-pkgbuild-builder@v1.17
+        with:
+          debug: true
+          target: pkgbuild
+          pkgname: ${{ steps.get-package.outputs.name }}-bin/
+
+      - name: upload arch release (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: app-v${{ steps.get-package.outputs.version }}
+          files: |
+            ${{ steps.get-package.outputs.name }}-bin/${{ steps.get-package.outputs.name }}-bin-${{ steps.get-package.outputs.version }}-1-${{ env.ARCH }}.pkg.tar.zst
