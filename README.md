@@ -1,15 +1,21 @@
-# Tagpix AI - Image Metadata Generato r
+# Tagpix AI - Image Metadata Generator
 
 Tagpix AI is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently.
 
 ## Features
-*   **Image Import:** Allows users to import images from their local filesystem.
-*   **Metadata Editing:** Allows users to view, edit, and save image metadata.
+*   **Batch:** Batch processing of images and Generate Metadata.
+*   **AI Integration:** Supports Gemini and OpenRouter AI models.
 *   **AI-Powered Tagging:** Integrates with AI models to automatically generate tags for images.
 *   **File Preview:** Provides a preview of the images.
 *   **Category Management:** Allows users to categorize images.
 *   **Export Functionality:** Enables users to export image metadata.
-
+*   **Embedding Metadata:** Embeds metadata into images Using ExifTool And It needed to have the ExifTool installed on your system.
+*   **Platform Support:** Supports Windows, macOS, and Linux.
+> [!WARNING]
+> OpenAI isn't supported because it's "ClosedAI" and I don't have access to it.
+>
+> **For Gemini:** [Get API Key](https://aistudio.google.com/api-keys)
+> **For OpenRouter:** [Get API Key](https://openrouter.ai/api-keys)
 ## Installation
 
 1.  **Prerequisites:**
