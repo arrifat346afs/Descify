@@ -1,12 +1,6 @@
 import { ConsoleViewer } from "@/components/ConsoleViewer";
-import { Button } from "@/components/ui/button";
-import { Terminal } from "lucide-react";
-// import { useState } from "react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
 import { useEffect, useState } from "react";
 
 export function ConsolePopover() {
@@ -24,15 +18,25 @@ export function ConsolePopover() {
     };
   }, []);
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger>
-        <Button variant="ghost" size="icon" className="hidden">
-          <Terminal className="h-4 w-4" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent>
-        <ConsoleViewer />
-      </PopoverContent>
-    </Popover>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <form>
+        <DialogTrigger asChild>
+          <div
+            aria-hidden
+            className="fixed inset-0 pointer-events-none opacity-0"
+          />
+        </DialogTrigger>
+        
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>console</DialogTitle>
+            <ConsoleViewer />
+            <DialogDescription>
+              Logs 
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </form>
+    </Dialog>
   );
 }
