@@ -63,6 +63,22 @@ type GenerationProgress = {
   totalFiles: number;
 };
 
+type UserTemplate = {
+  id: string;
+  name: string;
+  template: string;
+  createdAt: Date;
+};
+
+type TemplateSettings = {
+  activeTemplateId: string | null;
+  userTemplates: UserTemplate[];
+  setActiveTemplate: (id: string | null) => void;
+  addUserTemplate: (template: Omit<UserTemplate, 'id' | 'createdAt'>) => void;
+  updateUserTemplate: (id: string, template: Partial<UserTemplate>) => void;
+  deleteUserTemplate: (id: string) => void;
+};
+
 type SettingsDialogState = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
@@ -75,6 +91,7 @@ type SettingsContextType = {
   metadataLimits: MetadataLimits & { setLimits: (l: Partial<MetadataLimits>) => void };
   metadataOptions: MetadataOptions & { setOptions: (o: Partial<MetadataOptions>) => void };
   embedSettings: EmbedSettings & { setEmbedSettings: (s: Partial<EmbedSettings>) => void };
+  templateSettings: TemplateSettings;
   files: File[];
   setFiles: (files: File[]) => void;
   filePaths: Map<File, string>;
@@ -501,6 +518,54 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  // Load template settings from localStorage with defaults
+  const [activeTemplateId, setActiveTemplateIdState] = useState<string | null>(() =>
+    loadFromLocalStorage('activeTemplateId', null)
+  );
+  const [userTemplates, setUserTemplatesState] = useState<UserTemplate[]>(() =>
+    loadFromLocalStorage('userTemplates', [])
+  );
+
+  const setActiveTemplate = (id: string | null) => {
+    setActiveTemplateIdState(id);
+    saveToLocalStorage('activeTemplateId', id);
+  };
+
+  const addUserTemplate = (template: Omit<UserTemplate, 'id' | 'createdAt'>) => {
+    const newTemplate: UserTemplate = {
+      ...template,
+      id: Date.now().toString(),
+      createdAt: new Date(),
+    };
+    setUserTemplatesState((prev) => {
+      const updated = [...prev, newTemplate];
+      saveToLocalStorage('userTemplates', updated);
+      return updated;
+    });
+  };
+
+  const updateUserTemplate = (id: string, template: Partial<UserTemplate>) => {
+    setUserTemplatesState((prev) => {
+      const updated = prev.map((t) =>
+        t.id === id ? { ...t, ...template } : t
+      );
+      saveToLocalStorage('userTemplates', updated);
+      return updated;
+    });
+  };
+
+  const deleteUserTemplate = (id: string) => {
+    setUserTemplatesState((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
+      saveToLocalStorage('userTemplates', updated);
+      if (activeTemplateId === id) {
+        setActiveTemplateIdState(null);
+        saveToLocalStorage('activeTemplateId', null);
+      }
+      return updated;
+    });
+  };
+
   // Memoize API object to prevent unnecessary re-renders
   const apiValue = useMemo(() => ({
     selectedProvider,
@@ -546,6 +611,16 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setOptions,
   }), [options, setOptions]);
 
+  // Memoize template settings
+  const templateSettingsValue = useMemo(() => ({
+    activeTemplateId,
+    userTemplates,
+    setActiveTemplate,
+    addUserTemplate,
+    updateUserTemplate,
+    deleteUserTemplate,
+  }), [activeTemplateId, userTemplates, setActiveTemplate, addUserTemplate, updateUserTemplate, deleteUserTemplate]);
+
   // Memoize embed settings
   const embedSettingsValue = useMemo(() => ({
     ...embedSettings,
@@ -571,6 +646,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     api: apiValue,
     metadataLimits: metadataLimitsValue,
     metadataOptions: metadataOptionsValue,
+    templateSettings: templateSettingsValue,
     embedSettings: embedSettingsValue,
     files,
     setFiles,
@@ -591,6 +667,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     apiValue,
     metadataLimitsValue,
     metadataOptionsValue,
+    templateSettingsValue,
     embedSettingsValue,
     files,
     filePathsValue,

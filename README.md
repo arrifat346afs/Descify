@@ -4,7 +4,7 @@ Tagpix AI is a desktop application built with Tauri, React, and TypeScript, desi
 
 ![Media Player Screenshot](img/screenshot_2025-12-26_16-58-54.png)
 
-
+wabhoock test 
 ## Features
 *   **Batch:** Batch processing of images and Generate Metadata.
 *   **AI Integration:** Supports Gemini and OpenRouter AI models.

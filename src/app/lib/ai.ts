@@ -24,6 +24,7 @@ export type GenerateMetadataOptions = {
   apiKey?: string;
   limits?: { titleLimit?: number; descriptionLimit?: number; keywordLimit?: number };
   includePlaceName?: boolean;
+  customTemplate?: string;
 };
 
 /**
@@ -52,11 +53,11 @@ const initializeModel = (provider?: string, apiKey?: string, model?: string): an
  * @returns Generated metadata including title, description, and keywords
  */
 export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<GeneratedMetadata> => {
-  const { thumbnailUrls,  provider, model, apiKey, limits, includePlaceName } = opts;
+  const { thumbnailUrls,  provider, model, apiKey, limits, includePlaceName, customTemplate } = opts;
 
   try {
     // Generate the prompt
-    const textPrompt = generateMetadataPrompt(limits, includePlaceName);
+    const textPrompt = generateMetadataPrompt(limits, includePlaceName, customTemplate);
     console.log('Generated prompt:', textPrompt);
     // Initialize the appropriate provider model
     const modelInstance = initializeModel(provider, apiKey, model);

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { useSettings } from '@/app/contexts/SettingsContext';
 import { generateMetadata } from '@/app/lib/ai';
+import { getActiveTemplate } from '@/app/lib/templateUtils';
 import { embedMetadata } from '@/app/lib/tauri-commands';
 import { TextShimmer } from '@/components/motion-primitives/text-shimmer';
 
@@ -12,6 +13,7 @@ export const GenerateButton = () => {
     api, 
     metadataLimits, 
     metadataOptions, 
+    templateSettings,
     embedSettings,
     generated, 
     setHasAttemptedGeneration, 
@@ -20,6 +22,12 @@ export const GenerateButton = () => {
     setGenerationProgress,
     getFilePath 
   } = useSettings();
+
+  // Get the active template
+  const activeTemplate = getActiveTemplate(
+    templateSettings.activeTemplateId,
+    templateSettings.userTemplates
+  );
   const lastAutoSelectedIndexRef = useRef(-1);
   const isGenerating = generationProgress.isGenerating;
 
@@ -115,6 +123,7 @@ export const GenerateButton = () => {
             keywordLimit: metadataLimits.keywordLimit,
           },
           includePlaceName: metadataOptions.includePlaceName,
+          customTemplate: activeTemplate || undefined,
         });
 
         // Store metadata for this specific file

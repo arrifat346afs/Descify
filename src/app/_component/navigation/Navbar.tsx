@@ -16,7 +16,7 @@ import { useSettings } from "@/app/contexts/SettingsContext";
 import { ThemeToggle } from "@/components/mode-toggle";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { ConsolePopover } from "../ConsolePopover";
-
+import { TemplateManagerButton } from "../action/button/TemplateManagerButton";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
@@ -44,7 +44,10 @@ const Navbar = () => {
   return (
     <div className="flex justify-between items-center h-full">
       <div className="flex w-full">
-        <div data-tauri-drag-region className="flex justify-center items-center">
+        <div
+          data-tauri-drag-region
+          className="flex justify-center items-center"
+        >
           <ItemMedia variant="image">
             <img
               src={logo}
@@ -70,8 +73,9 @@ const Navbar = () => {
               <Settings />
             </DialogContent>
           </Dialog>
-        <ThemeToggle />
-        <ConsolePopover />
+          <ThemeToggle />
+          <ConsolePopover />
+          <TemplateManagerButton />
         </div>
         <div data-tauri-drag-region className="flex-1" />
       </div>
