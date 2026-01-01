@@ -3,6 +3,28 @@
 version = 4
 
 [[package]]
+name = "Descify"
+version = "1.0.3"
+dependencies = [
+ "base64 0.21.7",
+ "exiftool",
+ "image",
+ "ruurd_photos_thumbnail_generation",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-opener",
+ "tauri-plugin-os",
+ "tauri-plugin-process",
+ "tauri-plugin-updater",
+ "tauri-plugin-upload",
+ "uuid",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4786,28 +4808,6 @@ dependencies = [
  "pkg-config",
  "toml 0.8.2",
  "version-compare",
-]
-
-[[package]]
-name = "tagpixai"
-version = "1.0.3"
-dependencies = [
- "base64 0.21.7",
- "exiftool",
- "image",
- "ruurd_photos_thumbnail_generation",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-opener",
- "tauri-plugin-os",
- "tauri-plugin-process",
- "tauri-plugin-updater",
- "tauri-plugin-upload",
- "uuid",
 ]
 
 [[package]]

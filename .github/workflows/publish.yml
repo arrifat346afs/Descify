@@ -53,7 +53,7 @@ jobs:
             VERSION=$(grep -oP '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json || echo "0.0.0")
           fi
           if [ "$NAME" == "undefined" ]; then
-             NAME="tagpix-ai"
+             NAME="descify"
           fi
 
           echo "name=$NAME" >> $GITHUB_OUTPUT
@@ -106,7 +106,7 @@ jobs:
           LINUXDEPLOY_EXCLUDE_LIBS: ${{ matrix.platform == 'ubuntu-22.04' && 'libEGL.so,libGL.so,libgbm.so,libGLESv2.so' || '' }}
         with:
           tagName: app-v__VERSION__
-          releaseName: 'Tagpix AI v__VERSION__'
+          releaseName: 'Descify v__VERSION__'
           releaseBody: |
             ## What's Changed
 
