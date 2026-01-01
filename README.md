@@ -1,4 +1,4 @@
-# Descify - Image Metadata Generator
+# Descify - AI Title, Keyword & Description Generator
 
 Descify is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently.
 
@@ -27,8 +27,8 @@ wabhoock test
 2.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/arrifat346afs/descify.git
-    cd descify
+    git clone https://github.com/arrifat346afs/Descify.git
+    cd Descify
     ```
 
 3.  **Install dependencies:**
