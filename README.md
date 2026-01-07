@@ -1,5 +1,9 @@
 
-![Descify](src/assets/descifyt.png){: width="250" height="250" }
+<div align="center">
+  <a>
+    <img src="src/assets/descify.png" alt="Descify" width="200">
+  </a>
+
 
 
 
