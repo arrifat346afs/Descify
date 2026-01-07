@@ -1,5 +1,5 @@
 
-![Media Player Screenshot](src/assets/descifyt.png)
+![Descify](src/assets/descifyt.png)
 
 
 
