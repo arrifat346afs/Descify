@@ -69,7 +69,7 @@ export async function generateImageThumbnail(file: File): Promise<string> {
         canvas.height = height;
         const ctx = canvas.getContext('2d', {
           willReadFrequently: false,
-          alpha: false // Disable alpha for better performance
+          alpha: true // Keep alpha channel for transparency
         });
 
         if (!ctx) {
@@ -84,8 +84,8 @@ export async function generateImageThumbnail(file: File): Promise<string> {
         // Yield before encoding (most expensive operation)
         await yieldToAnimationFrame();
 
-        // Convert to JPEG (70% quality for faster encoding)
-        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+        // Convert to PNG to preserve transparency
+        const thumbnailUrl = canvas.toDataURL('image/png');
 
         URL.revokeObjectURL(objectUrl);
         resolve(thumbnailUrl);
@@ -149,7 +149,7 @@ export async function generateVideoThumbnail(file: File): Promise<string> {
         canvas.height = height;
         const ctx = canvas.getContext('2d', {
           willReadFrequently: false,
-          alpha: false // Disable alpha for better performance
+          alpha: true // Keep alpha channel for transparency
         });
 
         if (!ctx) {
@@ -163,8 +163,8 @@ export async function generateVideoThumbnail(file: File): Promise<string> {
         // Yield before encoding
         await yieldToAnimationFrame();
 
-        // Convert to JPEG (70% quality)
-        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+        // Convert to PNG to preserve transparency
+        const thumbnailUrl = canvas.toDataURL('image/png');
 
         URL.revokeObjectURL(objectUrl);
         resolve(thumbnailUrl);

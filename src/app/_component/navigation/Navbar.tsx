@@ -10,7 +10,7 @@ import {
   VscChromeRestore,
 } from "react-icons/vsc";
 import { ItemMedia } from "@/components/ui/item";
-import logo from "../../../assets/tp.png";
+import logo from "../../../assets/descify.png";
 import { useEffect, useState } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { ThemeToggle } from "@/components/mode-toggle";
