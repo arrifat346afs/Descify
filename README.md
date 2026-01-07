@@ -1,5 +1,5 @@
 
-![Descify](src/assets/descifyt.png)
+![Descify](src/assets/descifyt.png){: width="250" height="250" }
 
 
 
