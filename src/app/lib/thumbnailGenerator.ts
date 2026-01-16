@@ -1,11 +1,59 @@
 /**
  * Thumbnail Generation Module
- * Uses browser Canvas API for fast thumbnail generation
+ * Uses thumbo (Rust + WebAssembly) for fast image thumbnail generation
+ * Falls back to Canvas API for video thumbnails
  */
+
+import Thumbo, { Transfer } from 'thumbo';
+
+// Track thumbo initialization state
+let thumboInitialized = false;
+let thumboInitPromise: Promise<void> | null = null;
+
+/**
+ * Initialize thumbo library
+ */
+async function initThumbo(): Promise<void> {
+  if (thumboInitialized) return;
+  if (!thumboInitPromise) {
+    thumboInitPromise = Thumbo.init({ size: 4, concurrency: 2 }).then(() => {
+      thumboInitialized = true;
+      console.log('✅ Thumbo initialized with WebAssembly workers');
+    });
+  }
+  return thumboInitPromise;
+}
+
+/**
+ * Get the image format enum from file type
+ */
+function getImageFormat(mimeType: string): number | null {
+  const formatMap: Record<string, number> = {
+    'image/png': Thumbo.ImageFormat.Png,
+    'image/jpeg': Thumbo.ImageFormat.Jpeg,
+    'image/jpg': Thumbo.ImageFormat.Jpeg,
+    'image/gif': Thumbo.ImageFormat.Gif,
+    'image/x-icon': Thumbo.ImageFormat.Ico,
+    'image/vnd.microsoft.icon': Thumbo.ImageFormat.Ico,
+    'image/svg+xml': Thumbo.ImageFormat.Svg,
+  };
+  return formatMap[mimeType] ?? null;
+}
+
+/**
+ * Convert a Blob to a data URL
+ */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 /**
  * Helper to yield control back to the browser's main thread
- * Uses requestIdleCallback when available, falls back to setTimeout
  */
 function yieldToMain(): Promise<void> {
   return new Promise(resolve => {
@@ -23,27 +71,62 @@ function yieldToMain(): Promise<void> {
 function yieldToAnimationFrame(): Promise<void> {
   return new Promise(resolve => {
     requestAnimationFrame(() => {
-      // Double RAF for better frame timing
       requestAnimationFrame(() => resolve());
     });
   });
 }
 
 /**
- * Generates a thumbnail for an image file using Canvas API
- * This is fast and runs entirely in the browser
+ * Generates a thumbnail for an image file using thumbo (Rust + WASM)
+ * Falls back to Canvas API for unsupported formats
  *
  * @param file - The image file to generate a thumbnail for
  * @returns Promise<string> - Base64 data URL of the thumbnail
  */
 export async function generateImageThumbnail(file: File): Promise<string> {
+  const format = getImageFormat(file.type);
+
+  // Use thumbo for supported formats
+  if (format !== null) {
+    try {
+      await initThumbo();
+
+      const arrayBuffer = await file.arrayBuffer();
+      const maxSize = 512;
+
+      // Generate thumbnail using thumbo's WASM worker pool
+      const thumbnailBuffer = await Thumbo.thumbnail(
+        Transfer(arrayBuffer),
+        format,
+        maxSize,
+        maxSize
+      );
+
+      // Convert ArrayBuffer to base64 data URL
+      const blob = new Blob([thumbnailBuffer], { type: file.type });
+      const dataUrl = await blobToDataUrl(blob);
+
+      return dataUrl;
+    } catch (error) {
+      console.warn(`Thumbo failed for ${file.name}, falling back to Canvas:`, error);
+      // Fall through to Canvas fallback
+    }
+  }
+
+  // Fallback to Canvas API for unsupported formats (like WebP) or errors
+  return generateImageThumbnailCanvas(file);
+}
+
+/**
+ * Canvas-based fallback for image thumbnail generation
+ */
+async function generateImageThumbnailCanvas(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
 
     img.onload = async () => {
       try {
-        // Calculate dimensions (max 512px, maintain aspect ratio)
         const maxSize = 512;
         let width = img.width;
         let height = img.height;
@@ -60,16 +143,14 @@ export async function generateImageThumbnail(file: File): Promise<string> {
           }
         }
 
-        // Yield before heavy canvas operations
         await yieldToMain();
 
-        // Create canvas and draw resized image
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d', {
           willReadFrequently: false,
-          alpha: true // Keep alpha channel for transparency
+          alpha: true
         });
 
         if (!ctx) {
@@ -78,15 +159,10 @@ export async function generateImageThumbnail(file: File): Promise<string> {
           return;
         }
 
-        // Draw image in chunks for large images to prevent blocking
         ctx.drawImage(img, 0, 0, width, height);
-
-        // Yield before encoding (most expensive operation)
         await yieldToAnimationFrame();
 
-        // Convert to PNG to preserve transparency
         const thumbnailUrl = canvas.toDataURL('image/png');
-
         URL.revokeObjectURL(objectUrl);
         resolve(thumbnailUrl);
       } catch (error) {
