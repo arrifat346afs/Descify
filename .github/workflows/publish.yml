@@ -173,5 +173,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: app-v${{ steps.get-package.outputs.version }}
+          draft: true
           files: |
             ${{ steps.get-package.outputs.name }}-bin/${{ steps.get-package.outputs.name }}-bin-${{ steps.get-package.outputs.version }}-1-${{ env.ARCH }}.pkg.tar.zst
