@@ -10,13 +10,12 @@ import {
   VscChromeRestore,
 } from "react-icons/vsc";
 import { ItemMedia } from "@/components/ui/item";
-import logo from "../../../assets/descify.png";
+import logo from "../../../assets/descify.svg";
 import { useEffect, useState } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { ThemeToggle } from "@/components/mode-toggle";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { ConsolePopover } from "../ConsolePopover";
-import { TemplateManagerButton } from "../action/button/TemplateManagerButton";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
@@ -75,7 +74,6 @@ const Navbar = () => {
           </Dialog>
           <ThemeToggle />
           <ConsolePopover />
-          <TemplateManagerButton />
         </div>
         <div data-tauri-drag-region className="flex-1" />
       </div>

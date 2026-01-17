@@ -1,7 +1,7 @@
 
 <div align="center">
   <a>
-    <img src="src/assets/descifyt.png" alt="Descify" width="200">
+    <img src="./img/desifytext.png" alt="Descify" width="200">
   </a>
 
 
