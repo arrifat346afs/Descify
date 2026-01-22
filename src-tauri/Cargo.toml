@@ -1,6 +1,6 @@
 [package]
 name = "Descify"
-version = "1.0.4"
+version = "1.2.0"
 description = "AI powered image metadata manager"
 authors = ["arrifat346afs"]
 edition = "2021"
