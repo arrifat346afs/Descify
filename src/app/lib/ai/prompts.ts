@@ -16,12 +16,14 @@ import { interpolateTemplate, TemplateVariables } from '../templateUtils';
  * @param limits - The character/keyword limits for title, description, and keywords
  * @param includePlaceName - Whether to include location/place names in the metadata
  * @param customTemplate - Optional custom template to use instead of default
+ * @param customInstruction - Optional custom instruction specific to this image
  * @returns The formatted prompt string
  */
 export const generateMetadataPrompt = (
-  limits?: MetadataLimits, 
+  limits?: MetadataLimits,
   includePlaceName?: boolean,
-  customTemplate?: string
+  customTemplate?: string,
+  customInstruction?: string
 ): string => {
   const titleLimit = limits?.titleLimit || 200;
   const descriptionLimit = limits?.descriptionLimit || 200;
@@ -31,6 +33,11 @@ export const generateMetadataPrompt = (
     ? "Include location names if visible."
     : "Use generic terms, no location names.";
 
+  // Build custom instruction section if provided
+  const customInstructionSection = customInstruction
+    ? `\n\nADDITIONAL INSTRUCTIONS FOR THIS IMAGE:\n${customInstruction}\n`
+    : '';
+
   // If custom template is provided, use it with variable interpolation
   if (customTemplate) {
     const variables: TemplateVariables = {
@@ -39,19 +46,19 @@ export const generateMetadataPrompt = (
       keywordLimit,
       currentDate: new Date().toISOString().split('T')[0],
     };
-    
+
     const interpolatedTemplate = interpolateTemplate(customTemplate, variables);
-    
+
     // Add place name rule to the custom template if it doesn't already include place-specific content
     if (interpolatedTemplate.includes('${placeNameRule}')) {
-      return interpolatedTemplate.replace(/\$\{placeNameRule\}/g, placeNameRule);
+      return interpolatedTemplate.replace(/\$\{placeNameRule\}/g, placeNameRule) + customInstructionSection;
     }
-    
-    return interpolatedTemplate;
+
+    return interpolatedTemplate + customInstructionSection;
   }
 
   // Use existing default logic when no custom template is provided
-  return `Generate stock photo metadata for this image.
+  return `Generate stock photo metadata for this image.${customInstructionSection}
 
 IMPORTANT: Write complete, natural text. End at complete words, never cut words in half.
 thais is a doemo title make the imges titel losley to this one basd on the image not exact one 

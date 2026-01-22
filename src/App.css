@@ -258,3 +258,23 @@ body {
     letter-spacing: var(--tracking-normal);
   }
 }
+/* Target the input itself for general spacing */
+
+
+/* Target the native spinner buttons */
+input[type="number"]::-webkit-inner-spin-button {
+  /* 1. Make them always visible (sometimes they hide until hover) */
+  /* opacity: 1;  */
+  -webkit-appearance: none;
+  /* 2. Move them away from the text slightly */
+  margin-left: 10px;
+
+  /* 3. Change the size (There is no height/width, you must use scale) */
+  transform: scale(1.2); 
+  /* 4. Change color using filters (The only way to change color) */
+  /* This turns the default black arrows white (perfect for dark mode) */
+  filter: invert(1);
+  
+  /* Make the cursor a pointer so it feels like a button */
+  cursor: pointer;
+}

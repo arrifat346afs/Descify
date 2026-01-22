@@ -38,15 +38,29 @@ export const ensureBase64 = (url: string): string => {
  * @returns The response from the AI API
  */
 export const callAIApi = async (options: GenerateTextOptions): Promise<any> => {
-  console.log('Sending to AI...');
+  console.log('🚀 Sending to AI...');
 
-  const response = await generateText({
-    model: options.model,
-    messages: options.messages,
-    maxTokens: 500, // Limit output to 500 tokens (enough for title, description, keywords)
-  } as any); // Type assertion needed as maxTokens type varies by SDK version
+  try {
+    const response = await generateText({
+      model: options.model,
+      messages: options.messages,
+      maxTokens: 500, // Limit output to 500 tokens (enough for title, description, keywords)
+    } as any); // Type assertion needed as maxTokens type varies by SDK version
 
-  return response;
+    console.log('✅ AI API response received');
+    return response;
+  } catch (error: any) {
+    console.error('❌ AI API call failed:', error);
+    console.error('📋 Error details:', {
+      message: error.message,
+      name: error.name,
+      cause: error.cause,
+      stack: error.stack?.substring(0, 500),
+    });
+
+    // Re-throw with more context
+    throw new Error(`AI API call failed: ${error.message || error}`);
+  }
 };
 
 /**

@@ -5,6 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { toast } from "sonner";
 import { exportToCSV } from "@/app/lib/exportUtils";
+import { Download } from "lucide-react";
+// import adobe from "@/assets/adobe.svg";
+// import shuter from "@/assets/shuter.svg";
 
 function ExportButton() {
   const { generated, categories } = useSettings();
@@ -35,13 +38,19 @@ function ExportButton() {
         variant="ghost"
         onClick={handleExport}
         disabled={isExporting || generated.items.length === 0}
+        className="gap-2 group"
       >
+        <Download className={`h-4 w-4 transition-all ${
+          isExporting
+            ? 'animate-bounce'
+            : 'group-hover:scale-110 group-hover:translate-y-0.5'
+        }`} />
         {isExporting ? "Exporting..." : "Export"}
       </Button>
       <Separator orientation="vertical" />
       <div className="w-full flex justify-center items-center p-3">
         <Select value={selectedPlatform} onValueChange={(value) => setSelectedPlatform(value as 'adobeStock' | 'shutterStock')}>
-          <SelectTrigger className="w-full border text-center">
+          <SelectTrigger className="w-fit h-auto p-0 border-none bg-transparent! shadow-none focus:ring-0 focus:ring-offset-0 ring-0 outline-none  data-[state=open]:bg-transparent hover:bg-accent">
             <SelectValue placeholder="Select platform" />
           </SelectTrigger>
           <SelectContent>

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { fetchOpenRouterModels, fetchOpenAIModels, fetchGeminiModels, type ModelInfo } from '@/app/lib/modelFetcher';
+import { fetchOpenRouterModels, fetchGeminiModels, type ModelInfo } from '@/app/lib/modelFetcher';
 import { ModelSelector } from './ModelSelector';
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
@@ -26,7 +26,7 @@ const ApiSettings = () => {
   const [showSavedIndicator, setShowSavedIndicator] = useState(false);
 
   const providers = [
-    { value: 'openai', label: 'OpenAI' },
+    // { value: 'openai', label: 'OpenAI' },
     { value: 'gemini', label: 'Google' },
     { value: 'openrouter', label: 'OpenRouter' },
   ];
@@ -62,9 +62,9 @@ const ApiSettings = () => {
         let fetchedModels: ModelInfo[] = [];
 
         switch (localProvider) {
-          case 'openai':
-            fetchedModels = await fetchOpenAIModels(localApiKeys.openai);
-            break;
+          // case 'openai':
+          //   fetchedModels = await fetchOpenAIModels(localApiKeys.openai);
+          //   break;
           case 'gemini':
             fetchedModels = await fetchGeminiModels(localApiKeys.gemini);
             break;
@@ -139,7 +139,7 @@ const ApiSettings = () => {
       )}
 
       <div>
-        <Label htmlFor="provider">Provider</Label>
+        <Label htmlFor="provider" className="text-base font-medium mb-2">Provider</Label>
         <Select onValueChange={(val) => setLocalProvider(val as Provider)} value={localProvider || undefined}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select a provider" />
@@ -155,7 +155,7 @@ const ApiSettings = () => {
       </div>
 
       <div>
-        <Label htmlFor="model">AI Model</Label>
+        <Label htmlFor="model" className="text-base font-medium mb-2">AI Model</Label>
         <ModelSelector
           models={models}
           value={localModel}
@@ -172,7 +172,7 @@ const ApiSettings = () => {
         />
       </div>
       <div>
-        <Label htmlFor="requestDelay">
+        <Label htmlFor="requestDelay" className="text-base font-medium mb-2">
           Request Delay (seconds)
         </Label>
         <div className="flex items-center gap-3">
@@ -194,7 +194,7 @@ const ApiSettings = () => {
             Wait {(localRequestDelay / 1000).toFixed(1)}s between AI requests
           </span>
         </div>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-gray-400 mt-2">
           Prevents rate limiting. Set to 0 for no delay.
         </p>
       </div>

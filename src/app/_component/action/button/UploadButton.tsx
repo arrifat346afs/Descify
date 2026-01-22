@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
+import { Upload } from "lucide-react";
 
 
 type UploadButtonProps = {
@@ -43,10 +44,11 @@ export const UploadButton = ({ onFilesSelected }: { onFilesSelected: (files: Fil
 
       {/* Custom upload button */}
       <Button
-        
         onClick={handleClick}
         variant={"ghost"}
-              >
+        className="gap-2 group"
+      >
+        <Upload className="h-4 w-4 transition-transform group-hover:scale-110 group-hover:-translate-y-0.5" />
         Upload
       </Button>
     </div>

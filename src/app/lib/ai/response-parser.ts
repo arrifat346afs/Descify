@@ -131,7 +131,19 @@ export const parseMetadataResponse = (
   const jsonStr = extractJsonFromText(text);
 
   if (!jsonStr) {
-    console.error('No JSON found in AI response:', text);
+    console.error('❌ No JSON found in AI response');
+    console.error('📄 Full response text (first 500 chars):', text.substring(0, 500));
+
+    // Check if it's an HTML error response
+    if (text.trim().startsWith('<')) {
+      console.error('⚠️ Response appears to be HTML - this usually means:');
+      console.error('   1. Invalid or expired API key');
+      console.error('   2. API rate limiting');
+      console.error('   3. Network/CORS error');
+      console.error('   4. API endpoint issue');
+      throw new Error('AI returned HTML instead of JSON - check API key and rate limits');
+    }
+
     throw new Error('AI did not return valid JSON format');
   }
 
@@ -145,8 +157,9 @@ export const parseMetadataResponse = (
     // Apply limits and return
     return applyLimits(parsed, limits);
   } catch (err) {
-    console.error('Failed to parse JSON from AI response:', err);
-    console.error('Raw response:', text);
+    console.error('❌ Failed to parse JSON from AI response:', err);
+    console.error('📄 Raw response (first 500 chars):', text.substring(0, 500));
+    console.error('🔍 Extracted JSON string:', jsonStr);
     throw new Error(`Failed to parse AI response: ${err}`);
   }
 };

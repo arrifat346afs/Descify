@@ -2,7 +2,8 @@ import { Separator } from "@/components/ui/separator";
 import ExportButton from "./button/ ExportButton"
 import { GenerateButton } from "./button/ GenerateButton"
 import { UploadButton } from "./button/UploadButton"
-import { TemplateManagerButton } from "./button/TemplateManagerButton"
+// import { TemplateManagerButton } from "./button/TemplateManagerButton"
+import { CancelButton } from "./button/CancelButton"
 
 
 type ActionsSectionProps = {
@@ -21,7 +22,9 @@ export const  ActionsSection = ({ onFilesSelected }: ActionsSectionProps) => {
       <Separator orientation="vertical" />
       <GenerateButton />
       <Separator orientation="vertical" />
-      <TemplateManagerButton />
+      <CancelButton />
+      {/* <Separator orientation="vertical" /> */}
+      {/* <TemplateManagerButton /> */}
       <Separator orientation="vertical" />
       <ExportButton />
     </div>

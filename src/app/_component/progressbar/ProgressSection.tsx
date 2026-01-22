@@ -7,7 +7,13 @@ export const ProgressSection = () => {
 
   // Calculate how many files have metadata generated
   const totalFiles = thumbnails.items.length;
-  const completedFiles = generated.items.length;
+
+  // Only count files that have actual metadata content (not just custom instructions)
+  const completedFiles = generated.items.filter(item => {
+    const hasContent = item.metadata.title || item.metadata.description || item.metadata.keywords;
+    return hasContent;
+  }).length;
+
   const progressValue = totalFiles > 0 ? (completedFiles / totalFiles) * 100 : 0;
 
   console.log('📊 Progress:', completedFiles, '/', totalFiles, '=', progressValue.toFixed(1) + '%');

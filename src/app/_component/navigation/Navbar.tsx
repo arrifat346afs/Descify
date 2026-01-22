@@ -68,7 +68,7 @@ const Navbar = () => {
                 <SettingsIcon />
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[95vw] sm:max-w-[85vw] md:max-w-4xl h-[80vh] max-h-[800px] p-0 flex flex-col">
               <Settings />
             </DialogContent>
           </Dialog>

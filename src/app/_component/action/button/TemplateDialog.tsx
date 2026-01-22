@@ -139,10 +139,10 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
               {allTemplates.map((template) => (
                 <div
                   key={template.id}
-                  className={`border rounded-lg p-4 ${
+                  className={`border rounded-lg p-4 transition-colors ${
                     templateSettings.activeTemplateId === template.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200'
+                      ? 'border-primary bg-primary/10 dark:bg-primary/20'
+                      : 'border-border bg-card'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -156,7 +156,7 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
                           <Badge variant="default">Active</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         {template.template.substring(0, 100)}...
                       </p>
                     </div>
@@ -199,11 +199,11 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
                       </Button>
                     </div>
                   </div>
-                  
+
                   {previewMode === template.id && (
-                    <div className="mt-3 p-3rounded-md">
+                    <div className="mt-3 p-3 bg-muted rounded-md">
                       <h5 className="text-sm font-medium mb-2">Preview:</h5>
-                      <pre className="text-xs whitespace-pre-wrap">
+                      <pre className="text-xs whitespace-pre-wrap text-muted-foreground">
                         {getPreviewContent(template.template)}
                       </pre>
                     </div>
@@ -263,11 +263,11 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
                     {(() => {
                       const validation = validateTemplate(newTemplateContent);
                       return validation.isValid ? (
-                        <div className="text-sm text-green-600">
+                        <div className="text-sm text-green-600 dark:text-green-400">
                           ✓ Template is valid and contains all required variables
                         </div>
                       ) : (
-                        <div className="text-sm text-red-600">
+                        <div className="text-sm text-destructive">
                           ✗ Missing required variables: {validation.missingVariables.join(', ')}
                         </div>
                       );
@@ -277,7 +277,7 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">
+                <p className="text-muted-foreground mb-4">
                   Select "Create New" from the Templates tab or edit an existing template to use the editor.
                 </p>
                 <Button onClick={() => startEdit()}>
@@ -287,20 +287,20 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="variables" className="space-y-4">
             <h3 className="text-lg font-medium">Template Variables</h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Use these variables in your templates to customize the AI prompts:
             </p>
-            
+
             <div className="space-y-3">
               {getTemplateVariables().map((variable) => (
-                <div key={variable} className="flex items-center gap-3 p-3 border rounded-lg">
-                  <code className="px-2 py-1 rounded text-sm font-mono">
+                <div key={variable} className="flex items-center gap-3 p-3 border border-border rounded-lg bg-card">
+                  <code className="px-2 py-1 bg-muted rounded text-sm font-mono text-foreground">
                     {variable}
                   </code>
-                  <span className="text-sm">
+                  <span className="text-sm text-muted-foreground">
                     {variable.includes('titleLimit') && 'Character limit for the title field'}
                     {variable.includes('descriptionLimit') && 'Character limit for the description field'}
                     {variable.includes('keywordLimit') && 'Number of keywords to generate'}
@@ -310,10 +310,10 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
                 </div>
               ))}
             </div>
-            
-            <div className="mt-6 p-4 rounded-lg">
+
+            <div className="mt-6 p-4 bg-muted rounded-lg">
               <h4 className="font-medium mb-2">Example Template:</h4>
-              <pre className="text-sm  whitespace-pre-wrap">
+              <pre className="text-sm whitespace-pre-wrap text-muted-foreground">
 {`Generate metadata for this image.
 
 Requirements:

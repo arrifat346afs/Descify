@@ -9,6 +9,7 @@ import { ensureBase64, callAIApi, createVisionMessageContent } from './ai/api-cl
 import { createOpenAIModel, isOpenAIProvider } from './ai/providers/openai';
 import { createGoogleModel, isGoogleProvider } from './ai/providers/google';
 import { createOpenRouterModel, isOpenRouterProvider } from './ai/providers/openrouter';
+import { generateAIImage } from './thumbnailGenerator';
 
 export type GeneratedMetadata = {
   title: string;
@@ -17,7 +18,10 @@ export type GeneratedMetadata = {
 };
 
 export type GenerateMetadataOptions = {
-  thumbnailUrls: string[];
+  /** @deprecated Use `file` instead for better AI quality */
+  thumbnailUrls?: string[];
+  /** The file to generate metadata for - will create HQ image on-demand */
+  file?: File;
   fileNames: string[];
   provider?: string;
   model?: string;
@@ -25,6 +29,7 @@ export type GenerateMetadataOptions = {
   limits?: { titleLimit?: number; descriptionLimit?: number; keywordLimit?: number };
   includePlaceName?: boolean;
   customTemplate?: string;
+  customInstruction?: string;
 };
 
 /**
@@ -49,22 +54,50 @@ const initializeModel = (provider?: string, apiKey?: string, model?: string): an
 
 /**
  * Generates metadata for images using AI vision models
+ *
+ * Uses high-quality image generation on-demand for better AI analysis.
+ * If `file` is provided, generates a 768px high-quality image for AI.
+ * Falls back to thumbnailUrls for backwards compatibility.
+ *
  * @param opts - Options for metadata generation
  * @returns Generated metadata including title, description, and keywords
  */
 export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<GeneratedMetadata> => {
-  const { thumbnailUrls,  provider, model, apiKey, limits, includePlaceName, customTemplate } = opts;
+  const { file, thumbnailUrls, provider, model, apiKey, limits, includePlaceName, customTemplate, customInstruction } = opts;
 
   try {
-    // Generate the prompt
-    const textPrompt = generateMetadataPrompt(limits, includePlaceName, customTemplate);
-    console.log('Generated prompt:', textPrompt);
-    // Initialize the appropriate provider model
-    const modelInstance = initializeModel(provider, apiKey, model);
+    console.log('🎯 Starting metadata generation with:', {
+      provider,
+      model,
+      hasApiKey: !!apiKey,
+      hasFile: !!file,
+      hasThumbnails: !!thumbnailUrls?.length,
+    });
 
-    // Thumbnails are already optimized base64 data URLs from the browser
-    console.log('Using optimized thumbnail (already base64)...');
-    const imageDataUrl = ensureBase64(thumbnailUrls[0]);
+    // Generate the prompt
+    const textPrompt = generateMetadataPrompt(limits, includePlaceName, customTemplate, customInstruction);
+    console.log('📝 Generated prompt:', textPrompt.substring(0, 200) + '...');
+
+    // Initialize the appropriate provider model
+    console.log('🔧 Initializing model...');
+    const modelInstance = initializeModel(provider, apiKey, model);
+    console.log('✅ Model initialized');
+
+    // Generate high-quality image for AI analysis
+    let imageDataUrl: string;
+
+    if (file) {
+      // New: Generate HQ image on-demand (768px, 85% quality)
+      console.log('🖼️ Generating high-quality image for AI analysis...');
+      imageDataUrl = await generateAIImage(file);
+      console.log('✅ HQ image generated for AI');
+    } else if (thumbnailUrls && thumbnailUrls.length > 0) {
+      // Fallback: Use provided thumbnail (backwards compatibility)
+      console.log('⚠️ Using thumbnail (lower quality) - consider using file parameter');
+      imageDataUrl = ensureBase64(thumbnailUrls[0]);
+    } else {
+      throw new Error('No image provided for metadata generation');
+    }
 
     // Create message content with text and image
     const messageContent = createVisionMessageContent(textPrompt, imageDataUrl);
@@ -77,8 +110,14 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
 
     // Parse and validate the response
     return parseMetadataResponse(response, limits);
-  } catch (err) {
-    console.error('generateMetadata error', err);
+  } catch (err: any) {
+    console.error('❌ generateMetadata error:', err);
+    console.error('📋 Error context:', {
+      provider,
+      model,
+      errorMessage: err.message,
+      errorName: err.name,
+    });
     throw err;
   }
 };

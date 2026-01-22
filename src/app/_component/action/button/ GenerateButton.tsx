@@ -5,6 +5,7 @@ import { generateMetadata } from '@/app/lib/ai';
 import { getActiveTemplate } from '@/app/lib/templateUtils';
 import { embedMetadata } from '@/app/lib/tauri-commands';
 import { TextShimmer } from '@/components/motion-primitives/text-shimmer';
+import { Sparkles } from 'lucide-react';
 
 export const GenerateButton = () => {
   const { 
@@ -29,14 +30,23 @@ export const GenerateButton = () => {
     templateSettings.userTemplates
   );
   const lastAutoSelectedIndexRef = useRef(-1);
+  const cancelRequestedRef = useRef(false);
   const isGenerating = generationProgress.isGenerating;
 
-  // Reset auto-selection tracking when generation stops
+  // Reset auto-selection tracking and cancel flag when generation stops
   useEffect(() => {
     if (!isGenerating) {
       lastAutoSelectedIndexRef.current = -1;
+      cancelRequestedRef.current = false;
     }
   }, [isGenerating]);
+
+  // Sync the ref with the state when cancelRequested changes
+  useEffect(() => {
+    if (generationProgress.cancelRequested) {
+      cancelRequestedRef.current = true;
+    }
+  }, [generationProgress.cancelRequested]);
 
   const handleGenerate = async () => {
     console.log('=== Generate Button Clicked ===');
@@ -97,12 +107,19 @@ export const GenerateButton = () => {
       currentIndex: 0,
       currentFileName: '',
       totalFiles: items.length,
+      cancelRequested: false,
     });
     console.log(`✓ Starting metadata generation for ${items.length} files...`);
     console.log(`⏱️ Request delay: ${api.requestDelay}ms`);
 
     // Process each file one by one
     for (let i = 0; i < items.length; i++) {
+      // Check if cancellation was requested
+      if (cancelRequestedRef.current) {
+        console.log('🛑 Generation cancelled by user');
+        break;
+      }
+
       const item = items[i];
       setGenerationProgress({
         currentIndex: i + 1,
@@ -111,8 +128,11 @@ export const GenerateButton = () => {
       console.log(`Generating metadata for file ${i + 1}/${items.length}: ${item.file.name}`);
 
       try {
+        // Get custom instruction for this specific file
+        const customInstruction = generated.getCustomInstruction(item.file);
+
         const result = await generateMetadata({
-          thumbnailUrls: [item.thumbnailUrl],
+          file: item.file, // Use file directly for HQ AI image generation
           fileNames: [item.file.name],
           provider,
           model,
@@ -124,6 +144,7 @@ export const GenerateButton = () => {
           },
           includePlaceName: metadataOptions.includePlaceName,
           customTemplate: activeTemplate || undefined,
+          customInstruction: customInstruction,
         });
 
         // Store metadata for this specific file
@@ -181,15 +202,12 @@ export const GenerateButton = () => {
         }
 
       } catch (error) {
-        console.error(`Failed to generate metadata for ${item.file.name}:`, error);
-        // Store error state
-        generated.setMetadata(item.file, {
-          title: 'Error generating title',
-          description: `Failed to generate: ${error}`,
-          keywords: 'error',
-        });
+        console.error(`❌ Failed to generate metadata for ${item.file.name}:`, error);
 
-        // Auto-select this file even on error
+        // Don't store error messages as metadata - just log the error
+        // The thumbnail will show a red border indicating generation was attempted but failed
+
+        // Auto-select this file even on error so user can see which file failed
         console.log(`🎯 Auto-selecting file at index ${i} (error case):`, item.file.name);
         setSelectedFile(item.file);
         lastAutoSelectedIndexRef.current = i;
@@ -202,12 +220,14 @@ export const GenerateButton = () => {
       }
     }
 
-    console.log('Metadata generation complete for all files!');
+    const wasCancelled = generationProgress.cancelRequested;
+    console.log(wasCancelled ? '🛑 Metadata generation cancelled!' : '✅ Metadata generation complete for all files!');
     setGenerationProgress({
       isGenerating: false,
       currentIndex: 0,
       currentFileName: '',
       totalFiles: 0,
+      cancelRequested: false,
     });
   };
 
@@ -218,14 +238,20 @@ export const GenerateButton = () => {
     : 'Generate';
 
   return (
-    <div>
-      <Button
-        onClick={handleGenerate}
-        variant={"ghost"}
-        disabled={thumbnails.isGenerating || isGenerating}
-      >
-        {buttonText}
-      </Button>
-    </div>
+    <Button
+      onClick={handleGenerate}
+      variant={"ghost"}
+      disabled={thumbnails.isGenerating || isGenerating}
+      className="gap-2 group"
+    >
+      <Sparkles
+        className={`h-4 w-4 transition-all ${
+          isGenerating
+            ? 'animate-spin'
+            : 'group-hover:scale-110 group-hover:rotate-12'
+        }`}
+      />
+      {buttonText}
+    </Button>
   );
 };

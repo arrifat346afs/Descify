@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Key, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
 
-type Provider = 'openai' | 'gemini' | 'openrouter';
+type Provider = 'gemini' | 'openrouter';
 
 interface ProviderConfig {
   key: Provider;
@@ -18,12 +18,7 @@ interface ProviderConfig {
 }
 
 const providers: ProviderConfig[] = [
-  {
-    key: 'openai',
-    label: 'OpenAI',
-    placeholder: 'sk-...',
-    description: 'For GPT-4 Vision and other OpenAI models'
-  },
+
   {
     key: 'gemini',
     label: 'Google Gemini',
@@ -49,7 +44,7 @@ const ApiKeyManagement = ({ compact = false, showTitle = true }: ApiKeyManagemen
   // Local state for unsaved changes
   const [localApiKeys, setLocalApiKeys] = useState(api.apiKeys);
   const [showKeys, setShowKeys] = useState<Record<Provider, boolean>>({
-    openai: false,
+
     gemini: false,
     openrouter: false
   });

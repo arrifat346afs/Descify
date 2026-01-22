@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 
 type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
@@ -18,6 +18,7 @@ type FileMetadata = {
   file: File;
   metadata: GeneratedMetadata;
   categories?: CategorySelection;
+  customInstruction?: string;
 };
 
 type MetadataLimits = {
@@ -61,6 +62,7 @@ type GenerationProgress = {
   currentIndex: number;
   currentFileName: string;
   totalFiles: number;
+  cancelRequested: boolean;
 };
 
 type UserTemplate = {
@@ -94,6 +96,7 @@ type SettingsContextType = {
   templateSettings: TemplateSettings;
   files: File[];
   setFiles: (files: File[]) => void;
+  removeFile: (file: File) => void;
   filePaths: Map<File, string>;
   setFilePath: (file: File, path: string) => void;
   getFilePath: (file: File) => string | undefined;
@@ -112,6 +115,8 @@ type SettingsContextType = {
     setMetadata: (file: File, metadata: Partial<GeneratedMetadata>) => void;
     getCategories: (file: File) => CategorySelection | undefined;
     setFileCategories: (file: File, categories: Partial<CategorySelection>) => void;
+    getCustomInstruction: (file: File) => string | undefined;
+    setCustomInstruction: (file: File, instruction: string) => void;
     clear: () => void;
   };
   generationProgress: GenerationProgress;
@@ -253,6 +258,32 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  // File management functions
+  const removeFile = useCallback((fileToRemove: File) => {
+    console.log('🗑️ Removing file:', fileToRemove.name);
+
+    // Remove from files array
+    setFiles((prev) => prev.filter(f => f !== fileToRemove));
+
+    // Remove from file paths
+    setFilePaths((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(fileToRemove);
+      return newMap;
+    });
+
+    // Remove from thumbnails
+    setThumbnails((prev) => prev.filter(t => t.file !== fileToRemove));
+
+    // Remove from generated metadata
+    setGeneratedMetadata((prev) => prev.filter(fm => fm.file !== fileToRemove));
+
+    // Clear selected file if it was the removed file
+    setSelectedFile((prev) => prev === fileToRemove ? null : prev);
+
+    console.log('✅ File removed successfully');
+  }, []);
+
   // File path management functions
   const setFilePath = useCallback((file: File, path: string) => {
     setFilePaths((prev) => new Map(prev.set(file, path)));
@@ -262,61 +293,111 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     return filePaths.get(file);
   }, [filePaths]);
 
-  // Memoize upsert to prevent unnecessary re-renders
-  const upsert = useCallback((t: ThumbnailData) => {
-    console.log('🔧 UPSERT called with file:', t.file.name, 'URL:', t.thumbnailUrl.substring(0, 50) + '...');
+  // Batched thumbnail updates to reduce React re-renders
+  const pendingThumbnailUpdates = useRef<ThumbnailData[]>([]);
+  const batchUpdateScheduled = useRef<number | null>(null);
+  const BATCH_UPDATE_DELAY = 50; // ms - batch updates together (faster for responsiveness)
+
+  const flushThumbnailUpdates = useCallback(() => {
+    if (pendingThumbnailUpdates.current.length === 0) return;
+
+    const updates = [...pendingThumbnailUpdates.current];
+    pendingThumbnailUpdates.current = [];
+    batchUpdateScheduled.current = null;
+
     setThumbnails((prev) => {
-      // Check if already exists to avoid unnecessary updates
-      const existingIndex = prev.findIndex((p) => p.file === t.file);
-      if (existingIndex !== -1) {
-        // Update existing
-        const newArray = [...prev];
-        newArray[existingIndex] = t;
-        return newArray;
-      } else {
-        // Add new
-        return [...prev, t];
+      // Use a Map for O(1) lookup
+      const existingMap = new Map<File, number>();
+      prev.forEach((p, i) => existingMap.set(p.file, i));
+
+      const newArray = [...prev];
+      let addedCount = 0;
+
+      for (const t of updates) {
+        const existingIndex = existingMap.get(t.file);
+        if (existingIndex !== undefined) {
+          // Update existing
+          newArray[existingIndex] = t;
+        } else {
+          // Add new
+          newArray.push(t);
+          existingMap.set(t.file, newArray.length - 1);
+          addedCount++;
+        }
       }
+
+      console.log(`📦 Batched ${updates.length} thumbnail updates (${addedCount} new)`);
+      return newArray;
     });
-    // Decrement pending count
-    setPendingThumbnailCount(prev => Math.max(0, prev - 1));
+
+    setPendingThumbnailCount(prev => Math.max(0, prev - updates.length));
   }, []);
+
+  // Memoize upsert to batch updates and prevent excessive re-renders
+  const upsert = useCallback((t: ThumbnailData) => {
+    pendingThumbnailUpdates.current.push(t);
+
+    // Schedule batch update if not already scheduled
+    if (batchUpdateScheduled.current === null) {
+      batchUpdateScheduled.current = window.setTimeout(() => {
+        flushThumbnailUpdates();
+      }, BATCH_UPDATE_DELAY);
+    }
+  }, [flushThumbnailUpdates]);
 
   const clearThumbs = useCallback(() => {
     console.log('🗑️  Clearing all thumbnails');
+    // Clear any pending updates
+    pendingThumbnailUpdates.current = [];
+    if (batchUpdateScheduled.current !== null) {
+      clearTimeout(batchUpdateScheduled.current);
+      batchUpdateScheduled.current = null;
+    }
     setThumbnails([]);
     setPendingThumbnailCount(0);
     setIsGeneratingThumbnails(false);
   }, []);
 
-  // Track thumbnail state changes (throttled logging)
+  // Cleanup on unmount
   useEffect(() => {
-    console.log('📊 Thumbnails state updated! Count:', thumbnails.length);
-    // Only log first 3 to reduce console spam
-    thumbnails.slice(0, 3).forEach((t, i) => {
-      console.log(`  ${i + 1}. ${t.file.name} -> ${t.thumbnailUrl.substring(0, 50)}...`);
-    });
-    if (thumbnails.length > 3) {
-      console.log(`  ... and ${thumbnails.length - 3} more`);
+    return () => {
+      if (batchUpdateScheduled.current !== null) {
+        clearTimeout(batchUpdateScheduled.current);
+      }
+    };
+  }, []);
+
+  // Track thumbnail state changes (throttled logging for large batches)
+  const lastLoggedCount = useRef(0);
+  useEffect(() => {
+    // Only log when count changes significantly or completes
+    const count = thumbnails.length;
+    if (count === 0 || count === lastLoggedCount.current) return;
+
+    // Log every 50 thumbnails or on completion
+    if (count % 50 === 0 || !isGeneratingThumbnails) {
+      console.log(`📊 Thumbnails: ${count} (generating: ${isGeneratingThumbnails})`);
+      lastLoggedCount.current = count;
     }
-  }, [thumbnails]);
+  }, [thumbnails.length, isGeneratingThumbnails]);
 
   // Generate thumbnails when files change
-  useEffect(() => {
-    console.log("📁 Files changed:", files?.length, "files");
-    console.log("🖼️  Current thumbnails in context:", thumbnails.length);
+  // Use a ref to track the current generation to avoid stale closures
+  const generationIdRef = useRef(0);
 
+  useEffect(() => {
     if (!files || files.length === 0) {
       setIsGeneratingThumbnails(false);
       return;
     }
 
-    // Count how many thumbnails need to be generated
+    // Use Set for O(1) lookup instead of find() which is O(n)
+    const existingThumbnailFiles = new Set(thumbnails.map(t => t.file));
+
+    // Filter files that need thumbnail generation
     const filesToGenerate = files.filter((file) => {
-      const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
-      const alreadyHasThumbnail = thumbnails.find((t) => t.file === file);
-      return (isImage || isVideo) && !alreadyHasThumbnail;
+      const isMedia = file.type.startsWith("image/") || file.type.startsWith("video/");
+      return isMedia && !existingThumbnailFiles.has(file);
     });
 
     if (filesToGenerate.length === 0) {
@@ -324,48 +405,64 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Increment generation ID to track this specific generation
+    const currentGenerationId = ++generationIdRef.current;
+
     // Set generating state
     setIsGeneratingThumbnails(true);
-    console.log(
-      `🚀 Starting generation of ${filesToGenerate.length} thumbnails...`
-    );
+    console.log(`🚀 Starting generation of ${filesToGenerate.length} thumbnails (batch #${currentGenerationId})...`);
 
-    // Generate thumbnails in parallel using batch processing
-    // This runs asynchronously and doesn't block the UI
+    // Generate thumbnails in parallel using optimized batch processing
     (async () => {
       try {
         const { generateThumbnailsBatch } = await import("@/app/lib/thumbnailGenerator");
 
-        const results = await generateThumbnailsBatch(
+        // Throttle progress logging for large batches
+        let lastProgressLog = 0;
+        const PROGRESS_LOG_INTERVAL = 25;
+
+        await generateThumbnailsBatch(
           filesToGenerate,
           (completed, total, fileName) => {
-            console.log(`⚡ Progress: ${completed}/${total} - ${fileName}`);
+            // Only log every N files to reduce console spam
+            if (completed - lastProgressLog >= PROGRESS_LOG_INTERVAL || completed === total) {
+              console.log(`⚡ Progress: ${completed}/${total} - ${fileName}`);
+              lastProgressLog = completed;
+            }
           },
           (file, thumbnailUrl) => {
-            // Update UI as each thumbnail is ready (batched in generator)
+            // Check if this generation is still current
+            if (generationIdRef.current !== currentGenerationId) return;
             upsert({ file, thumbnailUrl });
-            console.log(`✨ Thumbnail ready: ${file.name}`);
-          },
-          2 // Process 2 thumbnails concurrently to avoid freezing (reduced from 4)
+          }
         );
 
-        setIsGeneratingThumbnails(false);
-        console.log(`✅ Completed ${results.size} thumbnails`);
+        // Only update state if this generation is still current
+        if (generationIdRef.current === currentGenerationId) {
+          // Flush any remaining batched updates
+          flushThumbnailUpdates();
+          setIsGeneratingThumbnails(false);
+          console.log(`✅ Completed batch #${currentGenerationId}`);
+        }
       } catch (error) {
         console.error("❌ Batch thumbnail generation failed:", error);
-        setIsGeneratingThumbnails(false);
+        if (generationIdRef.current === currentGenerationId) {
+          setIsGeneratingThumbnails(false);
+        }
       }
     })();
-  }, [files]); // Only depend on files, not thumbnails to avoid infinite loop
+  }, [files, upsert, flushThumbnailUpdates]); // Only depend on files
 
-  // Check if all thumbnails are done
+  // Check if all thumbnails are done - use Set for O(1) lookup
   useEffect(() => {
     if (isGeneratingThumbnails && files && files.length > 0) {
+      // Use Set for O(1) lookup instead of find()
+      const thumbnailFileSet = new Set(thumbnails.map(t => t.file));
+
       const allDone = files.every((file) => {
-        const isImage = file.type.startsWith("image/");
-        const isVideo = file.type.startsWith("video/");
-        if (!isImage && !isVideo) return true; // Skip non-media files
-        return thumbnails.find((t) => t.file === file) !== undefined;
+        const isMedia = file.type.startsWith("image/") || file.type.startsWith("video/");
+        if (!isMedia) return true; // Skip non-media files
+        return thumbnailFileSet.has(file);
       });
 
       if (allDone) {
@@ -385,6 +482,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     currentIndex: 0,
     currentFileName: '',
     totalFiles: 0,
+    cancelRequested: false,
   });
 
   const setGenerationProgress = (progress: Partial<GenerationProgress>) => {
@@ -470,6 +568,40 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
               shutterStock1: newCategories.shutterStock1 || '',
               shutterStock2: newCategories.shutterStock2 || '',
             },
+          },
+        ];
+      }
+    });
+  }, []);
+
+  const getCustomInstruction = useCallback((file: File): string | undefined => {
+    const found = generatedMetadata.find((fm) => fm.file === file);
+    return found?.customInstruction;
+  }, [generatedMetadata]);
+
+  const setCustomInstruction = useCallback((file: File, instruction: string) => {
+    setGeneratedMetadata((prev) => {
+      const existingIndex = prev.findIndex((fm) => fm.file === file);
+      if (existingIndex !== -1) {
+        // Update existing - use index for better performance
+        const newArray = [...prev];
+        newArray[existingIndex] = {
+          ...newArray[existingIndex],
+          customInstruction: instruction
+        };
+        return newArray;
+      } else {
+        // If file doesn't exist in metadata yet, create it with empty metadata
+        return [
+          ...prev,
+          {
+            file,
+            metadata: {
+              title: '',
+              description: '',
+              keywords: '',
+            },
+            customInstruction: instruction,
           },
         ];
       }
@@ -596,8 +728,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setMetadata,
     getCategories,
     setFileCategories,
+    getCustomInstruction,
+    setCustomInstruction,
     clear: clearGenerated,
-  }), [generatedMetadata, getMetadata, setMetadata, getCategories, setFileCategories, clearGenerated]);
+  }), [generatedMetadata, getMetadata, setMetadata, getCategories, setFileCategories, getCustomInstruction, setCustomInstruction, clearGenerated]);
 
   // Memoize metadata limits
   const metadataLimitsValue = useMemo(() => ({
@@ -650,6 +784,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     embedSettings: embedSettingsValue,
     files,
     setFiles,
+    removeFile,
     ...filePathsValue,
     thumbnails: thumbnailsValue,
     generated: generatedValue,
@@ -670,6 +805,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     templateSettingsValue,
     embedSettingsValue,
     files,
+    removeFile,
     filePathsValue,
     thumbnailsValue,
     generatedValue,
