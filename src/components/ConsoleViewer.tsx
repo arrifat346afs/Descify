@@ -262,7 +262,7 @@ export function ConsoleViewer() {
 
                       {/* Message */}
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-mono break-words whitespace-pre-wrap text-foreground">
+                        <div className="text-xs font-mono wrap-break-word whitespace-pre-wrap text-foreground">
                           {highlightSyntax(log.message)}
                         </div>
                       </div>
