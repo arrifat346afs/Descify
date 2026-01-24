@@ -31,13 +31,40 @@ export const GenerateButton = () => {
   );
   const lastAutoSelectedIndexRef = useRef(-1);
   const cancelRequestedRef = useRef(false);
+  const pendingSelectionRef = useRef<File | null>(null);
+  const selectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isGenerating = generationProgress.isGenerating;
+  
+  // Helper function to debounce file selection to avoid blocking during metadata updates
+  const scheduleFileSelection = (file: File) => {
+    // Store the file to select
+    pendingSelectionRef.current = file;
+    
+    // Clear any pending selection timeout
+    if (selectionTimeoutRef.current) {
+      clearTimeout(selectionTimeoutRef.current);
+    }
+    
+    // Schedule the selection with a small delay to batch it with metadata updates
+    // This prevents the selection animation from blocking the metadata state updates
+    selectionTimeoutRef.current = setTimeout(() => {
+      if (pendingSelectionRef.current) {
+        setSelectedFile(pendingSelectionRef.current);
+        pendingSelectionRef.current = null;
+      }
+    }, 50);
+  };
 
   // Reset auto-selection tracking and cancel flag when generation stops
   useEffect(() => {
     if (!isGenerating) {
       lastAutoSelectedIndexRef.current = -1;
       cancelRequestedRef.current = false;
+      // Clean up pending selection on generation stop
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+        selectionTimeoutRef.current = null;
+      }
     }
   }, [isGenerating]);
 
@@ -189,9 +216,9 @@ export const GenerateButton = () => {
           console.log(`⏭️ Metadata embedding disabled, skipping for ${item.file.name}`);
         }
 
-        // Auto-select this file immediately after generating its metadata
-        console.log(`🎯 Auto-selecting file at index ${i}:`, item.file.name);
-        setSelectedFile(item.file);
+        // Auto-select this file (debounced to avoid blocking metadata updates)
+        console.log(`🎯 Scheduling file selection at index ${i}:`, item.file.name);
+        scheduleFileSelection(item.file);
         lastAutoSelectedIndexRef.current = i;
 
         // Apply delay before next request (except for last item)
@@ -207,9 +234,9 @@ export const GenerateButton = () => {
         // Don't store error messages as metadata - just log the error
         // The thumbnail will show a red border indicating generation was attempted but failed
 
-        // Auto-select this file even on error so user can see which file failed
-        console.log(`🎯 Auto-selecting file at index ${i} (error case):`, item.file.name);
-        setSelectedFile(item.file);
+        // Auto-select this file even on error so user can see which file failed (debounced)
+        console.log(`🎯 Scheduling file selection at index ${i} (error case):`, item.file.name);
+        scheduleFileSelection(item.file);
         lastAutoSelectedIndexRef.current = i;
 
         // Apply delay before next request even on error (except for last item)

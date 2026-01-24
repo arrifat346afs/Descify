@@ -168,6 +168,19 @@ const ThumbnailItem = memo(({
       )}
     </div>
   );
+}, (prevProps, nextProps) => {
+  // Custom comparison for memo to prevent unnecessary re-renders
+  // Return true if props are the same (skip render), false if different (render)
+  return (
+    prevProps.file === nextProps.file &&
+    prevProps.thumbnail === nextProps.thumbnail &&
+    prevProps.isGenerating === nextProps.isGenerating &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.hasMetadata === nextProps.hasMetadata &&
+    prevProps.hasAttemptedGeneration === nextProps.hasAttemptedGeneration &&
+    prevProps.hasCustomInstruction === nextProps.hasCustomInstruction &&
+    prevProps.isRegenerating === nextProps.isRegenerating
+  );
 });
 ThumbnailItem.displayName = 'ThumbnailItem';
 
@@ -291,61 +304,65 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         console.log("📜 Auto-scrolling to:", fileName);
 
         // Use requestAnimationFrame to batch scroll operations
+        // Schedule on next frame after current updates complete
         scrollTimeoutRef.current = requestAnimationFrame(() => {
-          const container = thumbnailElement.closest('[data-slot="scroll-area-viewport"]') as HTMLElement;
+          // Do the scroll calculation in the next frame to avoid blocking render
+          requestAnimationFrame(() => {
+            const container = thumbnailElement.closest('[data-slot="scroll-area-viewport"]') as HTMLElement;
 
-          if (container) {
-            const containerRect = container.getBoundingClientRect();
-            const elementRect = thumbnailElement.getBoundingClientRect();
+            if (container) {
+              const containerRect = container.getBoundingClientRect();
+              const elementRect = thumbnailElement.getBoundingClientRect();
 
-            const currentScrollLeft = container.scrollLeft;
-            // Calculate target to center the element
-            // offset = distance from container left to element left
-            // We want this distance to be (containerWidth / 2) - (elementWidth / 2)
-            const offset = elementRect.left - containerRect.left;
-            const targetOffset = (containerRect.width / 2) - (elementRect.width / 2);
-            const scrollChange = offset - targetOffset;
-            const targetScrollLeft = currentScrollLeft + scrollChange;
+              const currentScrollLeft = container.scrollLeft;
+              // Calculate target to center the element
+              // offset = distance from container left to element left
+              // We want this distance to be (containerWidth / 2) - (elementWidth / 2)
+              const offset = elementRect.left - containerRect.left;
+              const targetOffset = (containerRect.width / 2) - (elementRect.width / 2);
+              const scrollChange = offset - targetOffset;
+              const targetScrollLeft = currentScrollLeft + scrollChange;
 
-            const start = currentScrollLeft;
-            const change = targetScrollLeft - start;
-            const duration = 800; // ms
-            const startTime = performance.now();
+              const start = currentScrollLeft;
+              const change = targetScrollLeft - start;
+              const duration = 800; // ms
+              const startTime = performance.now();
 
-            if (animationFrameRef.current) {
-              cancelAnimationFrame(animationFrameRef.current);
+              if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+              }
+
+              const animate = (currentTime: number) => {
+                const elapsed = currentTime - startTime;
+                if (elapsed < duration) {
+                  const t = elapsed / duration;
+                  // Ease out cubic for smooth deceleration
+                  const ease = 1 - Math.pow(1 - t, 3);
+                  container.scrollLeft = start + change * ease;
+                  animationFrameRef.current = requestAnimationFrame(animate);
+                } else {
+                  container.scrollLeft = targetScrollLeft;
+                  animationFrameRef.current = null;
+                }
+              };
+
+              animationFrameRef.current = requestAnimationFrame(animate);
+            } else {
+              // Fallback if container not found
+              thumbnailElement.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+                inline: "center",
+              });
             }
 
-            const animate = (currentTime: number) => {
-              const elapsed = currentTime - startTime;
-              if (elapsed < duration) {
-                const t = elapsed / duration;
-                // Ease out cubic for smooth deceleration
-                const ease = 1 - Math.pow(1 - t, 3);
-                container.scrollLeft = start + change * ease;
-                animationFrameRef.current = requestAnimationFrame(animate);
-              } else {
-                container.scrollLeft = targetScrollLeft;
-                animationFrameRef.current = null;
-              }
-            };
+            lastScrolledFileRef.current = fileName;
 
-            animationFrameRef.current = requestAnimationFrame(animate);
-          } else {
-            // Fallback if container not found
-            thumbnailElement.scrollIntoView({
-              behavior: "smooth",
-              block: "nearest",
-              inline: "center",
-            });
-          }
-
-          lastScrolledFileRef.current = fileName;
-
-          // Reset after a delay to allow future scrolls
-          setTimeout(() => {
-            lastScrolledFileRef.current = null;
-          }, 1000);
+            // Reset after a delay to allow future scrolls
+            setTimeout(() => {
+              lastScrolledFileRef.current = null;
+            }, 1000);
+          });
         });
       }
     }
@@ -412,6 +429,30 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       throttledScrollRef.current = null;
     }, VIRTUALIZATION_CONFIG.SCROLL_THROTTLE);
   }, [handleScroll]);
+
+  // Memoize callback handlers to prevent unnecessary re-renders of ThumbnailItem
+  const handleSelectFile = useCallback((file: File) => {
+    onSelectFile(file);
+  }, [onSelectFile]);
+
+  const handleDeleteFile = useCallback((file: File) => {
+    removeFile(file);
+  }, [removeFile]);
+
+  const handleOpenCustomInstruction = useCallback((file: File) => {
+    setCustomInstructionFile(file);
+    setCustomInstructionDialogOpen(true);
+  }, []);
+
+  const handleSetRef = useCallback((file: File) => {
+    return (el: HTMLDivElement | null) => {
+      if (el) {
+        thumbnailRefs.current.set(file.name, el);
+      } else {
+        thumbnailRefs.current.delete(file.name);
+      }
+    };
+  }, []);
 
   // Ensure selected file is in visible range
   useEffect(() => {
@@ -496,20 +537,11 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                   hasAttemptedGeneration={hasAttemptedGeneration}
                   hasCustomInstruction={hasCustomInstruction}
                   isRegenerating={isRegenerating}
-                  onSelect={() => onSelectFile(file)}
-                  onDelete={() => removeFile(file)}
-                  onOpenCustomInstruction={() => {
-                    setCustomInstructionFile(file);
-                    setCustomInstructionDialogOpen(true);
-                  }}
+                  onSelect={() => handleSelectFile(file)}
+                  onDelete={() => handleDeleteFile(file)}
+                  onOpenCustomInstruction={() => handleOpenCustomInstruction(file)}
                   onRegenerate={() => handleRegenerate(file)}
-                  onRef={(el) => {
-                    if (el) {
-                      thumbnailRefs.current.set(file.name, el);
-                    } else {
-                      thumbnailRefs.current.delete(file.name);
-                    }
-                  }}
+                  onRef={handleSetRef(file)}
                 />
               );
             })}

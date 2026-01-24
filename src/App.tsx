@@ -4,6 +4,7 @@ import { Toaster } from "./components/ui/sonner";
 import Navbar from "./app/_component/navigation/Navbar";
 import { useEffect } from "react";
 import { useSettings } from "./app/contexts/SettingsContext";
+import { ConsoleProvider } from "./components/ConsoleContext";
 
 
 function App() {
@@ -19,14 +20,16 @@ function App() {
   }, []); // Only run once on mount
 
   return (
-    <main className="flex-1">
-      <div className="h-[35px]">
-        <Navbar />
-      </div>
-      <Home />
-      <Toaster />
-      
-    </main>
+    <ConsoleProvider>
+      <main className="flex-1">
+        <div className="h-[35px]">
+          <Navbar />
+        </div>
+        <Home />
+        <Toaster />
+        
+      </main>
+    </ConsoleProvider>
   );
 }
 
