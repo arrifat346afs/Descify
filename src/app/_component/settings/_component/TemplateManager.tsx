@@ -5,8 +5,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSettings } from '@/app/contexts/SettingsContext';
-import { DEFAULT_TEMPLATES, validateTemplate, interpolateTemplate, getTemplateVariables } from '@/app/lib/templateUtils';
-import { Trash2, Edit, Eye, Plus, Check, X } from 'lucide-react';
+import { DEFAULT_TEMPLATES, validateTemplate, interpolateTemplate } from '@/app/lib/templateUtils';
+import { Trash2, Edit, Eye, Plus, Check,  } from 'lucide-react';
 
 export const TemplateManager = () => {
   const { templateSettings, metadataLimits } = useSettings();
