@@ -25,12 +25,7 @@ serde_json = "1"
 tauri-plugin-upload = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
-ruurd_photos_thumbnail_generation = "0.3.2"
-uuid = { version = "1.18.1", features = ["v4"] }
-base64 = "0.21"
-image = { version = "0.25.8", features = ["jpeg"] }
 tauri-plugin-process = "2.3.1"
-exiftool = "0.3.0"
 tauri-plugin-os = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

@@ -5,7 +5,7 @@ import { generateMetadata } from '@/app/lib/ai';
 import { getActiveTemplate } from '@/app/lib/templateUtils';
 import { embedMetadata } from '@/app/lib/tauri-commands';
 import { TextShimmer } from '@/components/motion-primitives/text-shimmer';
-import { Sparkles } from 'lucide-react';
+import { Sparkle } from 'lucide-react';
 
 export const GenerateButton = () => {
   const { 
@@ -244,7 +244,7 @@ export const GenerateButton = () => {
       disabled={thumbnails.isGenerating || isGenerating}
       className="gap-2 group"
     >
-      <Sparkles
+      <Sparkle
         className={`h-4 w-4 transition-all ${
           isGenerating
             ? 'animate-spin'
@@ -255,3 +255,4 @@ export const GenerateButton = () => {
     </Button>
   );
 };
+{/* <Sparkle /> */}
