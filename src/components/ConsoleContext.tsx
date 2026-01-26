@@ -1,4 +1,4 @@
-import  { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
+import  { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from "react";
 
 export type LogType = "log" | "info" | "warn" | "error";
 
@@ -15,57 +15,76 @@ interface ConsoleContextType {
 
 const ConsoleContext = createContext<ConsoleContextType | undefined>(undefined);
 
+// Use a shared store to persist logs across component re-renders
+const sharedLogsStore = {
+  logs: [] as ConsoleLog[],
+  listeners: new Set<(logs: ConsoleLog[]) => void>(),
+  addLog(log: ConsoleLog) {
+    this.logs = [...this.logs, log].slice(-500);
+    this.listeners.forEach(listener => listener(this.logs));
+  },
+  clear() {
+    this.logs = [];
+    this.listeners.forEach(listener => listener(this.logs));
+  },
+  subscribe(listener: (logs: ConsoleLog[]) => void) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+};
+
 export function ConsoleProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<ConsoleLog[]>([]);
   const original = useRef<Partial<typeof console>>({});
   const hasInitialized = useRef(false);
 
   useEffect(() => {
-    // Only initialize console interception once, on mount
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    const methods: LogType[] = ["log", "info", "warn", "error"];
-    const limit = 500;
-
-    methods.forEach((type) => {
-      original.current[type] = console[type];
-
-      console[type] = (...args: any[]) => {
-        setLogs((prev) => {
-          const next = [
-            ...prev,
-            {
-              type,
-              time: new Date().toLocaleTimeString(),
-              message: args
-                .map((a) =>
-                  typeof a === "object"
-                    ? JSON.stringify(a, null, 2)
-                    : String(a)
-                )
-                .join(" "),
-            },
-          ];
-          return next.slice(-limit);
-        });
-
-        original.current[type]?.apply(console, args);
-      };
+    // Subscribe to shared logs store
+    const unsubscribe = sharedLogsStore.subscribe((newLogs) => {
+      setLogs([...newLogs]);
     });
 
-    // Cleanup only on unmount
-    return () => {
+    // Initialize console interception once globally
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+
+      const methods: LogType[] = ["log", "info", "warn", "error"];
+
       methods.forEach((type) => {
-        if (original.current[type]) {
-          console[type] = original.current[type] as any;
-        }
+        original.current[type] = console[type];
+
+        console[type] = (...args: any[]) => {
+          const message = args
+            .map((a) =>
+              typeof a === "object"
+                ? JSON.stringify(a, null, 2)
+                : String(a)
+            )
+            .join(" ");
+
+          sharedLogsStore.addLog({
+            type,
+            time: new Date().toLocaleTimeString(),
+            message,
+          });
+
+          original.current[type]?.apply(console, args);
+        };
       });
+    }
+
+    // Cleanup
+    return () => {
+      unsubscribe();
     };
-  }, []); // Empty dependency array - run only once
+  }, []);
+
+  const clear = useCallback(() => {
+    sharedLogsStore.clear();
+  }, []);
 
   return (
-    <ConsoleContext.Provider value={{ logs, clear: () => setLogs([]) }}>
+    <ConsoleContext.Provider value={{ logs, clear }}>
       {children}
     </ConsoleContext.Provider>
   );

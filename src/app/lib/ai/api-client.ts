@@ -39,6 +39,20 @@ export const ensureBase64 = (url: string): string => {
  */
 export const callAIApi = async (options: GenerateTextOptions): Promise<any> => {
   console.log('🚀 Sending to AI...');
+  
+  // DEBUG: Log what we're actually sending
+  console.log('📤 Messages being sent:', JSON.stringify({
+    messagesCount: options.messages.length,
+    firstMessageContent: options.messages[0]?.content,
+    contentLength: options.messages[0]?.content?.length,
+    contentTypes: options.messages[0]?.content?.map((c: any) => ({
+      type: c.type,
+      hasImage: !!c.image,
+      imageLength: c.image?.length,
+      imageSizeKB: c.image ? (c.image.length / 1024).toFixed(2) : null,
+      textLength: c.text?.length,
+    })),
+  }, null, 2));
 
   try {
     const response = await generateText({

@@ -273,9 +273,24 @@ export async function generateAIImage(file: File): Promise<string> {
       resizeQuality: 'high', // High quality for AI analysis
     });
 
+    // CRITICAL: Don't use bitmap.width/height - browsers ignore resize options
+    // Always create canvas at maxSize and maintain aspect ratio
     const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+    let drawWidth = maxSize;
+    let drawHeight = maxSize;
+    
+    // Maintain aspect ratio - scale down to fit within maxSize square
+    const bitmapAspect = bitmap.width / bitmap.height;
+    if (bitmapAspect > 1) {
+      // Wider than tall
+      drawHeight = Math.round(maxSize / bitmapAspect);
+    } else {
+      // Taller than wide
+      drawWidth = Math.round(maxSize * bitmapAspect);
+    }
+    
+    canvas.width = maxSize;
+    canvas.height = maxSize;
     const ctx = canvas.getContext('2d', { alpha: false });
 
     if (!ctx) {
@@ -283,7 +298,10 @@ export async function generateAIImage(file: File): Promise<string> {
       throw new Error('Failed to get canvas context');
     }
 
-    ctx.drawImage(bitmap, 0, 0);
+    // Center the image on the canvas
+    const x = (maxSize - drawWidth) / 2;
+    const y = (maxSize - drawHeight) / 2;
+    ctx.drawImage(bitmap, x, y, drawWidth, drawHeight);
     bitmap.close();
 
     const dataUrl = canvas.toDataURL('image/jpeg', quality);
