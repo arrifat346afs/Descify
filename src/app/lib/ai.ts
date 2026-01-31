@@ -30,6 +30,11 @@ export type GenerateMetadataOptions = {
   includePlaceName?: boolean;
   customTemplate?: string;
   customInstruction?: string;
+  avoidWords?: {
+    titleAvoidWords?: string[];
+    keywordsAvoidWords?: string[];
+    descriptionAvoidWords?: string[];
+  };
 };
 
 /**
@@ -37,7 +42,7 @@ export type GenerateMetadataOptions = {
  * Uses direct API calls for maximum control over tokens and payload
  */
 export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<GeneratedMetadata> => {
-  const { file, thumbnailUrls, provider = 'openai', model, apiKey, limits, includePlaceName, customTemplate, customInstruction } = opts;
+  const { file, thumbnailUrls, provider = 'openai', model, apiKey, limits, includePlaceName, customTemplate, customInstruction, avoidWords } = opts;
 
   try {
     console.log('🎯 Starting metadata generation with:', {
@@ -60,7 +65,7 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
     }
 
     // Generate the prompt
-    const textPrompt = generateMetadataPrompt(limits, includePlaceName, customTemplate, customInstruction);
+    const textPrompt = generateMetadataPrompt(limits, includePlaceName, customTemplate, customInstruction, avoidWords);
 
     // Generate high-quality image for AI analysis
     let imageDataUrl: string;

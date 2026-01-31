@@ -11,6 +11,9 @@ export type MetadataLimits = {
 export type MetadataOptions = {
   includePlaceName: boolean;
   autoSelectGenerated: boolean;
+  titleAvoidWords: string[];
+  keywordsAvoidWords: string[];
+  descriptionAvoidWords: string[];
 };
 
 export type EmbedSettings = {
@@ -57,6 +60,9 @@ const initialState: ConfigState = {
   metadataOptions: {
     includePlaceName: false,
     autoSelectGenerated: true,
+    titleAvoidWords: [],
+    keywordsAvoidWords: [],
+    descriptionAvoidWords: [],
   },
   embedSettings: {
     enabled: true,

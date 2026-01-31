@@ -23,7 +23,12 @@ export const generateMetadataPrompt = (
   limits?: MetadataLimits,
   includePlaceName?: boolean,
   customTemplate?: string,
-  customInstruction?: string
+  customInstruction?: string,
+  avoidWords?: {
+    titleAvoidWords?: string[];
+    keywordsAvoidWords?: string[];
+    descriptionAvoidWords?: string[];
+  }
 ): string => {
   const titleLimit = limits?.titleLimit || 200;
   const descriptionLimit = limits?.descriptionLimit || 200;
@@ -32,6 +37,19 @@ export const generateMetadataPrompt = (
   const placeNameRule = includePlaceName
     ? "Include location names if visible."
     : "Use generic terms, no location names.";
+
+  // Build avoid words sections if provided
+  const titleAvoidWordsSection = avoidWords?.titleAvoidWords && avoidWords.titleAvoidWords.length > 0
+    ? `\nIMPORTANT: Avoid these words in title: ${avoidWords.titleAvoidWords.join(', ')}`
+    : '';
+  
+  const descriptionAvoidWordsSection = avoidWords?.descriptionAvoidWords && avoidWords.descriptionAvoidWords.length > 0
+    ? `\nIMPORTANT: Avoid these words in description: ${avoidWords.descriptionAvoidWords.join(', ')}`
+    : '';
+  
+  const keywordsAvoidWordsSection = avoidWords?.keywordsAvoidWords && avoidWords.keywordsAvoidWords.length > 0
+    ? `\nIMPORTANT: Avoid these words in keywords: ${avoidWords.keywordsAvoidWords.join(', ')}`
+    : '';
 
   // Build custom instruction section if provided
   const customInstructionSection = customInstruction
@@ -49,12 +67,26 @@ export const generateMetadataPrompt = (
 
     const interpolatedTemplate = interpolateTemplate(customTemplate, variables);
 
-    // Add place name rule to the custom template if it doesn't already include place-specific content
-    if (interpolatedTemplate.includes('${placeNameRule}')) {
-      return interpolatedTemplate.replace(/\$\{placeNameRule\}/g, placeNameRule) + customInstructionSection;
+    // Build avoid words replacements for custom template
+    let processedTemplate = interpolatedTemplate;
+    
+    if (processedTemplate.includes('${placeNameRule}')) {
+      processedTemplate = processedTemplate.replace(/\$\{placeNameRule\}/g, placeNameRule);
+    }
+    
+    if (processedTemplate.includes('${titleAvoidWords}')) {
+      processedTemplate = processedTemplate.replace(/\$\{titleAvoidWords\}/g, titleAvoidWordsSection);
+    }
+    
+    if (processedTemplate.includes('${descriptionAvoidWords}')) {
+      processedTemplate = processedTemplate.replace(/\$\{descriptionAvoidWords\}/g, descriptionAvoidWordsSection);
+    }
+    
+    if (processedTemplate.includes('${keywordsAvoidWords}')) {
+      processedTemplate = processedTemplate.replace(/\$\{keywordsAvoidWords\}/g, keywordsAvoidWordsSection);
     }
 
-    return interpolatedTemplate + customInstructionSection;
+    return processedTemplate + customInstructionSection;
   }
 
   // Use existing default logic when no custom template is provided
@@ -70,6 +102,7 @@ Requirements:
    - End at a complete word (can be slightly over or under the target)
    - No colons (:) or special characters
    - ${placeNameRule}
+   ${titleAvoidWordsSection}
 
 2. Description:
    - Target under ${descriptionLimit} characters
@@ -77,11 +110,13 @@ Requirements:
    - End at a complete word (can be slightly over or under the target)
    - No colons (:) or special characters
    - ${placeNameRule}
+   ${descriptionAvoidWordsSection}
 
 3. Keywords:
    - Provide approximately ${keywordLimit} keywords
    - Comma-separated
    - No colons (:) or special characters
+   ${keywordsAvoidWordsSection}
 
 Return ONLY JSON:
 {"title": "...", "description": "...", "keywords": "..."}`;

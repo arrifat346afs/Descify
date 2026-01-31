@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import React from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
-import { Upload } from "lucide-react";
+import { UploadIcon } from "@/components/ui/upload";
 
 type UploadButtonProps = {
   onFilesSelected: (files: File[]) => void;
@@ -10,6 +10,7 @@ type UploadButtonProps = {
 
 const UploadButtonComponent = ({ onFilesSelected }: UploadButtonProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
   const { setHasAttemptedGeneration } = useSettings();
 
   const handleClick = () => {
@@ -45,8 +46,10 @@ const UploadButtonComponent = ({ onFilesSelected }: UploadButtonProps) => {
         onClick={handleClick}
         variant={"ghost"}
         className="gap-2 group"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <Upload className="h-4 w-4 transition-transform group-hover:scale-110 group-hover:-translate-y-0.5" />
+        <UploadIcon isHovered={isHovered} />
         Upload
       </Button>
     </div>

@@ -6,7 +6,8 @@ import { useState } from "react";
 import React from "react";
 import { toast } from "sonner";
 import { exportToCSV } from "@/app/lib/exportUtils";
-import { Download } from "lucide-react";
+// import { Download } from "lucide-react";
+import { DownloadIcon } from "@/components/ui/download";
 
 function ExportButtonComponent() {
   const { generated, categories } = useSettings();
@@ -39,12 +40,7 @@ function ExportButtonComponent() {
         disabled={isExporting || generated.items.length === 0}
         className="gap-2 group"
       >
-        <Download className={`h-4 w-4 transition-all ${
-          isExporting
-            ? 'animate-bounce'
-            : 'group-hover:scale-110 group-hover:translate-y-0.5'
-        }`} />
-        {isExporting ? "Exporting..." : "Export"}
+        <DownloadIcon/>
       </Button>
       <Separator orientation="vertical" />
       <div className="w-full flex justify-center items-center p-3">

@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch"
 import { useSettings } from '@/app/contexts/SettingsContext'
 import { open } from '@tauri-apps/plugin-dialog';
 import { useState, useEffect } from 'react';
+import { AvoidWordsTextarea } from './AvoidWordsTextarea';
 // import { readFile } from '@tauri-apps/plugin-fs';
 // import * as path from '@tauri-apps/api/path';
 
@@ -62,6 +63,14 @@ const MetadataSettings = () => {
             min={1}
             placeholder="e.g., 200"
           />
+          <AvoidWordsTextarea
+            label="Title Avoid Words"
+            avoidWords={metadataOptions.titleAvoidWords}
+            onAvoidWordsChange={(words) => 
+              metadataOptions.setOptions({ titleAvoidWords: words })
+            }
+            placeholder="Enter words to avoid in titles (comma-separated)"
+          />
         </div>
         <div>
           <div className="flex gap-3 p-2">
@@ -76,6 +85,14 @@ const MetadataSettings = () => {
             min={1}
             placeholder="e.g., 200"
           />
+          <AvoidWordsTextarea
+            label="Description Avoid Words"
+            avoidWords={metadataOptions.descriptionAvoidWords}
+            onAvoidWordsChange={(words) => 
+              metadataOptions.setOptions({ descriptionAvoidWords: words })
+            }
+            placeholder="Enter words to avoid in descriptions (comma-separated)"
+          />
         </div>
         <div>
           <div className="flex gap-3 p-2">
@@ -89,6 +106,14 @@ const MetadataSettings = () => {
             onChange={(e) => metadataLimits.setLimits({ keywordLimit: parseInt(e.target.value || '1') })}
             min={1}
             placeholder="e.g., 80"
+          />
+          <AvoidWordsTextarea
+            label="Keywords Avoid Words"
+            avoidWords={metadataOptions.keywordsAvoidWords}
+            onAvoidWordsChange={(words) => 
+              metadataOptions.setOptions({ keywordsAvoidWords: words })
+            }
+            placeholder="Enter words to avoid in keywords (comma-separated)"
           />
         </div>
         <div className="flex w-full justify-between gap-4">

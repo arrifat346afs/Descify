@@ -11,6 +11,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload } from "lucide-react";
 import { LandingPage } from "./Landingpage";
 import { LoadingPage } from "./LoadingPage";
+import LeftTabs from "./_component/TabGroup/LeftTabs";
 
 export const Home = () => {
   const {
@@ -148,7 +149,7 @@ export const Home = () => {
       <Separator />
       <div className="flex h-[59vh] ">
         <div className="w-[30vw] h-full ">
-          <CategorySection />
+          <LeftTabs />
         </div>
         <Separator orientation="vertical" />
         <div className="w-[40vw] h-full">

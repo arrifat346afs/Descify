@@ -58,6 +58,11 @@ export const MetadataSection = () => {
         includePlaceName: metadataOptions.includePlaceName,
         customTemplate: customTemplate,
         customInstruction: customInstruction,
+        avoidWords: {
+          titleAvoidWords: metadataOptions.titleAvoidWords,
+          keywordsAvoidWords: metadataOptions.keywordsAvoidWords,
+          descriptionAvoidWords: metadataOptions.descriptionAvoidWords,
+        },
       });
 
       generated.setMetadata(selectedFile, {
