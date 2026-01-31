@@ -199,7 +199,6 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   } = useSettings();
   const thumbnails = thumbsCtx.items;
   const thumbnailRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const scrollTimeoutRef = useRef<number | null>(null);
   const lastScrolledFileRef = useRef<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -283,6 +282,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
   // Auto-scroll to selected thumbnail (debounced to prevent excessive scrolling)
   const animationFrameRef = useRef<number | null>(null);
+  const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (selectedFile) {
@@ -296,80 +296,77 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       const thumbnailElement = thumbnailRefs.current.get(fileName);
 
       if (thumbnailElement) {
-        // Clear any pending scroll
-        if (scrollTimeoutRef.current) {
-          cancelAnimationFrame(scrollTimeoutRef.current);
+        // Clear any pending scroll operations
+        if (scrollDebounceRef.current) {
+          clearTimeout(scrollDebounceRef.current);
+        }
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
         }
 
         console.log("📜 Auto-scrolling to:", fileName);
 
-        // Use requestAnimationFrame to batch scroll operations
-        // Schedule on next frame after current updates complete
-        scrollTimeoutRef.current = requestAnimationFrame(() => {
-          // Do the scroll calculation in the next frame to avoid blocking render
-          requestAnimationFrame(() => {
-            const container = thumbnailElement.closest('[data-slot="scroll-area-viewport"]') as HTMLElement;
+        // Debounce scroll operation to avoid excessive layout calculations
+        scrollDebounceRef.current = setTimeout(() => {
+          const container = thumbnailElement.closest('[data-slot="scroll-area-viewport"]') as HTMLElement;
 
-            if (container) {
-              const containerRect = container.getBoundingClientRect();
-              const elementRect = thumbnailElement.getBoundingClientRect();
+          if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const elementRect = thumbnailElement.getBoundingClientRect();
 
-              const currentScrollLeft = container.scrollLeft;
-              // Calculate target to center the element
-              // offset = distance from container left to element left
-              // We want this distance to be (containerWidth / 2) - (elementWidth / 2)
-              const offset = elementRect.left - containerRect.left;
-              const targetOffset = (containerRect.width / 2) - (elementRect.width / 2);
-              const scrollChange = offset - targetOffset;
-              const targetScrollLeft = currentScrollLeft + scrollChange;
+            const currentScrollLeft = container.scrollLeft;
+            // Calculate target to center the element
+            // offset = distance from container left to element left
+            // We want this distance to be (containerWidth / 2) - (elementWidth / 2)
+            const offset = elementRect.left - containerRect.left;
+            const targetOffset = (containerRect.width / 2) - (elementRect.width / 2);
+            const scrollChange = offset - targetOffset;
+            const targetScrollLeft = currentScrollLeft + scrollChange;
 
-              const start = currentScrollLeft;
-              const change = targetScrollLeft - start;
-              const duration = 800; // ms
-              const startTime = performance.now();
+            const start = currentScrollLeft;
+            const change = targetScrollLeft - start;
 
-              if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
+            // Reduce animation duration for snappier feel
+            const duration = 300; // Reduced from 800ms
+            const startTime = performance.now();
+
+            const animate = (currentTime: number) => {
+              const elapsed = currentTime - startTime;
+              if (elapsed < duration) {
+                const t = elapsed / duration;
+                // Ease out cubic for smooth deceleration
+                const ease = 1 - Math.pow(1 - t, 3);
+                container.scrollLeft = start + change * ease;
+                animationFrameRef.current = requestAnimationFrame(animate);
+              } else {
+                container.scrollLeft = targetScrollLeft;
+                animationFrameRef.current = null;
               }
+            };
 
-              const animate = (currentTime: number) => {
-                const elapsed = currentTime - startTime;
-                if (elapsed < duration) {
-                  const t = elapsed / duration;
-                  // Ease out cubic for smooth deceleration
-                  const ease = 1 - Math.pow(1 - t, 3);
-                  container.scrollLeft = start + change * ease;
-                  animationFrameRef.current = requestAnimationFrame(animate);
-                } else {
-                  container.scrollLeft = targetScrollLeft;
-                  animationFrameRef.current = null;
-                }
-              };
+            animationFrameRef.current = requestAnimationFrame(animate);
+          } else {
+            // Fallback if container not found
+            thumbnailElement.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+              inline: "center",
+            });
+          }
 
-              animationFrameRef.current = requestAnimationFrame(animate);
-            } else {
-              // Fallback if container not found
-              thumbnailElement.scrollIntoView({
-                behavior: "smooth",
-                block: "nearest",
-                inline: "center",
-              });
-            }
+          lastScrolledFileRef.current = fileName;
 
-            lastScrolledFileRef.current = fileName;
-
-            // Reset after a delay to allow future scrolls
-            setTimeout(() => {
-              lastScrolledFileRef.current = null;
-            }, 1000);
-          });
-        });
+          // Reset after a delay to allow future scrolls
+          setTimeout(() => {
+            lastScrolledFileRef.current = null;
+          }, 500); // Reduced from 1000ms for more responsive behavior
+        }, 50); // Small debounce to let state updates finish
       }
     }
 
     return () => {
-      if (scrollTimeoutRef.current) {
-        cancelAnimationFrame(scrollTimeoutRef.current);
+      if (scrollDebounceRef.current) {
+        clearTimeout(scrollDebounceRef.current);
       }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);

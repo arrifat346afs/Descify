@@ -47,14 +47,20 @@ export async function fetchOpenRouterModels(apiKey?: string): Promise<ModelInfo[
 
     console.log(`OpenRouter: Total models fetched: ${models.length}`);
 
+    console.log(`OpenRouter API response matched ${models.length} raw models.`);
+
     // Filter for models that accept image input but only output text
+    // Criteria: input_modalities includes 'image' AND output_modalities is exactly ['text']
     const imageToTextModels = models
       .filter((model) => {
         const inputs = model.architecture?.input_modalities || [];
         const outputs = model.architecture?.output_modalities || [];
 
+        // Check for image input support
         const supportsImageInput = inputs.includes('image');
-        const outputsOnlyText = outputs.length === 1 && outputs.includes('text');
+
+        // Check for text-only output (rejects image-generation models)
+        const outputsOnlyText = outputs.length === 1 && outputs[0] === 'text';
 
         return supportsImageInput && outputsOnlyText;
       })
@@ -68,7 +74,7 @@ export async function fetchOpenRouterModels(apiKey?: string): Promise<ModelInfo[
       })
       .sort((a, b) => a.label.localeCompare(b.label));
 
-    console.log(`OpenRouter: Image-to-text models found: ${imageToTextModels.length}`);
+    console.log(`OpenRouter: Filtered ${models.length} -> ${imageToTextModels.length} image-to-text models.`);
     console.log('First 10 image-to-text models:', imageToTextModels.slice(0, 10).map(m => m.label));
 
     return imageToTextModels;
@@ -103,7 +109,7 @@ export async function fetchOpenAIModels(apiKey?: string): Promise<ModelInfo[]> {
 
     // Filter for vision-capable models
     const visionModels = models
-      .filter((model: any) => 
+      .filter((model: any) =>
         model.id.includes('gpt-4') && model.id.includes('vision') ||
         model.id.includes('gpt-4o') ||
         model.id.includes('gpt-4-turbo')

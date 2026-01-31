@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { X } from "lucide-react";
+import React from "react";
 
-export const CancelButton = () => {
+const CancelButtonComponent = () => {
   const { generationProgress, setGenerationProgress } = useSettings();
   const isGenerating = generationProgress.isGenerating;
 
@@ -23,4 +24,6 @@ export const CancelButton = () => {
     </Button>
   );
 };
+
+export const CancelButton = React.memo(CancelButtonComponent);
 

@@ -103,8 +103,10 @@ export const Home = () => {
 
   // 2. Loading Page: Files selected but thumbnails are still generating
   // We check if we have files but not all thumbnails are ready yet
+  // We check if we have files but haven't generated enough thumbnails yet (min 15 or all)
   const isGenerating =
-    files.length > 0 && thumbnails.items.length < files.length;
+    files.length > 0 &&
+    thumbnails.items.length < Math.min(files.length, 15);
 
   console.log("  Checking if generating:", {
     filesLength: files.length,

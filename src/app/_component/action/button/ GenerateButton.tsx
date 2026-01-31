@@ -1,13 +1,15 @@
 import { useEffect, useRef } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { useSettings } from '@/app/contexts/SettingsContext';
 import { generateMetadata } from '@/app/lib/ai';
 import { getActiveTemplate } from '@/app/lib/templateUtils';
 import { embedMetadata } from '@/app/lib/tauri-commands';
+import { matchCategories } from '@/app/lib/categoryMatcher';
 import { TextShimmer } from '@/components/motion-primitives/text-shimmer';
 import { Sparkle } from 'lucide-react';
 
-export const GenerateButton = () => {
+const GenerateButtonComponent = () => {
   const { 
     files, 
     thumbnails, 
@@ -45,14 +47,14 @@ export const GenerateButton = () => {
       clearTimeout(selectionTimeoutRef.current);
     }
     
-    // Schedule the selection with a small delay to batch it with metadata updates
+    // Schedule the selection with minimal delay (10ms instead of 50ms) to be more responsive
     // This prevents the selection animation from blocking the metadata state updates
     selectionTimeoutRef.current = setTimeout(() => {
       if (pendingSelectionRef.current) {
         setSelectedFile(pendingSelectionRef.current);
         pendingSelectionRef.current = null;
       }
-    }, 50);
+    }, 10);
   };
 
   // Reset auto-selection tracking and cancel flag when generation stops
@@ -182,6 +184,21 @@ export const GenerateButton = () => {
           keywords: result.keywords,
         });
 
+        // Auto-generate categories based on the generated metadata (always enabled, independent of auto-select)
+        try {
+          console.log(`🏷️ Auto-generating categories for ${item.file.name}...`);
+          const categories = matchCategories(
+            result.title,
+            result.keywords,
+            result.description
+          );
+          
+          console.log(`📊 Generated categories for ${item.file.name}:`, categories);
+          generated.setFileCategories(item.file, categories);
+        } catch (error) {
+          console.error(`❌ Failed to generate categories for ${item.file.name}:`, error);
+        }
+
         console.log(`✓ Generated metadata for ${item.file.name} (index ${i})`);
         console.log(`📊 Total generated items now:`, generated.items.length);
 
@@ -217,9 +234,11 @@ export const GenerateButton = () => {
         }
 
         // Auto-select this file (debounced to avoid blocking metadata updates)
-        console.log(`🎯 Scheduling file selection at index ${i}:`, item.file.name);
-        scheduleFileSelection(item.file);
-        lastAutoSelectedIndexRef.current = i;
+        if (metadataOptions.autoSelectGenerated) {
+          console.log(`🎯 Scheduling file selection at index ${i}:`, item.file.name);
+          scheduleFileSelection(item.file);
+          lastAutoSelectedIndexRef.current = i;
+        }
 
         // Apply delay before next request (except for last item)
         // This prevents rate limiting and makes UI updates feel more controlled
@@ -235,9 +254,11 @@ export const GenerateButton = () => {
         // The thumbnail will show a red border indicating generation was attempted but failed
 
         // Auto-select this file even on error so user can see which file failed (debounced)
-        console.log(`🎯 Scheduling file selection at index ${i} (error case):`, item.file.name);
-        scheduleFileSelection(item.file);
-        lastAutoSelectedIndexRef.current = i;
+        if (metadataOptions.autoSelectGenerated) {
+          console.log(`🎯 Scheduling file selection at index ${i} (error case):`, item.file.name);
+          scheduleFileSelection(item.file);
+          lastAutoSelectedIndexRef.current = i;
+        }
 
         // Apply delay before next request even on error (except for last item)
         if (i < items.length - 1 && api.requestDelay > 0) {
@@ -282,4 +303,5 @@ export const GenerateButton = () => {
     </Button>
   );
 };
-{/* <Sparkle /> */}
+
+export const GenerateButton = React.memo(GenerateButtonComponent);

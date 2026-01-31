@@ -1,18 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
+import React from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { Upload } from "lucide-react";
 
-
 type UploadButtonProps = {
   onFilesSelected: (files: File[]) => void;
-}
+};
 
-
-
-export const UploadButton = ({ onFilesSelected }: { onFilesSelected: (files: File[]) => void } &  UploadButtonProps) => {
-   const fileInputRef = useRef<HTMLInputElement>(null);
-   const { setHasAttemptedGeneration } = useSettings();
+const UploadButtonComponent = ({ onFilesSelected }: UploadButtonProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { setHasAttemptedGeneration } = useSettings();
 
   const handleClick = () => {
     if (fileInputRef.current) {
@@ -53,6 +51,8 @@ export const UploadButton = ({ onFilesSelected }: { onFilesSelected: (files: Fil
       </Button>
     </div>
   );
-}
+};
+
+export const UploadButton = React.memo(UploadButtonComponent);
   
 

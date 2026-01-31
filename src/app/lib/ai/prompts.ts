@@ -61,8 +61,7 @@ export const generateMetadataPrompt = (
   return `Generate stock photo metadata for this image.${customInstructionSection}
 
 IMPORTANT: Write complete, natural text. End at complete words, never cut words in half.
-thais is a doemo title make the imges titel losley to this one basd on the image not exact one 
-the title : Halftone hand gesture as collage graphic element. Vintage punk grunge arm dotted pattern stickers. Retro trendy doodle hands vector illustration for posters, social media, business banners
+
 
 Requirements:
 1. Title:

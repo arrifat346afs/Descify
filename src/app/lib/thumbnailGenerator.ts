@@ -10,12 +10,126 @@
  * - Reduced thumbnail quality/size for better performance
  */
 
-import Thumbo, { Transfer } from 'thumbo';
+// Unused imports and helpers removed
 
-// Track thumbo initialization state
-let thumboInitialized = false;
-let thumboInitPromise: Promise<void> | null = null;
+/**
+ * Helper to yield control back to the browser's main thread
+ * Optimized: minimal delay, just enough to prevent blocking
+ */
+function yieldToMain(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
 
+// Worker Pool Management
+class WorkerPool {
+  private workers: Worker[] = [];
+  private queue: Array<{
+    file: File;
+    resolve: (url: string) => void;
+    reject: (err: any) => void;
+  }> = [];
+  private maxWorkers = navigator.hardwareConcurrency ? Math.max(2, navigator.hardwareConcurrency / 2) : 4;
+
+  constructor() {
+    this.initWorkers();
+  }
+
+  private initWorkers() {
+    for (let i = 0; i < this.maxWorkers; i++) {
+      const worker = new Worker(new URL('./thumbnail.worker.ts', import.meta.url), { type: 'module' });
+      worker.onmessage = (e) => this.handleWorkerMessage(worker, e);
+      worker.onerror = (e) => this.handleWorkerError(worker, e);
+      this.workers.push(worker);
+    }
+  }
+
+  private handleWorkerMessage(worker: Worker, e: MessageEvent) {
+    const { success, thumbnailUrl, error } = e.data;
+    const currentJob = (worker as any).currentJob;
+
+    if (currentJob) {
+      if (success) {
+        currentJob.resolve(thumbnailUrl);
+      } else {
+        currentJob.reject(new Error(error));
+      }
+      (worker as any).currentJob = null;
+    }
+
+    this.processQueue();
+  }
+
+  private handleWorkerError(worker: Worker, e: ErrorEvent) {
+    const currentJob = (worker as any).currentJob;
+    if (currentJob) {
+      currentJob.reject(new Error(e.message));
+      (worker as any).currentJob = null;
+    }
+    this.processQueue();
+  }
+
+  private processQueue() {
+    if (this.queue.length === 0) return;
+
+    // Find idle worker
+    const idleWorker = this.workers.find(w => !(w as any).currentJob);
+
+    if (idleWorker) {
+      const job = this.queue.shift();
+      if (job) {
+        (idleWorker as any).currentJob = job;
+        idleWorker.postMessage(job.file);
+      }
+    }
+  }
+
+  public schedule(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ file, resolve, reject });
+      this.processQueue();
+    });
+  }
+
+  public terminate() {
+    this.workers.forEach(w => w.terminate());
+    this.workers = [];
+  }
+}
+
+// Singleton pool instance
+let thumbnailWorkerPool: WorkerPool | null = null;
+
+function getWorkerPool(): WorkerPool {
+  if (!thumbnailWorkerPool) {
+    thumbnailWorkerPool = new WorkerPool();
+  }
+  return thumbnailWorkerPool;
+}
+
+/**
+ * Generates a thumbnail for an image file
+ * Uses Web Worker for off-thread processing to keep UI smooth
+ *
+ * @param file - The image file to generate a thumbnail for
+ * @returns Promise<string> - Base64 data URL of the thumbnail
+ */
+export async function generateImageThumbnail(file: File): Promise<string> {
+  // Logic: 
+  // 1. Try Worker (Small thumbnail, non-blocking)
+  // 2. Fallback to URL.createObjectURL if worker fails (Instant but heavy memory/CPU on render)
+
+  try {
+    return await getWorkerPool().schedule(file);
+  } catch (error) {
+    console.warn("Worker generation failed, falling back to ObjectURL:", error);
+    return URL.createObjectURL(file);
+  }
+}
+
+/**
+ * Fast image thumbnail generation using createImageBitmap
+ * Optimized for MAXIMUM SPEED with large images
+ */
 // Configuration for display thumbnails - MAXIMUM SPEED
 const BATCH_CONFIG = {
   // Maximum concurrent thumbnail generations
@@ -28,26 +142,11 @@ const BATCH_CONFIG = {
 
 // Configuration for AI-quality images - balance between quality and API cost
 const AI_IMAGE_CONFIG = {
-  // 512px is enough for AI to understand content, keeps token cost low
-  MAX_SIZE: 512,
-  // 75% quality - good enough for AI, reduces payload size
-  JPEG_QUALITY: 0.75,
+  // 480px fits safely within a single 512x512 tile for vision models
+  MAX_SIZE: 480,
+  // 60% quality - strict reduction for payload efficiency
+  JPEG_QUALITY: 0.6,
 };
-
-/**
- * Initialize thumbo library with higher concurrency for speed
- */
-async function initThumbo(): Promise<void> {
-  if (thumboInitialized) return;
-  if (!thumboInitPromise) {
-    // Higher concurrency for faster processing
-    thumboInitPromise = Thumbo.init({ size: 4, concurrency: 4 }).then(() => {
-      thumboInitialized = true;
-      console.log('✅ Thumbo initialized with WebAssembly workers');
-    });
-  }
-  return thumboInitPromise;
-}
 
 /**
  * Force garbage collection hint by clearing references
@@ -69,187 +168,7 @@ function forceMemoryCleanup(): Promise<void> {
   });
 }
 
-/**
- * Get the image format enum from file type
- */
-function getImageFormat(mimeType: string): number | null {
-  const formatMap: Record<string, number> = {
-    'image/png': Thumbo.ImageFormat.Png,
-    'image/jpeg': Thumbo.ImageFormat.Jpeg,
-    'image/jpg': Thumbo.ImageFormat.Jpeg,
-    'image/gif': Thumbo.ImageFormat.Gif,
-    'image/x-icon': Thumbo.ImageFormat.Ico,
-    'image/vnd.microsoft.icon': Thumbo.ImageFormat.Ico,
-    'image/svg+xml': Thumbo.ImageFormat.Svg,
-  };
-  return formatMap[mimeType] ?? null;
-}
 
-/**
- * Convert a Blob to a data URL
- */
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-/**
- * Helper to yield control back to the browser's main thread
- * Optimized: minimal delay, just enough to prevent blocking
- */
-function yieldToMain(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0));
-}
-
-/**
- * Generates a thumbnail for an image file
- * Uses createImageBitmap as PRIMARY method - it's fastest for large files (10MB+)
- * Only falls back to Thumbo for small files where WASM might help
- *
- * @param file - The image file to generate a thumbnail for
- * @returns Promise<string> - Base64 data URL of the thumbnail
- */
-export async function generateImageThumbnail(file: File): Promise<string> {
-  // For large files (>1MB), always use createImageBitmap - it's much faster
-  // because it doesn't need to load the entire file into memory first
-  if (file.size > 1024 * 1024) {
-    return generateImageThumbnailCanvas(file);
-  }
-
-  // For small files, try thumbo (WASM) - might be faster for small images
-  const format = getImageFormat(file.type);
-  if (format !== null) {
-    try {
-      await initThumbo();
-
-      const arrayBuffer = await file.arrayBuffer();
-      const maxSize = BATCH_CONFIG.MAX_THUMBNAIL_SIZE;
-
-      const thumbnailBuffer = await Thumbo.thumbnail(
-        Transfer(arrayBuffer),
-        format,
-        maxSize,
-        maxSize
-      );
-
-      const blob = new Blob([thumbnailBuffer], { type: file.type });
-      const dataUrl = await blobToDataUrl(blob);
-      return dataUrl;
-    } catch (error) {
-      console.warn(`Thumbo failed for ${file.name}, using Canvas:`, error);
-    }
-  }
-
-  return generateImageThumbnailCanvas(file);
-}
-
-/**
- * Fast image thumbnail generation using createImageBitmap
- * Optimized for MAXIMUM SPEED with large images
- */
-async function generateImageThumbnailCanvas(file: File): Promise<string> {
-  const maxSize = BATCH_CONFIG.MAX_THUMBNAIL_SIZE;
-
-  try {
-    // Use createImageBitmap with 'low' quality for maximum speed
-    const bitmap = await createImageBitmap(file, {
-      resizeWidth: maxSize,
-      resizeHeight: maxSize,
-      resizeQuality: 'low', // Fastest option
-    });
-
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d', { alpha: false });
-
-    if (!ctx) {
-      bitmap.close();
-      throw new Error('Failed to get canvas context');
-    }
-
-    ctx.drawImage(bitmap, 0, 0);
-    bitmap.close(); // Important: release bitmap memory
-
-    const thumbnailUrl = canvas.toDataURL('image/jpeg', BATCH_CONFIG.JPEG_QUALITY);
-    return thumbnailUrl;
-  } catch {
-    // Fallback for browsers that don't support createImageBitmap with options
-    return generateImageThumbnailCanvasFallback(file);
-  }
-}
-
-/**
- * Fallback for older browsers without createImageBitmap resize support
- */
-function generateImageThumbnailCanvasFallback(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
-
-    const timeout = setTimeout(() => {
-      URL.revokeObjectURL(objectUrl);
-      img.src = '';
-      reject(new Error(`Timeout loading image: ${file.name}`));
-    }, 10000); // Longer timeout for large files
-
-    img.onload = () => {
-      clearTimeout(timeout);
-      try {
-        const maxSize = BATCH_CONFIG.MAX_THUMBNAIL_SIZE;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxSize) {
-            height = Math.round((height * maxSize) / width);
-            width = maxSize;
-          }
-        } else {
-          if (height > maxSize) {
-            width = Math.round((width * maxSize) / height);
-            height = maxSize;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d', { alpha: false });
-
-        if (!ctx) {
-          URL.revokeObjectURL(objectUrl);
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const thumbnailUrl = canvas.toDataURL('image/jpeg', BATCH_CONFIG.JPEG_QUALITY);
-
-        URL.revokeObjectURL(objectUrl);
-        img.src = '';
-        resolve(thumbnailUrl);
-      } catch (error) {
-        URL.revokeObjectURL(objectUrl);
-        img.src = '';
-        reject(error);
-      }
-    };
-
-    img.onerror = () => {
-      clearTimeout(timeout);
-      URL.revokeObjectURL(objectUrl);
-      img.src = '';
-      reject(new Error('Failed to load image'));
-    };
-
-    img.src = objectUrl;
-  });
-}
 
 /**
  * Generates a HIGH-QUALITY image for AI metadata generation
@@ -265,6 +184,9 @@ export async function generateAIImage(file: File): Promise<string> {
   const maxSize = AI_IMAGE_CONFIG.MAX_SIZE;
   const quality = AI_IMAGE_CONFIG.JPEG_QUALITY;
 
+  console.log(`🚀 DEBUG: generateAIImage called with file: ${file.name}, size: ${(file.size / 1024).toFixed(2)}KB`);
+  console.log(`🎯 TARGET CONFIG: maxSize=${maxSize}px, quality=${quality}`);
+
   try {
     // Use createImageBitmap for efficient processing of large files
     const bitmap = await createImageBitmap(file, {
@@ -278,7 +200,7 @@ export async function generateAIImage(file: File): Promise<string> {
     const canvas = document.createElement('canvas');
     let drawWidth = maxSize;
     let drawHeight = maxSize;
-    
+
     // Maintain aspect ratio - scale down to fit within maxSize square
     const bitmapAspect = bitmap.width / bitmap.height;
     if (bitmapAspect > 1) {
@@ -288,7 +210,7 @@ export async function generateAIImage(file: File): Promise<string> {
       // Taller than wide
       drawWidth = Math.round(maxSize * bitmapAspect);
     }
-    
+
     canvas.width = maxSize;
     canvas.height = maxSize;
     const ctx = canvas.getContext('2d', { alpha: false });
@@ -305,9 +227,39 @@ export async function generateAIImage(file: File): Promise<string> {
     bitmap.close();
 
     const dataUrl = canvas.toDataURL('image/jpeg', quality);
+    
+    // Add detailed debugging for image generation
+    const imageSizeKB = Math.round(dataUrl.length / 1024);
+    const imageDataSize = dataUrl.length;
+    const estimatedTokens = Math.ceil(imageDataSize / 4);
+    
+    console.log(`🔍 DEBUG - Main Method:`);
+    console.log(`  Canvas: ${maxSize}x${maxSize}px`);
+    console.log(`  Draw size: ${drawWidth}x${drawHeight}px`);
+    console.log(`  Image size: ${imageSizeKB} KB (${imageDataSize} chars)`);
+    console.log(`  Est. image tokens: ~${estimatedTokens}`);
+    console.log(`  Quality: ${quality}`);
+    
+    // Verify the data URL format and extract actual dimensions if possible
+    const headerSize = dataUrl.indexOf('base64,') + 7;
+    const base64Size = dataUrl.length - headerSize;
+    console.log(`  Base64 payload: ${base64Size} chars`);
+    
+    console.log(`✅ AI Image generated: ${imageSizeKB} KB`);
+    
+    if (imageSizeKB > 200) {
+      console.warn(`⚠️ Generated image is large: ${imageSizeKB}KB (expected ~50-100KB for 480p)`);
+    }
+    
+    // Final verification
+    if (imageSizeKB > 300) {
+      console.error(`❌ CRITICAL: Image size ${imageSizeKB}KB indicates bug - should be ~50-100KB for 480p!`);
+    }
+    
     return dataUrl;
-  } catch {
+  } catch (error) {
     // Fallback for browsers without createImageBitmap resize support
+    console.log(`⚠️ Main method failed, using FALLBACK method:`, error);
     return generateAIImageFallback(file);
   }
 }
@@ -317,6 +269,7 @@ export async function generateAIImage(file: File): Promise<string> {
  */
 function generateAIImageFallback(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
+    console.log(`🔄 FALLBACK METHOD STARTED for: ${file.name}`);
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
 
@@ -346,8 +299,8 @@ function generateAIImageFallback(file: File): Promise<string> {
         }
 
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = maxSize;  // Fixed 480x480 canvas like main method
+        canvas.height = maxSize; // Fixed 480x480 canvas like main method
         const ctx = canvas.getContext('2d', { alpha: false });
 
         if (!ctx) {
@@ -356,8 +309,28 @@ function generateAIImageFallback(file: File): Promise<string> {
           return;
         }
 
-        ctx.drawImage(img, 0, 0, width, height);
+        // Center the image on the canvas (same as main method)
+        const x = (maxSize - width) / 2;
+        const y = (maxSize - height) / 2;
+        ctx.drawImage(img, x, y, width, height);
         const dataUrl = canvas.toDataURL('image/jpeg', AI_IMAGE_CONFIG.JPEG_QUALITY);
+        
+        // Add detailed debugging for fallback method
+        const imageSizeKB = Math.round(dataUrl.length / 1024);
+        const imageDataSize = dataUrl.length;
+        const estimatedTokens = Math.ceil(imageDataSize / 4);
+        
+        console.log(`🔍 DEBUG - Fallback Method:`);
+        console.log(`  Original image: ${img.width}x${img.height}px`);
+        console.log(`  Scaled to: ${width}x${height}px`);
+        console.log(`  Canvas: ${maxSize}x${maxSize}px`);
+        console.log(`  Image size: ${imageSizeKB} KB (${imageDataSize} chars)`);
+        console.log(`  Est. image tokens: ~${estimatedTokens}`);
+        console.log(`✅ AI Fallback Image generated: ${imageSizeKB} KB`);
+        
+        if (imageSizeKB > 200) {
+          console.warn(`⚠️ Fallback image is large: ${imageSizeKB}KB (expected ~50-100KB for 480p)`);
+        }
 
         URL.revokeObjectURL(objectUrl);
         img.src = '';
@@ -384,9 +357,16 @@ function generateAIImageFallback(file: File): Promise<string> {
  * Generates a video thumbnail by capturing a frame
  * Optimized for speed
  */
+// Simplified video thumbnail generation - just generate one frame
+// We still use canvas here because <video> poster doesn't support seeking efficiently without loading
+// BUT we can optimize it to be faster or just return a generic icon if speed is paramount.
+// For now, let's keep the frame capture but optimize it.
 export function generateVideoThumbnail(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
+    video.muted = true;
+    video.autoplay = false;
+    video.playsInline = true;
     const objectUrl = URL.createObjectURL(file);
 
     // Timeout for videos that fail to load
@@ -394,32 +374,23 @@ export function generateVideoThumbnail(file: File): Promise<string> {
       URL.revokeObjectURL(objectUrl);
       video.src = '';
       reject(new Error(`Timeout loading video: ${file.name}`));
-    }, 8000);
+    }, 4000); // Reduced timeout
 
     video.onloadeddata = () => {
-      // Seek to 1 second (or 10% of duration, whichever is less)
-      video.currentTime = Math.min(1, video.duration * 0.1);
+      // Just take the first frame immediately for speed
+      video.currentTime = 0;
     };
 
     video.onseeked = () => {
       clearTimeout(timeout);
       try {
         const maxSize = BATCH_CONFIG.MAX_THUMBNAIL_SIZE;
+        // Use simpler resizing logic
         let width = video.videoWidth;
         let height = video.videoHeight;
-
-        // Calculate scaled dimensions
-        if (width > height) {
-          if (width > maxSize) {
-            height = Math.round((height * maxSize) / width);
-            width = maxSize;
-          }
-        } else {
-          if (height > maxSize) {
-            width = Math.round((width * maxSize) / height);
-            height = maxSize;
-          }
-        }
+        const scale = Math.min(maxSize / width, maxSize / height, 1);
+        width = Math.floor(width * scale);
+        height = Math.floor(height * scale);
 
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -434,7 +405,8 @@ export function generateVideoThumbnail(file: File): Promise<string> {
         }
 
         ctx.drawImage(video, 0, 0, width, height);
-        const thumbnailUrl = canvas.toDataURL('image/jpeg', BATCH_CONFIG.JPEG_QUALITY);
+        // Use low quality JPEG for speed
+        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.5);
 
         // Cleanup
         URL.revokeObjectURL(objectUrl);

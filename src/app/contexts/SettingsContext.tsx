@@ -1,46 +1,25 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo, useRef } from 'react';
-import { toast } from 'sonner';
+import { createContext, useContext, ReactNode, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import * as configSlice from '../../store/slices/configSlice';
+import * as fileSlice from '../../store/slices/fileSlice';
+import * as metadataSlice from '../../store/slices/metadataSlice';
+import * as templateSlice from '../../store/slices/templateSlice';
+import * as uiSlice from '../../store/slices/uiSlice';
 
-type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
+// Re-export types from slices to maintain compatibility
+export type Provider = configSlice.Provider;
+export type MetadataLimits = configSlice.MetadataLimits;
+export type MetadataOptions = configSlice.MetadataOptions;
+export type EmbedSettings = configSlice.EmbedSettings;
+export type ThumbnailData = fileSlice.ThumbnailData;
+export type GeneratedMetadata = metadataSlice.GeneratedMetadata;
+export type FileMetadata = metadataSlice.FileMetadata;
+export type CategorySelection = metadataSlice.CategorySelection;
+export type GenerationProgress = uiSlice.GenerationProgress;
+export type UserTemplate = templateSlice.UserTemplate;
 
-type ThumbnailData = {
-  file: File;
-  thumbnailUrl: string;
-};
-
-type GeneratedMetadata = {
-  title: string;
-  description: string;
-  keywords: string; // comma separated
-};
-
-type FileMetadata = {
-  file: File;
-  metadata: GeneratedMetadata;
-  categories?: CategorySelection;
-  customInstruction?: string;
-};
-
-type MetadataLimits = {
-  titleLimit: number;
-  descriptionLimit: number;
-  keywordLimit: number;
-};
-
-type MetadataOptions = {
-  includePlaceName: boolean;
-};
-
-type EmbedSettings = {
-  enabled: boolean;
-  fields: {
-    title: boolean;
-    description: boolean;
-    keywords: boolean;
-  };
-};
-
-type ApiSettingsState = {
+// Define composite types that were previously in SettingsContext
+export type ApiSettingsState = {
   selectedProvider: Provider | '';
   setSelectedProvider: (p: Provider | '') => void;
   selectedModel: string;
@@ -51,28 +30,7 @@ type ApiSettingsState = {
   setRequestDelay: (delay: number) => void;
 };
 
-type CategorySelection = {
-  adobeStock: string;
-  shutterStock1: string;
-  shutterStock2: string;
-};
-
-type GenerationProgress = {
-  isGenerating: boolean;
-  currentIndex: number;
-  currentFileName: string;
-  totalFiles: number;
-  cancelRequested: boolean;
-};
-
-type UserTemplate = {
-  id: string;
-  name: string;
-  template: string;
-  createdAt: Date;
-};
-
-type TemplateSettings = {
+export type TemplateSettings = {
   activeTemplateId: string | null;
   userTemplates: UserTemplate[];
   setActiveTemplate: (id: string | null) => void;
@@ -81,14 +39,14 @@ type TemplateSettings = {
   deleteUserTemplate: (id: string) => void;
 };
 
-type SettingsDialogState = {
+export type SettingsDialogState = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   defaultTab: string;
   setDefaultTab: (tab: string) => void;
 };
 
-type SettingsContextType = {
+export type SettingsContextType = {
   api: ApiSettingsState;
   metadataLimits: MetadataLimits & { setLimits: (l: Partial<MetadataLimits>) => void };
   metadataOptions: MetadataOptions & { setOptions: (o: Partial<MetadataOptions>) => void };
@@ -131,691 +89,359 @@ type SettingsContextType = {
   hasApiKey: () => boolean;
 };
 
-const defaultApiKeys: Record<Provider, string> = {
-  openai: '',
-  gemini: '',
-  mistral: '',
-  groq: '',
-  openrouter: '',
-};
-
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-// Helper functions for localStorage
-const loadFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
-  } catch (error) {
-    console.error(`Error loading ${key} from localStorage:`, error);
-    toast.error("Error loading from localStorage.");
-    return defaultValue;
-  }
-};
-
-const saveToLocalStorage = <T,>(key: string, value: T): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    console.log(`✓ Saved ${key} to localStorage:`, value);
-    toast.success("Settings saved!");
-  } catch (error) {
-    console.error(`Error saving ${key} to localStorage:`, error);
-    toast.error("Error saving to localStorage.");
-  }
-};
-
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
-  // Load initial values from localStorage
-  const [selectedProvider, setSelectedProviderState] = useState<Provider | ''>(() =>
-    loadFromLocalStorage('selectedProvider', '')
-  );
-  const [selectedModel, setSelectedModelState] = useState(() =>
-    loadFromLocalStorage('selectedModel', '')
-  );
-  const [apiKeys, setApiKeysState] = useState<Record<Provider, string>>(() =>
-    loadFromLocalStorage('apiKeys', defaultApiKeys)
-  );
-  const [requestDelay, setRequestDelayState] = useState<number>(() =>
-    loadFromLocalStorage('requestDelay', 1000)
-  );
-
-  // Wrapper functions that also save to localStorage
-  const setSelectedProvider = (provider: Provider | '') => {
-    setSelectedProviderState(provider);
-    saveToLocalStorage('selectedProvider', provider);
-  };
-
-  const setSelectedModel = (model: string) => {
-    setSelectedModelState(model);
-    saveToLocalStorage('selectedModel', model);
-  };
-
-  const setApiKeys = (keys: Record<Provider, string>) => {
-    setApiKeysState(keys);
-    saveToLocalStorage('apiKeys', keys);
-  };
-
-  const setApiKey = (provider: Provider, key: string) => {
-    const newKeys = { ...apiKeys, [provider]: key };
-    setApiKeys(newKeys);
-  };
-
-  const setRequestDelay = (delay: number) => {
-    setRequestDelayState(delay);
-    saveToLocalStorage('requestDelay', delay);
-  };
-
-  // Settings dialog state
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
-  const [settingsDialogDefaultTab, setSettingsDialogDefaultTab] = useState('models');
-
-  // Function to check if any API key is configured
-  const hasApiKey = useCallback(() => {
-    return Object.values(apiKeys).some(key => key && key.trim() !== '');
-  }, [apiKeys]);
-
-  const [files, setFiles] = useState<File[]>([]);
-  const [filePaths, setFilePaths] = useState<Map<File, string>>(new Map());
-  const [thumbnails, setThumbnails] = useState<ThumbnailData[]>([]);
-  const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
-  const [pendingThumbnailCount, setPendingThumbnailCount] = useState(0);
-
-  // Load embed settings from localStorage with defaults
-  const [embedSettings, setEmbedSettingsState] = useState<EmbedSettings>(() => {
-    const saved = loadFromLocalStorage('embedSettings', null) as EmbedSettings | null;
-    if (saved) {
-      return {
-        enabled: saved.enabled ?? true,
-        fields: {
-          title: saved.fields?.title ?? true,
-          description: saved.fields?.description ?? true,
-          keywords: saved.fields?.keywords ?? true,
-        },
-      };
-    }
-    return {
-      enabled: true,
-      fields: {
-        title: true,
-        description: true,
-        keywords: true,
-      },
-    };
-  });
-
-  const setEmbedSettings = (s: Partial<EmbedSettings>) => {
-    setEmbedSettingsState((prev) => {
-      const newSettings = {
-        enabled: s.enabled ?? prev.enabled,
-        fields: {
-          title: s.fields?.title ?? prev.fields.title,
-          description: s.fields?.description ?? prev.fields.description,
-          keywords: s.fields?.keywords ?? prev.fields.keywords,
-        },
-      };
-      saveToLocalStorage('embedSettings', newSettings);
-      return newSettings;
-    });
-  };
-
-  // File management functions
-  const removeFile = useCallback((fileToRemove: File) => {
-    console.log('🗑️ Removing file:', fileToRemove.name);
-
-    // Remove from files array
-    setFiles((prev) => prev.filter(f => f !== fileToRemove));
-
-    // Remove from file paths
-    setFilePaths((prev) => {
-      const newMap = new Map(prev);
-      newMap.delete(fileToRemove);
-      return newMap;
-    });
-
-    // Remove from thumbnails
-    setThumbnails((prev) => prev.filter(t => t.file !== fileToRemove));
-
-    // Remove from generated metadata
-    setGeneratedMetadata((prev) => prev.filter(fm => fm.file !== fileToRemove));
-
-    // Clear selected file if it was the removed file
-    setSelectedFile((prev) => prev === fileToRemove ? null : prev);
-
-    console.log('✅ File removed successfully');
-  }, []);
-
-  // File path management functions
-  const setFilePath = useCallback((file: File, path: string) => {
-    setFilePaths((prev) => new Map(prev.set(file, path)));
-  }, []);
-
-  const getFilePath = useCallback((file: File): string | undefined => {
-    return filePaths.get(file);
-  }, [filePaths]);
-
-  // Batched thumbnail updates to reduce React re-renders
-  const pendingThumbnailUpdates = useRef<ThumbnailData[]>([]);
-  const batchUpdateScheduled = useRef<number | null>(null);
-  const BATCH_UPDATE_DELAY = 50; // ms - batch updates together (faster for responsiveness)
-
-  const flushThumbnailUpdates = useCallback(() => {
-    if (pendingThumbnailUpdates.current.length === 0) return;
-
-    const updates = [...pendingThumbnailUpdates.current];
-    pendingThumbnailUpdates.current = [];
-    batchUpdateScheduled.current = null;
-
-    setThumbnails((prev) => {
-      // Use a Map for O(1) lookup
-      const existingMap = new Map<File, number>();
-      prev.forEach((p, i) => existingMap.set(p.file, i));
-
-      const newArray = [...prev];
-      let addedCount = 0;
-
-      for (const t of updates) {
-        const existingIndex = existingMap.get(t.file);
-        if (existingIndex !== undefined) {
-          // Update existing
-          newArray[existingIndex] = t;
-        } else {
-          // Add new
-          newArray.push(t);
-          existingMap.set(t.file, newArray.length - 1);
-          addedCount++;
-        }
-      }
-
-      console.log(`📦 Batched ${updates.length} thumbnail updates (${addedCount} new)`);
-      return newArray;
-    });
-
-    setPendingThumbnailCount(prev => Math.max(0, prev - updates.length));
-  }, []);
-
-  // Memoize upsert to batch updates and prevent excessive re-renders
-  const upsert = useCallback((t: ThumbnailData) => {
-    pendingThumbnailUpdates.current.push(t);
-
-    // Schedule batch update if not already scheduled
-    if (batchUpdateScheduled.current === null) {
-      batchUpdateScheduled.current = window.setTimeout(() => {
-        flushThumbnailUpdates();
-      }, BATCH_UPDATE_DELAY);
-    }
-  }, [flushThumbnailUpdates]);
-
-  const clearThumbs = useCallback(() => {
-    console.log('🗑️  Clearing all thumbnails');
-    // Clear any pending updates
-    pendingThumbnailUpdates.current = [];
-    if (batchUpdateScheduled.current !== null) {
-      clearTimeout(batchUpdateScheduled.current);
-      batchUpdateScheduled.current = null;
-    }
-    setThumbnails([]);
-    setPendingThumbnailCount(0);
-    setIsGeneratingThumbnails(false);
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (batchUpdateScheduled.current !== null) {
-        clearTimeout(batchUpdateScheduled.current);
-      }
-    };
-  }, []);
-
-  // Track thumbnail state changes (throttled logging for large batches)
-  const lastLoggedCount = useRef(0);
-  useEffect(() => {
-    // Only log when count changes significantly or completes
-    const count = thumbnails.length;
-    if (count === 0 || count === lastLoggedCount.current) return;
-
-    // Log every 50 thumbnails or on completion
-    if (count % 50 === 0 || !isGeneratingThumbnails) {
-      console.log(`📊 Thumbnails: ${count} (generating: ${isGeneratingThumbnails})`);
-      lastLoggedCount.current = count;
-    }
-  }, [thumbnails.length, isGeneratingThumbnails]);
-
-  // Generate thumbnails when files change
-  // Use a ref to track the current generation to avoid stale closures
-  const generationIdRef = useRef(0);
-
-  useEffect(() => {
-    if (!files || files.length === 0) {
-      setIsGeneratingThumbnails(false);
-      return;
-    }
-
-    // Use Set for O(1) lookup instead of find() which is O(n)
-    const existingThumbnailFiles = new Set(thumbnails.map(t => t.file));
-
-    // Filter files that need thumbnail generation
-    const filesToGenerate = files.filter((file) => {
-      const isMedia = file.type.startsWith("image/") || file.type.startsWith("video/");
-      return isMedia && !existingThumbnailFiles.has(file);
-    });
-
-    if (filesToGenerate.length === 0) {
-      setIsGeneratingThumbnails(false);
-      return;
-    }
-
-    // Increment generation ID to track this specific generation
-    const currentGenerationId = ++generationIdRef.current;
-
-    // Set generating state
-    setIsGeneratingThumbnails(true);
-    console.log(`🚀 Starting generation of ${filesToGenerate.length} thumbnails (batch #${currentGenerationId})...`);
-
-    // Generate thumbnails in parallel using optimized batch processing
-    (async () => {
-      try {
-        const { generateThumbnailsBatch } = await import("@/app/lib/thumbnailGenerator");
-
-        // Throttle progress logging for large batches
-        let lastProgressLog = 0;
-        const PROGRESS_LOG_INTERVAL = 25;
-
-        await generateThumbnailsBatch(
-          filesToGenerate,
-          (completed, total, fileName) => {
-            // Only log every N files to reduce console spam
-            if (completed - lastProgressLog >= PROGRESS_LOG_INTERVAL || completed === total) {
-              console.log(`⚡ Progress: ${completed}/${total} - ${fileName}`);
-              lastProgressLog = completed;
-            }
-          },
-          (file, thumbnailUrl) => {
-            // Check if this generation is still current
-            if (generationIdRef.current !== currentGenerationId) return;
-            upsert({ file, thumbnailUrl });
-          }
-        );
-
-        // Only update state if this generation is still current
-        if (generationIdRef.current === currentGenerationId) {
-          // Flush any remaining batched updates
-          flushThumbnailUpdates();
-          setIsGeneratingThumbnails(false);
-          console.log(`✅ Completed batch #${currentGenerationId}`);
-        }
-      } catch (error) {
-        console.error("❌ Batch thumbnail generation failed:", error);
-        if (generationIdRef.current === currentGenerationId) {
-          setIsGeneratingThumbnails(false);
-        }
-      }
-    })();
-  }, [files, upsert, flushThumbnailUpdates]); // Only depend on files
-
-  // Check if all thumbnails are done - use Set for O(1) lookup
-  useEffect(() => {
-    if (isGeneratingThumbnails && files && files.length > 0) {
-      // Use Set for O(1) lookup instead of find()
-      const thumbnailFileSet = new Set(thumbnails.map(t => t.file));
-
-      const allDone = files.every((file) => {
-        const isMedia = file.type.startsWith("image/") || file.type.startsWith("video/");
-        if (!isMedia) return true; // Skip non-media files
-        return thumbnailFileSet.has(file);
-      });
-
-      if (allDone) {
-        console.log("✅ All thumbnails generated!");
-        setIsGeneratingThumbnails(false);
-      }
-    }
-  }, [thumbnails, files, isGeneratingThumbnails]);
-
-  const [generatedMetadata, setGeneratedMetadata] = useState<FileMetadata[]>([]);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [hasAttemptedGeneration, setHasAttemptedGeneration] = useState(false);
-
-  // Generation progress state
-  const [generationProgress, setGenerationProgressState] = useState<GenerationProgress>({
-    isGenerating: false,
-    currentIndex: 0,
-    currentFileName: '',
-    totalFiles: 0,
-    cancelRequested: false,
-  });
-
-  const setGenerationProgress = (progress: Partial<GenerationProgress>) => {
-    setGenerationProgressState((prev) => ({ ...prev, ...progress }));
-  };
-
-  // Category selection state
-  const [categories, setCategoriesState] = useState<CategorySelection>({
-    adobeStock: '',
-    shutterStock1: '',
-    shutterStock2: '',
-  });
-
-  const setCategories = (newCategories: Partial<CategorySelection>) => {
-    setCategoriesState((prev) => ({ ...prev, ...newCategories }));
-  };
-
-  const getMetadata = useCallback((file: File): GeneratedMetadata | undefined => {
-    const found = generatedMetadata.find((fm) => fm.file === file);
-    return found?.metadata;
-  }, [generatedMetadata]);
-
-  const setMetadata = useCallback((file: File, metadata: Partial<GeneratedMetadata>) => {
-    setGeneratedMetadata((prev) => {
-      const existingIndex = prev.findIndex((fm) => fm.file === file);
-      if (existingIndex !== -1) {
-        // Update existing - use index for better performance
-        const newArray = [...prev];
-        newArray[existingIndex] = {
-          ...newArray[existingIndex],
-          metadata: { ...newArray[existingIndex].metadata, ...metadata }
-        };
-        return newArray;
-      } else {
-        // Add new
-        return [
-          ...prev,
-          {
-            file,
-            metadata: {
-              title: metadata.title || '',
-              description: metadata.description || '',
-              keywords: metadata.keywords || '',
-            },
-          },
-        ];
-      }
-    });
-  }, []);
-
-  const getCategories = useCallback((file: File): CategorySelection | undefined => {
-    const found = generatedMetadata.find((fm) => fm.file === file);
-    return found?.categories;
-  }, [generatedMetadata]);
-
-  const setFileCategories = useCallback((file: File, newCategories: Partial<CategorySelection>) => {
-    setGeneratedMetadata((prev) => {
-      const existingIndex = prev.findIndex((fm) => fm.file === file);
-      if (existingIndex !== -1) {
-        // Update existing - use index for better performance
-        const newArray = [...prev];
-        newArray[existingIndex] = {
-          ...newArray[existingIndex],
-          categories: {
-            ...(newArray[existingIndex].categories || { adobeStock: '', shutterStock1: '', shutterStock2: '' }),
-            ...newCategories
-          }
-        };
-        return newArray;
-      } else {
-        // If file doesn't exist in metadata yet, create it with empty metadata
-        return [
-          ...prev,
-          {
-            file,
-            metadata: {
-              title: '',
-              description: '',
-              keywords: '',
-            },
-            categories: {
-              adobeStock: newCategories.adobeStock || '',
-              shutterStock1: newCategories.shutterStock1 || '',
-              shutterStock2: newCategories.shutterStock2 || '',
-            },
-          },
-        ];
-      }
-    });
-  }, []);
-
-  const getCustomInstruction = useCallback((file: File): string | undefined => {
-    const found = generatedMetadata.find((fm) => fm.file === file);
-    return found?.customInstruction;
-  }, [generatedMetadata]);
-
-  const setCustomInstruction = useCallback((file: File, instruction: string) => {
-    setGeneratedMetadata((prev) => {
-      const existingIndex = prev.findIndex((fm) => fm.file === file);
-      if (existingIndex !== -1) {
-        // Update existing - use index for better performance
-        const newArray = [...prev];
-        newArray[existingIndex] = {
-          ...newArray[existingIndex],
-          customInstruction: instruction
-        };
-        return newArray;
-      } else {
-        // If file doesn't exist in metadata yet, create it with empty metadata
-        return [
-          ...prev,
-          {
-            file,
-            metadata: {
-              title: '',
-              description: '',
-              keywords: '',
-            },
-            customInstruction: instruction,
-          },
-        ];
-      }
-    });
-  }, []);
-
-  const clearGenerated = useCallback(() => setGeneratedMetadata([]), []);
-
-  // Load limits from localStorage with defaults
-  const [limits, setLimitsState] = useState<MetadataLimits>(() => {
-    const saved = loadFromLocalStorage('metadataLimits', null) as MetadataLimits | null;
-    if (saved) {
-      return {
-        titleLimit: saved.titleLimit ?? 200,
-        descriptionLimit: saved.descriptionLimit ?? 200,
-        keywordLimit: saved.keywordLimit ?? 80,
-      };
-    }
-    return { titleLimit: 200, descriptionLimit: 200, keywordLimit: 80 };
-  });
-
-  const setLimits = (l: Partial<MetadataLimits>) => {
-    setLimitsState((prev) => {
-      const newLimits = { ...prev, ...l };
-      saveToLocalStorage('metadataLimits', newLimits);
-      return newLimits;
-    });
-  };
-
-  // Load metadata options from localStorage with defaults
-  const [options, setOptionsState] = useState<MetadataOptions>(() => {
-    const saved = loadFromLocalStorage('metadataOptions', null) as MetadataOptions | null;
-    if (saved) {
-      return {
-        includePlaceName: saved.includePlaceName ?? false,
-      };
-    }
-    return { includePlaceName: false };
-  });
-
-  const setOptions = (o: Partial<MetadataOptions>) => {
-    setOptionsState((prev) => {
-      const newOptions = { ...prev, ...o };
-      saveToLocalStorage('metadataOptions', newOptions);
-      return newOptions;
-    });
-  };
-
-  // Load template settings from localStorage with defaults
-  const [activeTemplateId, setActiveTemplateIdState] = useState<string | null>(() =>
-    loadFromLocalStorage('activeTemplateId', null)
-  );
-  const [userTemplates, setUserTemplatesState] = useState<UserTemplate[]>(() =>
-    loadFromLocalStorage('userTemplates', [])
-  );
-
-  const setActiveTemplate = (id: string | null) => {
-    setActiveTemplateIdState(id);
-    saveToLocalStorage('activeTemplateId', id);
-  };
-
-  const addUserTemplate = (template: Omit<UserTemplate, 'id' | 'createdAt'>) => {
-    const newTemplate: UserTemplate = {
-      ...template,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-    };
-    setUserTemplatesState((prev) => {
-      const updated = [...prev, newTemplate];
-      saveToLocalStorage('userTemplates', updated);
-      return updated;
-    });
-  };
-
-  const updateUserTemplate = (id: string, template: Partial<UserTemplate>) => {
-    setUserTemplatesState((prev) => {
-      const updated = prev.map((t) =>
-        t.id === id ? { ...t, ...template } : t
-      );
-      saveToLocalStorage('userTemplates', updated);
-      return updated;
-    });
-  };
-
-  const deleteUserTemplate = (id: string) => {
-    setUserTemplatesState((prev) => {
-      const updated = prev.filter((t) => t.id !== id);
-      saveToLocalStorage('userTemplates', updated);
-      if (activeTemplateId === id) {
-        setActiveTemplateIdState(null);
-        saveToLocalStorage('activeTemplateId', null);
-      }
-      return updated;
-    });
-  };
-
-  // Memoize API object to prevent unnecessary re-renders
-  const apiValue = useMemo(() => ({
-    selectedProvider,
+  const dispatch = useAppDispatch();
+
+  // Selectors
+  const config = useAppSelector((state) => state.config);
+  const fileState = useAppSelector((state) => state.file);
+  const metadataState = useAppSelector((state) => state.metadata);
+  const templateState = useAppSelector((state) => state.template);
+  const uiState = useAppSelector((state) => state.ui);
+
+  // --- API ---
+  const setSelectedProvider = useCallback((provider: Provider | '') => {
+    dispatch(configSlice.setSelectedProvider(provider));
+  }, [dispatch]);
+
+  const setSelectedModel = useCallback((model: string) => {
+    dispatch(configSlice.setSelectedModel(model));
+  }, [dispatch]);
+
+  const setApiKey = useCallback((provider: Provider, key: string) => {
+    dispatch(configSlice.setApiKey({ provider, key }));
+  }, [dispatch]);
+
+  const setRequestDelay = useCallback((delay: number) => {
+    dispatch(configSlice.setRequestDelay(delay));
+  }, [dispatch]);
+
+  const apiValue: ApiSettingsState = useMemo(() => ({
+    selectedProvider: config.api.selectedProvider,
     setSelectedProvider,
-    selectedModel,
+    selectedModel: config.api.selectedModel,
     setSelectedModel,
-    apiKeys,
+    apiKeys: config.api.apiKeys,
     setApiKey,
-    requestDelay,
+    requestDelay: config.api.requestDelay,
     setRequestDelay,
-  }), [selectedProvider, selectedModel, apiKeys, requestDelay, setSelectedProvider, setSelectedModel, setApiKey, setRequestDelay]);
+  }), [config.api, setSelectedProvider, setSelectedModel, setApiKey, setRequestDelay]);
 
-  // Memoize thumbnails object
-  const thumbnailsValue = useMemo(() => ({
-    items: thumbnails,
-    setItems: setThumbnails,
-    upsert,
-    clear: clearThumbs,
-    isGenerating: isGeneratingThumbnails,
-    setIsGenerating: setIsGeneratingThumbnails,
-    pendingCount: pendingThumbnailCount,
-  }), [thumbnails, upsert, clearThumbs, isGeneratingThumbnails, pendingThumbnailCount]);
+  // --- Metadata Limits ---
+  const setLimits = useCallback((l: Partial<MetadataLimits>) => {
+    dispatch(configSlice.setMetadataLimits(l));
+  }, [dispatch]);
 
-  // Memoize generated object
-  const generatedValue = useMemo(() => ({
-    items: generatedMetadata,
-    getMetadata,
-    setMetadata,
-    getCategories,
-    setFileCategories,
-    getCustomInstruction,
-    setCustomInstruction,
-    clear: clearGenerated,
-  }), [generatedMetadata, getMetadata, setMetadata, getCategories, setFileCategories, getCustomInstruction, setCustomInstruction, clearGenerated]);
+  // --- Metadata Options ---
+  const setOptions = useCallback((o: Partial<MetadataOptions>) => {
+    dispatch(configSlice.setMetadataOptions(o));
+  }, [dispatch]);
 
-  // Memoize metadata limits
-  const metadataLimitsValue = useMemo(() => ({
-    ...limits,
-    setLimits,
-  }), [limits, setLimits]);
+  // --- Embed Settings ---
+  const setEmbedSettings = useCallback((s: Partial<EmbedSettings>) => {
+    dispatch(configSlice.setEmbedSettings(s));
+  }, [dispatch]);
 
-  // Memoize metadata options
-  const metadataOptionsValue = useMemo(() => ({
-    ...options,
-    setOptions,
-  }), [options, setOptions]);
+  // --- Templates ---
+  const setActiveTemplate = useCallback((id: string | null) => {
+    dispatch(templateSlice.setActiveTemplate(id));
+  }, [dispatch]);
 
-  // Memoize template settings
-  const templateSettingsValue = useMemo(() => ({
-    activeTemplateId,
-    userTemplates,
+  const addUserTemplate = useCallback((template: Omit<UserTemplate, 'id' | 'createdAt'>) => {
+    dispatch(templateSlice.addUserTemplate(template));
+  }, [dispatch]);
+
+  const updateUserTemplate = useCallback((id: string, template: Partial<UserTemplate>) => {
+    dispatch(templateSlice.updateUserTemplate({ id, template }));
+  }, [dispatch]);
+
+  const deleteUserTemplate = useCallback((id: string) => {
+    dispatch(templateSlice.deleteUserTemplate(id));
+  }, [dispatch]);
+
+  const templateSettingsValue: TemplateSettings = useMemo(() => ({
+    activeTemplateId: templateState.activeTemplateId,
+    userTemplates: templateState.userTemplates,
     setActiveTemplate,
     addUserTemplate,
     updateUserTemplate,
     deleteUserTemplate,
-  }), [activeTemplateId, userTemplates, setActiveTemplate, addUserTemplate, updateUserTemplate, deleteUserTemplate]);
+  }), [templateState, setActiveTemplate, addUserTemplate, updateUserTemplate, deleteUserTemplate]);
 
-  // Memoize embed settings
-  const embedSettingsValue = useMemo(() => ({
-    ...embedSettings,
-    setEmbedSettings,
-  }), [embedSettings, setEmbedSettings]);
+  // --- Files ---
+  const setFiles = useCallback((files: File[]) => {
+    dispatch(fileSlice.setFiles(files));
+  }, [dispatch]);
 
-  // Memoize file paths
-  const filePathsValue = useMemo(() => ({
-    filePaths,
-    setFilePath,
-    getFilePath,
-  }), [filePaths, setFilePath, getFilePath]);
+  const removeFile = useCallback((file: File) => {
+    dispatch(fileSlice.removeFile(file));
+  }, [dispatch]);
 
-  // Memoize settings dialog state
-  const settingsDialogValue = useMemo(() => ({
-    isOpen: settingsDialogOpen,
-    setIsOpen: setSettingsDialogOpen,
-    defaultTab: settingsDialogDefaultTab,
-    setDefaultTab: setSettingsDialogDefaultTab,
-  }), [settingsDialogOpen, settingsDialogDefaultTab]);
+  const setFilePath = useCallback((file: File, path: string) => {
+    dispatch(fileSlice.setFilePath({ file, path }));
+  }, [dispatch]);
+
+  const getFilePath = useCallback((file: File) => {
+    return fileState.filePaths.get(file);
+  }, [fileState.filePaths]);
+
+  // --- Thumbnails ---
+  const setThumbnailsItems = useCallback((items: ThumbnailData[]) => {
+    dispatch(fileSlice.setThumbnails(items));
+  }, [dispatch]);
+
+  const upsertThumbnail = useCallback((t: ThumbnailData) => {
+    dispatch(fileSlice.addThumbnail(t));
+  }, [dispatch]);
+
+  const clearThumbnails = useCallback(() => {
+    dispatch(fileSlice.clearThumbnails());
+  }, [dispatch]);
+
+  const setIsGeneratingThumbnails = useCallback((generating: boolean) => {
+    dispatch(fileSlice.setIsGeneratingThumbnails(generating));
+  }, [dispatch]);
+
+  // --- Generated Metadata ---
+
+
+  const getMetadata = useCallback((file: File) => {
+    return metadataState.generatedMetadata.find(m => m.file === file)?.metadata;
+  }, [metadataState.generatedMetadata]);
+
+  const setMetadata = useCallback((file: File, metadata: Partial<GeneratedMetadata>) => {
+    dispatch(metadataSlice.updateFileMetadata({ file, metadata }));
+  }, [dispatch]);
+
+  const getCategories = useCallback((file: File) => {
+    return metadataState.generatedMetadata.find(m => m.file === file)?.categories;
+  }, [metadataState.generatedMetadata]);
+
+  const setFileCategories = useCallback((file: File, categories: Partial<CategorySelection>) => {
+    dispatch(metadataSlice.updateFileCategories({ file, categories }));
+  }, [dispatch]);
+
+  const getCustomInstruction = useCallback((file: File) => {
+    return metadataState.generatedMetadata.find(m => m.file === file)?.customInstruction;
+  }, [metadataState.generatedMetadata]);
+
+  const setCustomInstruction = useCallback((file: File, instruction: string) => {
+    dispatch(metadataSlice.updateCustomInstruction({ file, instruction }));
+  }, [dispatch]);
+
+  const clearGenerated = useCallback(() => {
+    dispatch(metadataSlice.clearGeneratedMetadata());
+  }, [dispatch]);
+
+  // --- UI ---
+  const setGenerationProgress = useCallback((progress: Partial<GenerationProgress>) => {
+    dispatch(uiSlice.setGenerationProgress(progress));
+  }, [dispatch]);
+
+  const setSelectedFile = useCallback((file: File | null) => {
+    dispatch(fileSlice.setSelectedFile(file));
+  }, [dispatch]);
+
+  const setHasAttemptedGeneration = useCallback((attempted: boolean) => {
+    dispatch(uiSlice.setHasAttemptedGeneration(attempted));
+  }, [dispatch]);
+
+  const setCategories = useCallback((categories: Partial<CategorySelection>) => {
+    dispatch(metadataSlice.setDefaultCategories(categories));
+  }, [dispatch]);
+
+  const setSettingsDialogOpen = useCallback((open: boolean) => {
+    dispatch(uiSlice.setSettingsDialogOpen(open));
+  }, [dispatch]);
+
+  const setSettingsDialogDefaultTab = useCallback((tab: string) => {
+    dispatch(uiSlice.setSettingsDialogTab(tab));
+  }, [dispatch]);
+
+
+  const hasApiKey = useCallback(() => {
+    return Object.values(config.api.apiKeys).some(key => key && key.trim() !== '');
+  }, [config.api.apiKeys]);
 
   const value: SettingsContextType = useMemo(() => ({
     api: apiValue,
-    metadataLimits: metadataLimitsValue,
-    metadataOptions: metadataOptionsValue,
+    metadataLimits: { ...config.metadataLimits, setLimits },
+    metadataOptions: { ...config.metadataOptions, setOptions },
+    embedSettings: { ...config.embedSettings, setEmbedSettings },
     templateSettings: templateSettingsValue,
-    embedSettings: embedSettingsValue,
-    files,
+    files: fileState.files,
     setFiles,
     removeFile,
-    ...filePathsValue,
-    thumbnails: thumbnailsValue,
-    generated: generatedValue,
-    generationProgress,
+    filePaths: fileState.filePaths,
+    setFilePath,
+    getFilePath,
+    thumbnails: {
+      items: fileState.thumbnails,
+      setItems: setThumbnailsItems,
+      upsert: upsertThumbnail,
+      clear: clearThumbnails,
+      isGenerating: fileState.isGeneratingThumbnails,
+      setIsGenerating: setIsGeneratingThumbnails,
+      pendingCount: fileState.pendingThumbnailCount,
+    },
+    generated: {
+      items: metadataState.generatedMetadata,
+      getMetadata,
+      setMetadata,
+      getCategories,
+      setFileCategories,
+      getCustomInstruction,
+      setCustomInstruction,
+      clear: clearGenerated,
+    },
+    generationProgress: uiState.generationProgress,
     setGenerationProgress,
-    selectedFile,
+    selectedFile: fileState.selectedFile,
     setSelectedFile,
-    hasAttemptedGeneration,
+    hasAttemptedGeneration: uiState.hasAttemptedGeneration,
     setHasAttemptedGeneration,
-    categories,
+    categories: metadataState.defaultCategories,
     setCategories,
-    settingsDialog: settingsDialogValue,
+    settingsDialog: {
+      isOpen: uiState.settingsDialog.isOpen,
+      setIsOpen: setSettingsDialogOpen,
+      defaultTab: uiState.settingsDialog.defaultTab,
+      setDefaultTab: setSettingsDialogDefaultTab,
+    },
     hasApiKey,
   }), [
     apiValue,
-    metadataLimitsValue,
-    metadataOptionsValue,
+    config.metadataLimits, setLimits,
+    config.metadataOptions, setOptions,
+    config.embedSettings, setEmbedSettings,
     templateSettingsValue,
-    embedSettingsValue,
-    files,
-    removeFile,
-    filePathsValue,
-    thumbnailsValue,
-    generatedValue,
-    generationProgress,
-    selectedFile,
-    hasAttemptedGeneration,
-    categories,
-    settingsDialogValue,
-    hasApiKey,
+    fileState.files, setFiles, removeFile,
+    fileState.filePaths, setFilePath, getFilePath,
+    fileState.thumbnails, setThumbnailsItems, upsertThumbnail, clearThumbnails, fileState.isGeneratingThumbnails, setIsGeneratingThumbnails, fileState.pendingThumbnailCount,
+    metadataState.generatedMetadata, getMetadata, setMetadata, getCategories, setFileCategories, getCustomInstruction, setCustomInstruction, clearGenerated,
+    uiState.generationProgress, setGenerationProgress,
+    fileState.selectedFile, setSelectedFile,
+    uiState.hasAttemptedGeneration, setHasAttemptedGeneration,
+    metadataState.defaultCategories, setCategories,
+    uiState.settingsDialog.isOpen, setSettingsDialogOpen,
+    uiState.settingsDialog.defaultTab, setSettingsDialogDefaultTab,
+    hasApiKey
   ]);
+
+  // --- Side Effect: Thumbnail Generation ---
+  // Use refs to avoid dependency loops that cause infinite re-renders
+
+  const generationIdRef = useRef(0);
+  const isGeneratingRef = useRef(false);
+  const dispatchRef = useRef(dispatch);
+  dispatchRef.current = dispatch;
+
+  // Batching state - all in refs to avoid re-renders
+  const pendingThumbnailsRef = useRef<ThumbnailData[]>([]);
+  const flushTimerRef = useRef<number | null>(null);
+  const processingFilesRef = useRef<Set<File>>(new Set());
+
+  // Flush function - dispatches pending thumbnails
+  const flushPendingThumbnails = useCallback(() => {
+    if (pendingThumbnailsRef.current.length === 0) return;
+
+    const toDispatch = [...pendingThumbnailsRef.current];
+    pendingThumbnailsRef.current = [];
+    flushTimerRef.current = null;
+
+    dispatchRef.current(fileSlice.upsertThumbnails(toDispatch));
+    toDispatch.forEach(t => processingFilesRef.current.delete(t.file));
+  }, []);
+
+  useEffect(() => {
+    const files = fileState.files;
+    // Read thumbnails from store directly to avoid stale closure
+    const thumbnails = fileState.thumbnails;
+
+    if (!files || files.length === 0) {
+      if (isGeneratingRef.current) {
+        isGeneratingRef.current = false;
+        dispatchRef.current(fileSlice.setIsGeneratingThumbnails(false));
+      }
+      return;
+    }
+
+    // Filter files that don't have thumbnails AND are not currently being processed
+    const existingThumbnailFiles = new Set(thumbnails.map(t => t.file));
+
+    const filesToGenerate = files.filter((file) => {
+      const isMedia = file.type.startsWith("image/") || file.type.startsWith("video/");
+      return isMedia && !existingThumbnailFiles.has(file) && !processingFilesRef.current.has(file);
+    });
+
+    if (filesToGenerate.length === 0) {
+      return;
+    }
+
+    // Mark files as being processed IMMEDIATELY
+    filesToGenerate.forEach(f => processingFilesRef.current.add(f));
+
+    const currentGenerationId = ++generationIdRef.current;
+
+    if (!isGeneratingRef.current) {
+      isGeneratingRef.current = true;
+      dispatchRef.current(fileSlice.setIsGeneratingThumbnails(true));
+    }
+
+    console.log(`🚀 Starting generation of ${filesToGenerate.length} thumbnails (batch #${currentGenerationId})...`);
+
+    // Dynamic import and process
+    (async () => {
+      try {
+        const { generateThumbnailsBatch } = await import("@/app/lib/thumbnailGenerator");
+
+        await generateThumbnailsBatch(
+          filesToGenerate,
+          () => { }, // Progress callback
+          (file, thumbnailUrl) => {
+            if (generationIdRef.current !== currentGenerationId) return;
+
+            // Add to pending batch
+            pendingThumbnailsRef.current.push({ file, thumbnailUrl });
+
+            // Schedule flush if not already scheduled (every 100ms)
+            if (!flushTimerRef.current) {
+              flushTimerRef.current = window.setTimeout(flushPendingThumbnails, 100);
+            }
+          }
+        );
+
+        // Final flush after all done
+        if (generationIdRef.current === currentGenerationId) {
+          if (flushTimerRef.current) {
+            clearTimeout(flushTimerRef.current);
+            flushTimerRef.current = null;
+          }
+          flushPendingThumbnails();
+
+          isGeneratingRef.current = false;
+          dispatchRef.current(fileSlice.setIsGeneratingThumbnails(false));
+          console.log(`✅ Completed batch #${currentGenerationId}`);
+        }
+
+      } catch (error) {
+        console.error("❌ Batch thumbnail generation failed:", error);
+        filesToGenerate.forEach(f => processingFilesRef.current.delete(f));
+        if (generationIdRef.current === currentGenerationId) {
+          isGeneratingRef.current = false;
+          dispatchRef.current(fileSlice.setIsGeneratingThumbnails(false));
+        }
+      }
+    })();
+
+    return () => {
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+      }
+    };
+  }, [fileState.files, flushPendingThumbnails]); // Only depend on files
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

@@ -134,6 +134,23 @@ const MetadataSettings = () => {
             }
           />
         </div>
+        <div className="flex justify-between items-center p-2">
+          <div className="flex flex-col gap-1">
+            <h4>Auto-select Generated Files</h4>
+            <span className="text-xs">
+              {metadataOptions.autoSelectGenerated
+                ? "Automatically select files during metadata generation"
+                : "Don't automatically select files during metadata generation"}
+            </span>
+          </div>
+          <Switch
+            checked={metadataOptions.autoSelectGenerated}
+            onCheckedChange={(checked) =>
+              metadataOptions.setOptions({ autoSelectGenerated: checked })
+            }
+          />
+        </div>
+        
       </div>
     </div>
   )
