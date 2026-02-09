@@ -16,6 +16,8 @@ import templateReducer from './slices/templateSlice';
 import uiReducer from './slices/uiSlice';
 import fileReducer from './slices/fileSlice';
 import metadataReducer from './slices/metadataSlice';
+import batchReducer from './slices/batchSlice';
+import batchProcessReducer from './slices/batchProcessSlice';
 
 const rootReducer = combineReducers({
     config: configReducer,
@@ -23,6 +25,8 @@ const rootReducer = combineReducers({
     ui: uiReducer,
     file: fileReducer,
     metadata: metadataReducer,
+    batch: batchReducer,
+    batchProcess: batchProcessReducer,
 });
 
 const persistConfig = {
@@ -39,9 +43,9 @@ export const store = configureStore({
         getDefaultMiddleware({
             serializableCheck: {
                 // Ignore these action types for redux-persist
-                ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER, 'file/setFiles', 'file/addFiles', 'file/removeFile', 'file/setFilePath', 'file/setFilePaths', 'file/setThumbnails', 'file/addThumbnail', 'file/setSelectedFile', 'metadata/updateFileMetadata', 'metadata/updateFileCategories', 'metadata/updateCustomInstruction', 'metadata/setGeneratedMetadata'],
+                ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER, 'file/setFiles', 'file/addFiles', 'file/removeFile', 'file/setFilePath', 'file/setFilePaths', 'file/setThumbnails', 'file/addThumbnail', 'file/setSelectedFile', 'metadata/updateFileMetadata', 'metadata/updateFileCategories', 'metadata/updateCustomInstruction', 'metadata/setGeneratedMetadata', 'batch/setFolders', 'batch/addFolder', 'batch/updateFolder', 'batch/removeFolder', 'batch/clearFolders', 'batchProcess/startBatchProcess', 'batchProcess/updateFolderStatus', 'batchProcess/updateImageStatus', 'batchProcess/updateFilePath'],
                 // Ignore these paths in the state for File objects
-                ignoredPaths: ['file.files', 'file.filePaths', 'file.thumbnails', 'file.selectedFile', 'metadata.generatedMetadata'],
+                ignoredPaths: ['file.files', 'file.filePaths', 'file.thumbnails', 'file.selectedFile', 'metadata.generatedMetadata', 'batch.folders', 'batchProcess.folders'],
             },
         }),
     devTools: {

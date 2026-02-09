@@ -3,8 +3,9 @@ import ApiSettings from "./_component/ApiSettings";
 import MetadataSettings from "./_component/MetadataSettings";
 import { EmbedSettings } from "./_component/EmbedSettings";
 import ApiKeyManagement from "./_component/ApiKeyManagement";
+import ExportSettings from "./_component/ExportSettings";
 import { useSettings } from "@/app/contexts/SettingsContext";
-import { Settings as SettingsIcon, Key, FileText, Code, FileType2 } from "lucide-react";
+import { Settings as SettingsIcon, Key, FileText, Code, FileType2, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TemplateManager } from "./_component/TemplateManager";
 
@@ -16,6 +17,7 @@ const Settings = () => {
     { id: "apikeys", label: "API Keys", icon: Key },
     { id: "metadata", label: "Metadata", icon: FileText },
     { id: "embed", label: "Embed", icon: Code },
+    { id: "export", label: "Export", icon: Download },
     { id: "templates", label: "Templates", icon: FileType2 },
   ];
 
@@ -57,6 +59,7 @@ const Settings = () => {
           )}
           {settingsDialog.defaultTab === "metadata" && <MetadataSettings />}
           {settingsDialog.defaultTab === "embed" && <EmbedSettings />}
+          {settingsDialog.defaultTab === "export" && <ExportSettings />}
           {settingsDialog.defaultTab === "templates" && <TemplateManager />}
         </div>
       </div>

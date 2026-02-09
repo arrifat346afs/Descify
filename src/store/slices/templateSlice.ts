@@ -7,14 +7,22 @@ export type UserTemplate = {
     createdAt: string; // ISO String for serializability
 };
 
+export type EditedDefaultTemplate = {
+    id: string;
+    template: string;
+    editedAt: string; // ISO String for serializability
+};
+
 interface TemplateState {
     activeTemplateId: string | null;
     userTemplates: UserTemplate[];
+    editedDefaultTemplates: EditedDefaultTemplate[];
 }
 
 const initialState: TemplateState = {
     activeTemplateId: null,
     userTemplates: [],
+    editedDefaultTemplates: [],
 };
 
 const templateSlice = createSlice({
@@ -44,6 +52,26 @@ const templateSlice = createSlice({
                 state.activeTemplateId = null;
             }
         },
+        editDefaultTemplate(state, action: PayloadAction<{ id: string; template: string }>) {
+            const { id, template } = action.payload;
+            const existingIndex = state.editedDefaultTemplates.findIndex((t) => t.id === id);
+            const editedTemplate: EditedDefaultTemplate = {
+                id,
+                template,
+                editedAt: new Date().toISOString(),
+            };
+            if (existingIndex !== -1) {
+                state.editedDefaultTemplates[existingIndex] = editedTemplate;
+            } else {
+                state.editedDefaultTemplates.push(editedTemplate);
+            }
+        },
+        resetDefaultTemplate(state, action: PayloadAction<string>) {
+            state.editedDefaultTemplates = state.editedDefaultTemplates.filter((t) => t.id !== action.payload);
+        },
+        resetAllDefaultTemplates(state) {
+            state.editedDefaultTemplates = [];
+        },
     },
 });
 
@@ -52,6 +80,9 @@ export const {
     addUserTemplate,
     updateUserTemplate,
     deleteUserTemplate,
+    editDefaultTemplate,
+    resetDefaultTemplate,
+    resetAllDefaultTemplates,
 } = templateSlice.actions;
 
 export default templateSlice.reducer;

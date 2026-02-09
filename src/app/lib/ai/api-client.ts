@@ -3,6 +3,7 @@
  * Handles raw API calls and HTTP requests to AI providers directly via fetch
  * Removes dependency on Vercel AI SDK for more control over payload and tokens
  */
+import { toast } from "sonner";
 
 export type MessageContent = {
   type: 'text' | 'image_url'; // OpenAI/OpenRouter standard
@@ -129,6 +130,22 @@ async function callOpenAICompatible(
 
   if (!response.ok) {
     const errorBody = await response.text();
+    
+    // Check for model capability errors
+    const isModelCapabilityError = 
+      errorBody.includes('does not support image input') ||
+      errorBody.includes('model does not support') ||
+      errorBody.includes('vision') ||
+      errorBody.includes('image modality') ||
+      errorBody.includes('media type') ||
+      response.status === 400;
+    
+    if (isModelCapabilityError) {
+      const errorMessage = "The selected model does not support image input. Please select a vision-capable model from Settings.";
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+    
     throw new Error(`API Error ${response.status}: ${errorBody}`);
   }
 
@@ -202,6 +219,22 @@ async function callGoogleGemini(apiKey: string, model: string, messages: any[]):
 
   if (!response.ok) {
     const errorBody = await response.text();
+    
+    // Check for model capability errors
+    const isModelCapabilityError = 
+      errorBody.includes('does not support image input') ||
+      errorBody.includes('model does not support') ||
+      errorBody.includes('vision') ||
+      errorBody.includes('image modality') ||
+      errorBody.includes('media type') ||
+      response.status === 400;
+    
+    if (isModelCapabilityError) {
+      const errorMessage = "The selected model does not support image input. Please select a vision-capable model from Settings.";
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+    
     throw new Error(`Gemini API Error ${response.status}: ${errorBody}`);
   }
 

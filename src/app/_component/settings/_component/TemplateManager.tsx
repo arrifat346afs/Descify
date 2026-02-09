@@ -6,11 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSettings } from '@/app/contexts/SettingsContext';
 import { DEFAULT_TEMPLATES, validateTemplate, interpolateTemplate } from '@/app/lib/templateUtils';
-import { Trash2, Edit, Eye, Plus, Check,  } from 'lucide-react';
+import { Trash2, Edit, Eye, Plus, Check, RotateCcw } from 'lucide-react';
 
 export const TemplateManager = () => {
   const { templateSettings, metadataLimits } = useSettings();
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [isEditingDefault, setIsEditingDefault] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateContent, setNewTemplateContent] = useState('');
   const [previewMode, setPreviewMode] = useState<string | null>(null);
@@ -60,22 +61,52 @@ export const TemplateManager = () => {
     }
   };
 
-  const startEdit = (template?: any) => {
+  const handleUpdateDefaultTemplate = (id: string) => {
+    const validation = validateTemplate(newTemplateContent);
+    if (!validation.isValid) {
+      alert(`Template is missing required variables: ${validation.missingVariables.join(', ')}`);
+      return;
+    }
+
+    templateSettings.editDefaultTemplate(id, newTemplateContent.trim());
+
+    setNewTemplateName('');
+    setNewTemplateContent('');
+    setEditingTemplate(null);
+    setIsEditingDefault(false);
+  };
+
+  const handleResetDefaultTemplate = (id: string) => {
+    if (confirm('Are you sure you want to reset this default template to its original content?')) {
+      templateSettings.resetDefaultTemplate(id);
+    }
+  };
+
+  const handleResetAllDefaults = () => {
+    if (confirm('Are you sure you want to reset ALL default templates to their original content?')) {
+      templateSettings.resetAllDefaultTemplates();
+    }
+  };
+
+  const startEdit = (template?: { id: string; name: string; template: string; isPreset?: boolean }) => {
     if (template) {
-      setEditingTemplate(template.id);
       setNewTemplateName(template.name);
       setNewTemplateContent(template.template);
+      setEditingTemplate(template.id);
+      setIsEditingDefault(!!template.isPreset);
     } else {
-      setEditingTemplate('new');
       setNewTemplateName('');
       setNewTemplateContent('');
+      setEditingTemplate('new');
+      setIsEditingDefault(false);
     }
   };
 
   const cancelEdit = () => {
-    setEditingTemplate(null);
     setNewTemplateName('');
     setNewTemplateContent('');
+    setEditingTemplate(null);
+    setIsEditingDefault(false);
   };
 
   const getPreviewContent = (template: string) => {
@@ -87,8 +118,16 @@ export const TemplateManager = () => {
   };
 
   const allTemplates = [
-    ...DEFAULT_TEMPLATES.map(t => ({ ...t, isPreset: true })),
-    ...templateSettings.userTemplates.map(t => ({ ...t, isPreset: false })),
+    ...DEFAULT_TEMPLATES.map(t => {
+      const edited = templateSettings.editedDefaultTemplates?.find(e => e.id === t.id);
+      return {
+        ...t,
+        isPreset: true,
+        template: edited ? edited.template : t.template,
+        isEdited: !!edited,
+      };
+    }),
+    ...templateSettings.userTemplates.map(t => ({ ...t, isPreset: false, isEdited: false })),
   ];
 
   return (
@@ -112,6 +151,17 @@ export const TemplateManager = () => {
           <div className="flex justify-between items-center">
             <h4 className="text-base font-medium">Available Templates</h4>
             <div className="flex gap-2">
+              {(templateSettings.editedDefaultTemplates?.length || 0) > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetAllDefaults}
+                  className="text-amber-600 border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset All Defaults
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -143,6 +193,9 @@ export const TemplateManager = () => {
                       {template.isPreset && (
                         <Badge variant="secondary" className="text-xs">Preset</Badge>
                       )}
+                      {template.isEdited && (
+                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-600">Edited</Badge>
+                      )}
                       {templateSettings.activeTemplateId === template.id && (
                         <Badge variant="default" className="text-xs">Active</Badge>
                       )}
@@ -160,7 +213,28 @@ export const TemplateManager = () => {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    {!template.isPreset && (
+                    {template.isPreset ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEdit(template)}
+                          title="Edit"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {template.isEdited && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleResetDefaultTemplate(template.id)}
+                            title="Reset to original"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </>
+                    ) : (
                       <>
                         <Button
                           variant="ghost"
@@ -215,13 +289,27 @@ export const TemplateManager = () => {
 
           {editingTemplate ? (
             <div className="space-y-4">
+              {isEditingDefault && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    You are editing a default template. Changes will be saved as your custom version.
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-2">Template Name</label>
                 <Input
                   value={newTemplateName}
                   onChange={(e) => setNewTemplateName(e.target.value)}
                   placeholder="Enter template name..."
+                  disabled={isEditingDefault}
+                  className={isEditingDefault ? "bg-muted" : ""}
                 />
+                {isEditingDefault && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Default template names cannot be changed
+                  </p>
+                )}
               </div>
 
               <div>
@@ -238,11 +326,21 @@ export const TemplateManager = () => {
               </div>
 
               <div className="flex gap-2">
-                <Button
-                  onClick={() => editingTemplate === 'new' ? handleCreateTemplate() : handleUpdateTemplate(editingTemplate)}
-                >
-                  {editingTemplate === 'new' ? 'Create Template' : 'Update Template'}
-                </Button>
+                {editingTemplate === 'new' ? (
+                  <Button onClick={handleCreateTemplate}>
+                    Create Template
+                  </Button>
+                ) : (
+                  <Button onClick={() => {
+                    if (isEditingDefault) {
+                      handleUpdateDefaultTemplate(editingTemplate);
+                    } else {
+                      handleUpdateTemplate(editingTemplate);
+                    }
+                  }}>
+                    Update Template
+                  </Button>
+                )}
                 <Button variant="outline" onClick={cancelEdit}>
                   Cancel
                 </Button>

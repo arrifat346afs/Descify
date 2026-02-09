@@ -37,10 +37,20 @@ export const MetadataSection = () => {
     const customInstruction = generated.getCustomInstruction(selectedFile);
 
     // Get active custom template if one is selected
-    const activeTemplate = templateSettings.activeTemplateId
-      ? templateSettings.userTemplates.find(t => t.id === templateSettings.activeTemplateId)
-      : null;
-    const customTemplate = activeTemplate?.template;
+    let customTemplate: string | undefined;
+    if (templateSettings.activeTemplateId) {
+      // Check user templates first
+      const userTemplate = templateSettings.userTemplates.find(t => t.id === templateSettings.activeTemplateId);
+      if (userTemplate) {
+        customTemplate = userTemplate.template;
+      } else {
+        // Check edited default templates
+        const editedDefault = templateSettings.editedDefaultTemplates?.find(t => t.id === templateSettings.activeTemplateId);
+        if (editedDefault) {
+          customTemplate = editedDefault.template;
+        }
+      }
+    }
 
     setIsGenerating(true);
     try {

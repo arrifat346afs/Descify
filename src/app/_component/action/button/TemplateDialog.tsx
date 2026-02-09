@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSettings } from '@/app/contexts/SettingsContext';
 import { DEFAULT_TEMPLATES, validateTemplate, interpolateTemplate, getTemplateVariables } from '@/app/lib/templateUtils';
-import { Settings, Trash2, Edit, Eye, Plus, Check, X } from 'lucide-react';
+import { Settings, Trash2, Edit, Eye, Plus, Check, X, RotateCcw } from 'lucide-react';
 
 export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
   const { templateSettings, metadataLimits } = useSettings();
   const [open, setOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [isEditingDefault, setIsEditingDefault] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateContent, setNewTemplateContent] = useState('');
   const [previewMode, setPreviewMode] = useState<string | null>(null);
@@ -62,15 +63,17 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const startEdit = (template?: { id: string; name: string; template: string }) => {
+  const startEdit = (template?: { id: string; name: string; template: string; isPreset?: boolean }) => {
     if (template) {
       setNewTemplateName(template.name);
       setNewTemplateContent(template.template);
       setEditingTemplate(template.id);
+      setIsEditingDefault(!!template.isPreset);
     } else {
       setNewTemplateName('');
       setNewTemplateContent('');
       setEditingTemplate('new');
+      setIsEditingDefault(false);
     }
   };
 
@@ -78,6 +81,34 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
     setNewTemplateName('');
     setNewTemplateContent('');
     setEditingTemplate(null);
+    setIsEditingDefault(false);
+  };
+
+  const handleUpdateDefaultTemplate = (id: string) => {
+    const validation = validateTemplate(newTemplateContent);
+    if (!validation.isValid) {
+      alert(`Template is missing required variables: ${validation.missingVariables.join(', ')}`);
+      return;
+    }
+
+    templateSettings.editDefaultTemplate(id, newTemplateContent.trim());
+
+    setNewTemplateName('');
+    setNewTemplateContent('');
+    setEditingTemplate(null);
+    setIsEditingDefault(false);
+  };
+
+  const handleResetDefaultTemplate = (id: string) => {
+    if (confirm('Are you sure you want to reset this default template to its original content?')) {
+      templateSettings.resetDefaultTemplate(id);
+    }
+  };
+
+  const handleResetAllDefaults = () => {
+    if (confirm('Are you sure you want to reset ALL default templates to their original content?')) {
+      templateSettings.resetAllDefaultTemplates();
+    }
   };
 
   const getPreviewContent = (template: string) => {
@@ -90,8 +121,16 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
   };
 
   const allTemplates = [
-    ...DEFAULT_TEMPLATES.map(t => ({ ...t, isPreset: true })),
-    ...templateSettings.userTemplates.map(t => ({ ...t, isPreset: false })),
+    ...DEFAULT_TEMPLATES.map(t => {
+      const edited = templateSettings.editedDefaultTemplates?.find(e => e.id === t.id);
+      return {
+        ...t,
+        isPreset: true,
+        template: edited ? edited.template : t.template,
+        isEdited: !!edited,
+      };
+    }),
+    ...templateSettings.userTemplates.map(t => ({ ...t, isPreset: false, isEdited: false })),
   ];
 
   return (
@@ -118,6 +157,17 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-medium">Available Templates</h3>
               <div className="flex gap-2">
+                {(templateSettings.editedDefaultTemplates?.length || 0) > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetAllDefaults}
+                    className="text-amber-600 border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reset All Defaults
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -152,6 +202,9 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
                         {template.isPreset && (
                           <Badge variant="secondary">Preset</Badge>
                         )}
+                        {template.isEdited && (
+                          <Badge variant="outline" className="text-amber-600 border-amber-600">Edited</Badge>
+                        )}
                         {templateSettings.activeTemplateId === template.id && (
                           <Badge variant="default">Active</Badge>
                         )}
@@ -168,7 +221,27 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      {!template.isPreset && (
+                      {template.isPreset ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEdit(template)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          {template.isEdited && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleResetDefaultTemplate(template.id)}
+                              title="Reset to original"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </>
+                      ) : (
                         <>
                           <Button
                             variant="ghost"
@@ -220,13 +293,27 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
             
             {editingTemplate ? (
               <div className="space-y-4">
+                {isEditingDefault && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      You are editing a default template. Changes will be saved as your custom version.
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium mb-2">Template Name</label>
                   <Input
                     value={newTemplateName}
                     onChange={(e) => setNewTemplateName(e.target.value)}
                     placeholder="Enter template name..."
+                    disabled={isEditingDefault}
+                    className={isEditingDefault ? "bg-muted" : ""}
                   />
+                  {isEditingDefault && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Default template names cannot be changed
+                    </p>
+                  )}
                 </div>
                 
                 <div>
@@ -246,7 +333,13 @@ export const TemplateDialog = ({ children }: { children: React.ReactNode }) => {
                       Create Template
                     </Button>
                   ) : (
-                    <Button onClick={() => handleUpdateTemplate(editingTemplate)}>
+                    <Button onClick={() => {
+                      if (isEditingDefault) {
+                        handleUpdateDefaultTemplate(editingTemplate);
+                      } else {
+                        handleUpdateTemplate(editingTemplate);
+                      }
+                    }}>
                       <Check className="h-4 w-4 mr-2" />
                       Update Template
                     </Button>

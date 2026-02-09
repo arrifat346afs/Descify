@@ -19,3 +19,18 @@ export interface EmbedMetadataResult {
 export async function embedMetadata(request: EmbedMetadataRequest): Promise<EmbedMetadataResult> {
   return await invoke('embed_metadata', { request });
 }
+
+// Interface for EXIF metadata response
+export interface ExifData {
+  file_path: string;
+  title?: string;
+  description?: string;
+  keywords?: string;
+}
+
+/**
+ * Read EXIF metadata from an image/video file using exiftool
+ */
+export async function readExifMetadata(filePath: string): Promise<ExifData> {
+  return await invoke('read_exif_metadata_command', { filePath });
+}

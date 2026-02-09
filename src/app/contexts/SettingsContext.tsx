@@ -5,18 +5,22 @@ import * as fileSlice from '../../store/slices/fileSlice';
 import * as metadataSlice from '../../store/slices/metadataSlice';
 import * as templateSlice from '../../store/slices/templateSlice';
 import * as uiSlice from '../../store/slices/uiSlice';
+import * as batchSlice from '../../store/slices/batchSlice';
 
 // Re-export types from slices to maintain compatibility
 export type Provider = configSlice.Provider;
 export type MetadataLimits = configSlice.MetadataLimits;
 export type MetadataOptions = configSlice.MetadataOptions;
 export type EmbedSettings = configSlice.EmbedSettings;
+export type ExportSettings = configSlice.ExportSettings;
 export type ThumbnailData = fileSlice.ThumbnailData;
 export type GeneratedMetadata = metadataSlice.GeneratedMetadata;
 export type FileMetadata = metadataSlice.FileMetadata;
 export type CategorySelection = metadataSlice.CategorySelection;
 export type GenerationProgress = uiSlice.GenerationProgress;
 export type UserTemplate = templateSlice.UserTemplate;
+import type { FolderInfo } from '@/app/_component/batch/FolderInfoCard';
+export type { FolderInfo };
 
 // Define composite types that were previously in SettingsContext
 export type ApiSettingsState = {
@@ -28,15 +32,24 @@ export type ApiSettingsState = {
   setApiKey: (provider: Provider, key: string) => void;
   requestDelay: number;
   setRequestDelay: (delay: number) => void;
+  processingMode: configSlice.ProcessingMode;
+  setProcessingMode: (mode: configSlice.ProcessingMode) => void;
+  parallelWorkers: number;
+  setParallelWorkers: (workers: number) => void;
 };
 
 export type TemplateSettings = {
   activeTemplateId: string | null;
   userTemplates: UserTemplate[];
+  editedDefaultTemplates: templateSlice.EditedDefaultTemplate[];
   setActiveTemplate: (id: string | null) => void;
   addUserTemplate: (template: Omit<UserTemplate, 'id' | 'createdAt'>) => void;
   updateUserTemplate: (id: string, template: Partial<UserTemplate>) => void;
   deleteUserTemplate: (id: string) => void;
+  editDefaultTemplate: (id: string, template: string) => void;
+  resetDefaultTemplate: (id: string) => void;
+  resetAllDefaultTemplates: () => void;
+  isDefaultTemplateEdited: (id: string) => boolean;
 };
 
 export type SettingsDialogState = {
@@ -51,6 +64,7 @@ export type SettingsContextType = {
   metadataLimits: MetadataLimits & { setLimits: (l: Partial<MetadataLimits>) => void };
   metadataOptions: MetadataOptions & { setOptions: (o: Partial<MetadataOptions>) => void };
   embedSettings: EmbedSettings & { setEmbedSettings: (s: Partial<EmbedSettings>) => void };
+  exportSettings: ExportSettings & { setExportSettings: (s: Partial<ExportSettings>) => void };
   templateSettings: TemplateSettings;
   files: File[];
   setFiles: (files: File[]) => void;
@@ -86,6 +100,12 @@ export type SettingsContextType = {
   categories: CategorySelection;
   setCategories: (categories: Partial<CategorySelection>) => void;
   settingsDialog: SettingsDialogState;
+  batchFolders: FolderInfo[];
+  setBatchFolders: (folders: FolderInfo[]) => void;
+  addBatchFolder: (folder: FolderInfo) => void;
+  updateBatchFolder: (id: string, updates: Partial<FolderInfo>) => void;
+  removeBatchFolder: (id: string) => void;
+  clearBatchFolders: () => void;
   hasApiKey: () => boolean;
 };
 
@@ -100,6 +120,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const metadataState = useAppSelector((state) => state.metadata);
   const templateState = useAppSelector((state) => state.template);
   const uiState = useAppSelector((state) => state.ui);
+  const batchState = useAppSelector((state) => state.batch);
 
   // --- API ---
   const setSelectedProvider = useCallback((provider: Provider | '') => {
@@ -118,6 +139,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     dispatch(configSlice.setRequestDelay(delay));
   }, [dispatch]);
 
+  const setProcessingMode = useCallback((mode: configSlice.ProcessingMode) => {
+    dispatch(configSlice.setProcessingMode(mode));
+  }, [dispatch]);
+
+  const setParallelWorkers = useCallback((workers: number) => {
+    dispatch(configSlice.setParallelWorkers(workers));
+  }, [dispatch]);
+
   const apiValue: ApiSettingsState = useMemo(() => ({
     selectedProvider: config.api.selectedProvider,
     setSelectedProvider,
@@ -127,7 +156,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setApiKey,
     requestDelay: config.api.requestDelay,
     setRequestDelay,
-  }), [config.api, setSelectedProvider, setSelectedModel, setApiKey, setRequestDelay]);
+    processingMode: config.api.processingMode,
+    setProcessingMode,
+    parallelWorkers: config.api.parallelWorkers,
+    setParallelWorkers,
+  }), [config.api, setSelectedProvider, setSelectedModel, setApiKey, setRequestDelay, setProcessingMode, setParallelWorkers]);
 
   // --- Metadata Limits ---
   const setLimits = useCallback((l: Partial<MetadataLimits>) => {
@@ -142,6 +175,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   // --- Embed Settings ---
   const setEmbedSettings = useCallback((s: Partial<EmbedSettings>) => {
     dispatch(configSlice.setEmbedSettings(s));
+  }, [dispatch]);
+
+  // --- Export Settings ---
+  const setExportSettings = useCallback((s: Partial<ExportSettings>) => {
+    dispatch(configSlice.setExportSettings(s));
   }, [dispatch]);
 
   // --- Templates ---
@@ -161,14 +199,55 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     dispatch(templateSlice.deleteUserTemplate(id));
   }, [dispatch]);
 
+  const editDefaultTemplate = useCallback((id: string, template: string) => {
+    dispatch(templateSlice.editDefaultTemplate({ id, template }));
+  }, [dispatch]);
+
+  const resetDefaultTemplate = useCallback((id: string) => {
+    dispatch(templateSlice.resetDefaultTemplate(id));
+  }, [dispatch]);
+
+  const resetAllDefaultTemplates = useCallback(() => {
+    dispatch(templateSlice.resetAllDefaultTemplates());
+  }, [dispatch]);
+
+  const isDefaultTemplateEdited = useCallback((id: string) => {
+    return templateState.editedDefaultTemplates?.some(t => t.id === id) ?? false;
+  }, [templateState.editedDefaultTemplates]);
+
+  const setBatchFolders = useCallback((folders: FolderInfo[]) => {
+    dispatch(batchSlice.setFolders(folders));
+  }, [dispatch]);
+
+  const addBatchFolder = useCallback((folder: FolderInfo) => {
+    dispatch(batchSlice.addFolder(folder));
+  }, [dispatch]);
+
+  const updateBatchFolder = useCallback((id: string, updates: Partial<FolderInfo>) => {
+    dispatch(batchSlice.updateFolder({ id, updates }));
+  }, [dispatch]);
+
+  const removeBatchFolder = useCallback((id: string) => {
+    dispatch(batchSlice.removeFolder(id));
+  }, [dispatch]);
+
+  const clearBatchFolders = useCallback(() => {
+    dispatch(batchSlice.clearFolders());
+  }, [dispatch]);
+
   const templateSettingsValue: TemplateSettings = useMemo(() => ({
     activeTemplateId: templateState.activeTemplateId,
     userTemplates: templateState.userTemplates,
+    editedDefaultTemplates: templateState.editedDefaultTemplates,
     setActiveTemplate,
     addUserTemplate,
     updateUserTemplate,
     deleteUserTemplate,
-  }), [templateState, setActiveTemplate, addUserTemplate, updateUserTemplate, deleteUserTemplate]);
+    editDefaultTemplate,
+    resetDefaultTemplate,
+    resetAllDefaultTemplates,
+    isDefaultTemplateEdited,
+  }), [templateState, setActiveTemplate, addUserTemplate, updateUserTemplate, deleteUserTemplate, editDefaultTemplate, resetDefaultTemplate, resetAllDefaultTemplates, isDefaultTemplateEdited]);
 
   // --- Files ---
   const setFiles = useCallback((files: File[]) => {
@@ -270,6 +349,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     metadataLimits: { ...config.metadataLimits, setLimits },
     metadataOptions: { ...config.metadataOptions, setOptions },
     embedSettings: { ...config.embedSettings, setEmbedSettings },
+    exportSettings: { ...config.exportSettings, setExportSettings },
     templateSettings: templateSettingsValue,
     files: fileState.files,
     setFiles,
@@ -310,12 +390,19 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       defaultTab: uiState.settingsDialog.defaultTab,
       setDefaultTab: setSettingsDialogDefaultTab,
     },
+    batchFolders: batchState.folders,
+    setBatchFolders,
+    addBatchFolder,
+    updateBatchFolder,
+    removeBatchFolder,
+    clearBatchFolders,
     hasApiKey,
   }), [
     apiValue,
     config.metadataLimits, setLimits,
     config.metadataOptions, setOptions,
     config.embedSettings, setEmbedSettings,
+    config.exportSettings, setExportSettings,
     templateSettingsValue,
     fileState.files, setFiles, removeFile,
     fileState.filePaths, setFilePath, getFilePath,
@@ -327,6 +414,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     metadataState.defaultCategories, setCategories,
     uiState.settingsDialog.isOpen, setSettingsDialogOpen,
     uiState.settingsDialog.defaultTab, setSettingsDialogDefaultTab,
+    batchState.folders, setBatchFolders, addBatchFolder, updateBatchFolder, removeBatchFolder, clearBatchFolders,
     hasApiKey
   ]);
 

@@ -1,188 +1,18 @@
-import { useEffect, useRef, useMemo, useState, useCallback, memo } from "react";
+import { useRef, useMemo, useState, useCallback, useEffect } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
-import { ScrollArea, ScrollBar } from "../../../components/ui/scroll-area";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { useAppSelector } from "@/store/hooks";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { MdOutlineImageNotSupported } from "react-icons/md";
-import { Trash2, FileEdit, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Upload } from "lucide-react";
 import { CustomInstructionDialog } from "./CustomInstructionDialog";
 import { generateMetadata } from "@/app/lib/ai";
-
-// Configuration for virtualization
-const VIRTUALIZATION_CONFIG = {
-  // Show this many items on each side of visible area
-  BUFFER_SIZE: 10,
-  // Thumbnail width including margins (approx)
-  ITEM_WIDTH: 200,
-  // Throttle scroll events (ms)
-  SCROLL_THROTTLE: 100,
-};
+import { readExifMetadata } from "@/app/lib/tauri-commands";
+import { ThumbnailItem } from "./ThumbnailItem";
+import { useAutoScroll, useKeyboardAutoScroll, useDragAndDrop, useVirtualization, useKeyboardNavigation } from "./hooks";
 
 type ThumbnailSectionProps = {
   onSelectFile: (file: File) => void;
 };
-
-// Memoized thumbnail item to prevent unnecessary re-renders
-const ThumbnailItem = memo(({
-  file,
-  thumbnail,
-  isGenerating,
-  isSelected,
-  hasMetadata,
-  hasAttemptedGeneration,
-  hasCustomInstruction,
-  isRegenerating,
-  onSelect,
-  onRef,
-  onDelete,
-  onOpenCustomInstruction,
-  onRegenerate,
-}: {
-  file: File;
-  thumbnail: { thumbnailUrl: string } | undefined;
-  isGenerating: boolean;
-  isSelected: boolean;
-  hasMetadata: boolean;
-  hasAttemptedGeneration: boolean;
-  hasCustomInstruction: boolean;
-  isRegenerating: boolean;
-  onSelect: () => void;
-  onRef: (el: HTMLDivElement | null) => void;
-  onDelete: () => void;
-  onOpenCustomInstruction: () => void;
-  onRegenerate: () => void;
-}) => {
-  const [isHovered, setIsHovered] = useState(false);
-
-  let borderClass = "";
-
-  if (isSelected) {
-    borderClass = "border-2 border-primary";
-  } else if (hasMetadata) {
-    borderClass = "border-1 border-green-500 dark:border-green-400";
-  } else if (hasAttemptedGeneration) {
-    borderClass = "border-1 border-destructive";
-  } else {
-    borderClass = "border-2 border-border";
-  }
-
-  return (
-    <div
-      ref={onRef}
-      onClick={onSelect}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`${borderClass} rounded-md shadow overflow-hidden cursor-pointer transition-all duration-200 w-[28vh] shrink-0 relative group`}
-    >
-      <AspectRatio ratio={12 / 9} className="hover:border-2 hover:border-primary">
-        {thumbnail ? (
-          <img
-            src={thumbnail.thumbnailUrl}
-            alt={file.name}
-            className="w-full h-45 object-fill"
-            loading="lazy"
-          />
-        ) : isGenerating ? (
-          <div className="w-full h-full flex items-center justify-center bg-muted">
-            <div className="flex flex-col items-center gap-2">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="text-xs text-muted-foreground">Generating...</p>
-            </div>
-          </div>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-muted">
-            <MdOutlineImageNotSupported className="text-4xl text-muted-foreground" />
-          </div>
-        )}
-        <p className="absolute bottom-0 left-0 right-0 p-2 text-sm truncate text-center bg-black/50 text-foreground">
-          {file.name}
-        </p>
-
-        {/* Custom instruction indicator badge */}
-        {hasCustomInstruction && !isHovered && (
-          <div className="absolute bottom-12 right-2 z-10">
-            <Badge variant="secondary" className="text-xs shadow-lg">
-              <FileEdit className="h-3 w-3 mr-1" />
-              Custom
-            </Badge>
-          </div>
-        )}
-      </AspectRatio>
-
-      {/* Action buttons - shown on hover */}
-      {isHovered && (
-        <>
-          {/* Custom Instruction button */}
-          <div className="absolute top-2 left-2 z-10">
-            <Button
-              variant="secondary"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent selecting the thumbnail
-                onOpenCustomInstruction();
-              }}
-              className="shadow-lg"
-              title="Add custom instruction"
-            >
-              <FileEdit className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Regenerate button */}
-          <div className="absolute bottom-2 right-2 z-10">
-            <Button
-              variant="default"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent selecting the thumbnail
-                onRegenerate();
-              }}
-              className="shadow-lg"
-              title="Regenerate metadata"
-              disabled={isRegenerating}
-            >
-              {isRegenerating ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-
-          {/* Delete button */}
-          <div className="absolute top-2 right-2 z-10">
-            <Button
-              variant="destructive"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent selecting the thumbnail
-                onDelete();
-              }}
-              className="shadow-lg"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison for memo to prevent unnecessary re-renders
-  // Return true if props are the same (skip render), false if different (render)
-  return (
-    prevProps.file === nextProps.file &&
-    prevProps.thumbnail === nextProps.thumbnail &&
-    prevProps.isGenerating === nextProps.isGenerating &&
-    prevProps.isSelected === nextProps.isSelected &&
-    prevProps.hasMetadata === nextProps.hasMetadata &&
-    prevProps.hasAttemptedGeneration === nextProps.hasAttemptedGeneration &&
-    prevProps.hasCustomInstruction === nextProps.hasCustomInstruction &&
-    prevProps.isRegenerating === nextProps.isRegenerating
-  );
-});
-ThumbnailItem.displayName = 'ThumbnailItem';
 
 const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   const {
@@ -196,10 +26,15 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     metadataLimits,
     metadataOptions,
     templateSettings,
+    setFiles,
+    setHasAttemptedGeneration,
+    setFilePath,
   } = useSettings();
+  
+  const activeTab = useAppSelector(state => state.ui.activeLeftTab);
+
   const thumbnails = thumbsCtx.items;
   const thumbnailRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const lastScrolledFileRef = useRef<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Custom instruction dialog state
@@ -209,8 +44,97 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   // Regenerating state - track which file is being regenerated
   const [regeneratingFile, setRegeneratingFile] = useState<File | null>(null);
 
-  // Virtualization state
-  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
+  // Setup drag and drop
+  const { isDragActive } = useDragAndDrop({
+    activeTab,
+    onFilesAdded: useCallback((newFiles: File[]) => {
+      if (newFiles.length > 0) {
+        const updatedFiles = [...(files || []), ...newFiles];
+        setFiles(updatedFiles);
+        setHasAttemptedGeneration(false);
+      }
+    }, [files, setFiles, setHasAttemptedGeneration]),
+    onFilePathStored: setFilePath,
+    onExifDataFound: useCallback(async (file: File, path: string) => {
+      try {
+        console.log(`📸 Reading EXIF metadata for dropped file: ${file.name}`);
+        const exifData = await readExifMetadata(path);
+        
+        if (exifData.title || exifData.description || exifData.keywords) {
+          console.log(`✅ Found embedded metadata for ${file.name} - Title: ${exifData.title ? 'yes' : 'no'}, Description: ${exifData.description ? 'yes' : 'no'}, Keywords: ${exifData.keywords ? 'yes' : 'no'}`);
+          
+          // Populate metadata fields with EXIF data
+          generated.setMetadata(file, {
+            title: exifData.title || '',
+            description: exifData.description || '',
+            keywords: exifData.keywords || ''
+          });
+        } else {
+          console.log(`ℹ️ No embedded metadata found for ${file.name}`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Failed to read EXIF metadata for ${file.name}:`, error);
+        // Continue without EXIF data - not a fatal error
+      }
+    }, [generated]),
+  });
+
+  // Setup virtualization
+  const { 
+    filesToRender, 
+    totalWidth, 
+    leftOffset, 
+    onScroll, 
+    updateVisibleRangeForSelection,
+    shouldVirtualize 
+  } = useVirtualization({ files: files || [], selectedFile });
+
+  // Setup keyboard navigation (always enabled, with circular wrap)
+  useKeyboardNavigation({
+    files: files || [],
+    selectedFile,
+    onSelectFile,
+    onIndexChange: updateVisibleRangeForSelection,
+    enabled: files && files.length > 0,
+  });
+
+  // Setup auto-scroll for AI metadata generation only
+  useAutoScroll({
+    selectedFile,
+    autoSelectEnabled: metadataOptions.autoSelectGenerated,
+    thumbnailRefs,
+  });
+
+  // Setup auto-scroll for keyboard navigation (always active)
+  useKeyboardAutoScroll({
+    selectedFile,
+    thumbnailRefs,
+  });
+
+  // Update visible range when selected file changes
+  useEffect(() => {
+    updateVisibleRangeForSelection();
+  }, [selectedFile, updateVisibleRangeForSelection]);
+
+  // Create lookup maps for O(1) access
+  const thumbnailMap = useMemo(() => {
+    const map = new Map<File, { thumbnailUrl: string }>();
+    thumbnails.forEach(t => map.set(t.file, t));
+    return map;
+  }, [thumbnails]);
+
+  const metadataMap = useMemo(() => {
+    const map = new Map<File, boolean>();
+    if (generated.items) {
+      generated.items.forEach(item => {
+        const hasContent = item.metadata.title || item.metadata.description || item.metadata.keywords;
+        if (hasContent) {
+          map.set(item.file, true);
+        }
+      });
+    }
+    return map;
+  }, [generated.items]);
 
   // Regenerate metadata handler
   const handleRegenerate = useCallback(async (file: File) => {
@@ -229,14 +153,21 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       return;
     }
 
-    // Get custom instruction for this file
     const customInstruction = generated.getCustomInstruction(file);
-
-    // Get active custom template if one is selected
-    const activeTemplate = templateSettings.activeTemplateId
-      ? templateSettings.userTemplates.find(t => t.id === templateSettings.activeTemplateId)
-      : null;
-    const customTemplate = activeTemplate?.template;
+    let customTemplate: string | undefined;
+    if (templateSettings.activeTemplateId) {
+      // Check user templates first
+      const userTemplate = templateSettings.userTemplates.find(t => t.id === templateSettings.activeTemplateId);
+      if (userTemplate) {
+        customTemplate = userTemplate.template;
+      } else {
+        // Check edited default templates
+        const editedDefault = templateSettings.editedDefaultTemplates?.find(t => t.id === templateSettings.activeTemplateId);
+        if (editedDefault) {
+          customTemplate = editedDefault.template;
+        }
+      }
+    }
 
     setRegeneratingFile(file);
     try {
@@ -269,165 +200,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     }
   }, [thumbnails, api, metadataLimits, metadataOptions, generated, templateSettings]);
 
-  // Only log in development and throttle
-  if (process.env.NODE_ENV === 'development' && files?.length !== undefined) {
-    // Throttle logging to avoid console spam
-    const logKey = `thumb_${files?.length}_${thumbnails?.length}`;
-    const windowWithLog = window as unknown as { __lastThumbLog?: string };
-    if (windowWithLog.__lastThumbLog !== logKey) {
-      windowWithLog.__lastThumbLog = logKey;
-      console.log(`ThumbnailSection - files: ${files?.length}, thumbnails: ${thumbnails?.length}`);
-    }
-  }
-
-  // Auto-scroll to selected thumbnail (debounced to prevent excessive scrolling)
-  const animationFrameRef = useRef<number | null>(null);
-  const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (selectedFile) {
-      const fileName = selectedFile.name;
-
-      // Skip if we just scrolled to this file
-      if (lastScrolledFileRef.current === fileName) {
-        return;
-      }
-
-      const thumbnailElement = thumbnailRefs.current.get(fileName);
-
-      if (thumbnailElement) {
-        // Clear any pending scroll operations
-        if (scrollDebounceRef.current) {
-          clearTimeout(scrollDebounceRef.current);
-        }
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-
-        console.log("📜 Auto-scrolling to:", fileName);
-
-        // Debounce scroll operation to avoid excessive layout calculations
-        scrollDebounceRef.current = setTimeout(() => {
-          const container = thumbnailElement.closest('[data-slot="scroll-area-viewport"]') as HTMLElement;
-
-          if (container) {
-            const containerRect = container.getBoundingClientRect();
-            const elementRect = thumbnailElement.getBoundingClientRect();
-
-            const currentScrollLeft = container.scrollLeft;
-            // Calculate target to center the element
-            // offset = distance from container left to element left
-            // We want this distance to be (containerWidth / 2) - (elementWidth / 2)
-            const offset = elementRect.left - containerRect.left;
-            const targetOffset = (containerRect.width / 2) - (elementRect.width / 2);
-            const scrollChange = offset - targetOffset;
-            const targetScrollLeft = currentScrollLeft + scrollChange;
-
-            const start = currentScrollLeft;
-            const change = targetScrollLeft - start;
-
-            // Reduce animation duration for snappier feel
-            const duration = 300; // Reduced from 800ms
-            const startTime = performance.now();
-
-            const animate = (currentTime: number) => {
-              const elapsed = currentTime - startTime;
-              if (elapsed < duration) {
-                const t = elapsed / duration;
-                // Ease out cubic for smooth deceleration
-                const ease = 1 - Math.pow(1 - t, 3);
-                container.scrollLeft = start + change * ease;
-                animationFrameRef.current = requestAnimationFrame(animate);
-              } else {
-                container.scrollLeft = targetScrollLeft;
-                animationFrameRef.current = null;
-              }
-            };
-
-            animationFrameRef.current = requestAnimationFrame(animate);
-          } else {
-            // Fallback if container not found
-            thumbnailElement.scrollIntoView({
-              behavior: "smooth",
-              block: "nearest",
-              inline: "center",
-            });
-          }
-
-          lastScrolledFileRef.current = fileName;
-
-          // Reset after a delay to allow future scrolls
-          setTimeout(() => {
-            lastScrolledFileRef.current = null;
-          }, 500); // Reduced from 1000ms for more responsive behavior
-        }, 50); // Small debounce to let state updates finish
-      }
-    }
-
-    return () => {
-      if (scrollDebounceRef.current) {
-        clearTimeout(scrollDebounceRef.current);
-      }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [selectedFile]);
-
-
-
-  // Create lookup maps for O(1) access
-  const thumbnailMap = useMemo(() => {
-    const map = new Map();
-    thumbnails.forEach(t => map.set(t.file, t));
-    return map;
-  }, [thumbnails]);
-
-  const metadataMap = useMemo(() => {
-    const map = new Map();
-    if (generated.items) {
-      generated.items.forEach(item => {
-        // Only mark as having metadata if at least one field has content
-        const hasContent = item.metadata.title || item.metadata.description || item.metadata.keywords;
-        if (hasContent) {
-          map.set(item.file, true);
-        }
-      });
-    }
-    return map;
-  }, [generated.items]);
-
-  // Handle scroll to update visible range (throttled)
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const container = e.currentTarget;
-    const scrollLeft = container.scrollLeft;
-    const containerWidth = container.clientWidth;
-
-    const itemWidth = VIRTUALIZATION_CONFIG.ITEM_WIDTH;
-    const buffer = VIRTUALIZATION_CONFIG.BUFFER_SIZE;
-
-    const startIndex = Math.max(0, Math.floor(scrollLeft / itemWidth) - buffer);
-    const visibleCount = Math.ceil(containerWidth / itemWidth);
-    const endIndex = Math.min(
-      (files?.length || 0) - 1,
-      startIndex + visibleCount + buffer * 2
-    );
-
-    setVisibleRange({ start: startIndex, end: endIndex });
-  }, [files?.length]);
-
-  // Throttled scroll handler
-  const throttledScrollRef = useRef<number | null>(null);
-  const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (throttledScrollRef.current) return;
-
-    throttledScrollRef.current = window.setTimeout(() => {
-      handleScroll(e);
-      throttledScrollRef.current = null;
-    }, VIRTUALIZATION_CONFIG.SCROLL_THROTTLE);
-  }, [handleScroll]);
-
-  // Memoize callback handlers to prevent unnecessary re-renders of ThumbnailItem
+  // Memoize callback handlers
   const handleSelectFile = useCallback((file: File) => {
     onSelectFile(file);
   }, [onSelectFile]);
@@ -451,56 +224,38 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     };
   }, []);
 
-  // Ensure selected file is in visible range
-  useEffect(() => {
-    if (selectedFile && files) {
-      const selectedIndex = files.indexOf(selectedFile);
-      if (selectedIndex !== -1 && (selectedIndex < visibleRange.start || selectedIndex > visibleRange.end)) {
-        const buffer = VIRTUALIZATION_CONFIG.BUFFER_SIZE;
-        setVisibleRange({
-          start: Math.max(0, selectedIndex - buffer),
-          end: Math.min(files.length - 1, selectedIndex + buffer * 2)
-        });
-      }
+  // Development logging (throttled)
+  if (process.env.NODE_ENV === 'development' && files?.length !== undefined) {
+    const logKey = `thumb_${files?.length}_${thumbnails?.length}`;
+    const windowWithLog = window as unknown as { __lastThumbLog?: string };
+    if (windowWithLog.__lastThumbLog !== logKey) {
+      windowWithLog.__lastThumbLog = logKey;
+      console.log(`ThumbnailSection - files: ${files?.length}, thumbnails: ${thumbnails?.length}`);
     }
-  }, [selectedFile, files, visibleRange.start, visibleRange.end]);
-
-  // Get files to render (virtualized)
-  const filesToRender = useMemo(() => {
-    if (!files || files.length === 0) return [];
-
-    // For small lists, render all
-    if (files.length <= 100) {
-      return files.map((file, index) => ({ file, index }));
-    }
-
-    // For large lists, only render visible + buffer
-    const result: { file: File; index: number }[] = [];
-    for (let i = visibleRange.start; i <= Math.min(visibleRange.end, files.length - 1); i++) {
-      result.push({ file: files[i], index: i });
-    }
-    return result;
-  }, [files, visibleRange.start, visibleRange.end]);
-
-  // Calculate total width for proper scrolling
-  const totalWidth = useMemo(() => {
-    if (!files) return 0;
-    return files.length * VIRTUALIZATION_CONFIG.ITEM_WIDTH;
-  }, [files]);
-
-  // Calculate left offset for virtualized items
-  const leftOffset = useMemo(() => {
-    if (!files || files.length <= 100) return 0;
-    return visibleRange.start * VIRTUALIZATION_CONFIG.ITEM_WIDTH;
-  }, [files, visibleRange.start]);
+  }
 
   return (
-    <div className="w-full">
+    <div className="w-full relative" data-dropzone="thumbnail">
       {(!files || files.length === 0) && (
         <div className="p-2">
-          <div className="h-[20vh] w-[17vw] border-2 rounded-md flex justify-center items-center text-7xl">
+          <div className={`h-[20vh] w-[17vw] border-2 border-dashed rounded-md flex justify-center items-center text-7xl transition-all duration-200 ${
+            isDragActive
+              ? "border-primary bg-primary/10 scale-105"
+              : "border-muted-foreground/25"
+          }`}>
             <MdOutlineImageNotSupported />
           </div>
+          {isDragActive && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <Upload className="w-16 h-16 text-primary mb-4 animate-bounce" />
+              <p className="text-xl font-semibold text-primary">
+                Drop files here to add them
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Images and videos will be added to your collection
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -508,11 +263,13 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         <ScrollArea className="p-2 w-full overflow-hidden">
           <div
             ref={scrollContainerRef}
-            onScroll={files.length > 100 ? onScroll : undefined}
-            className="flex space-x-4 px-2 py-2 pb-4"
+            onScroll={shouldVirtualize ? onScroll : undefined}
+            className={`flex space-x-4 px-2 py-2 pb-4 relative ${
+              isDragActive ? 'border-2 border-dashed border-primary bg-primary/5 rounded-lg' : ''
+            }`}
             style={{
-              width: files.length > 100 ? `${totalWidth}px` : 'max-content',
-              paddingLeft: files.length > 100 ? `${leftOffset}px` : undefined,
+              width: shouldVirtualize ? `${totalWidth}px` : 'max-content',
+              paddingLeft: shouldVirtualize ? `${leftOffset}px` : undefined,
             }}
           >
             {filesToRender.map(({ file, index }) => {
@@ -542,6 +299,19 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                 />
               );
             })}
+            
+            {/* Drag overlay for when files exist */}
+            {isDragActive && (
+              <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center border-4 border-dashed border-primary rounded-lg animate-in fade-in duration-200 z-10">
+                <Upload className="w-16 h-16 text-primary mb-4 animate-bounce" />
+                <p className="text-xl font-semibold text-primary">
+                  Drop files here to add them
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Images and videos will be added to your collection
+                </p>
+              </div>
+            )}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>

@@ -7,7 +7,7 @@ import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { save } from '@tauri-apps/plugin-dialog';
 import { ADOBE_STOCK_CATEGORIES } from './categoryMatcher';
 
-type FileMetadata = {
+export type FileMetadata = {
   file: File;
   metadata: {
     title: string;
@@ -17,7 +17,7 @@ type FileMetadata = {
   categories?: CategorySelection;
 };
 
-type CategorySelection = {
+export type CategorySelection = {
   adobeStock: string;
   shutterStock1: string;
   shutterStock2: string;
@@ -93,28 +93,9 @@ function generateShutterstockCSV(items: FileMetadata[], fallbackCategories: Cate
 }
 
 /**
- * Exports metadata to CSV file based on the selected platform
- * Uses the saved export path from settings, or shows a dialog if not configured
+ * Writes a CSV file to disk with the given content and filename
  */
-export async function exportToCSV(
-  items: FileMetadata[],
-  categories: CategorySelection,
-  platform: 'adobeStock' | 'shutterStock'
-): Promise<void> {
-  if (items.length === 0) {
-    throw new Error('No items to export');
-  }
-
-  // Generate CSV content based on platform
-  const csvContent = platform === 'adobeStock'
-    ? generateAdobeStockCSV(items, categories)
-    : generateShutterstockCSV(items, categories);
-
-  // Get the default filename
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-  const platformName = platform === 'adobeStock' ? 'Adobe_Stock' : 'Shutterstock';
-  const defaultFilename = `${platformName}_Export_${timestamp}.csv`;
-
+async function writeCSVFile(content: string, defaultFilename: string): Promise<string> {
   try {
     // Check if there's a saved export path in localStorage
     const savedPath = localStorage.getItem('exportPath');
@@ -143,14 +124,90 @@ export async function exportToCSV(
       }
 
       filePath = dialogResult;
+      // Save the path for future exports
+      const pathSeparator = filePath.includes('\\') ? '\\' : '/';
+      const lastSeparator = filePath.lastIndexOf(pathSeparator);
+      if (lastSeparator !== -1) {
+        const directoryPath = filePath.substring(0, lastSeparator);
+        localStorage.setItem('exportPath', directoryPath);
+      }
     }
 
     // Write the CSV file
-    await writeTextFile(filePath, csvContent);
+    await writeTextFile(filePath, content);
 
     console.log(`✓ Successfully exported to: ${filePath}`);
+    return filePath;
   } catch (error) {
     console.error('Export error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Exports metadata to CSV file based on the selected platform
+ * Uses the saved export path from settings, or shows a dialog if not configured
+ */
+export async function exportToCSV(
+  items: FileMetadata[],
+  categories: CategorySelection,
+  platform: 'adobeStock' | 'shutterStock'
+): Promise<void> {
+  if (items.length === 0) {
+    throw new Error('No items to export');
+  }
+
+  // Generate CSV content based on platform
+  const csvContent = platform === 'adobeStock'
+    ? generateAdobeStockCSV(items, categories)
+    : generateShutterstockCSV(items, categories);
+
+  // Get the default filename
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+  const platformName = platform === 'adobeStock' ? 'Adobe_Stock' : 'Shutterstock';
+  const defaultFilename = `${platformName}_Export_${timestamp}.csv`;
+
+  await writeCSVFile(csvContent, defaultFilename);
+}
+
+/**
+ * Exports metadata to multiple CSV formats simultaneously
+ * Creates separate files for each selected platform
+ */
+export async function exportToMultipleFormats(
+  items: FileMetadata[],
+  categories: CategorySelection,
+  platforms: ('adobeStock' | 'shutterStock')[]
+): Promise<void> {
+  if (items.length === 0) {
+    throw new Error('No items to export');
+  }
+
+  if (platforms.length === 0) {
+    throw new Error('No export formats selected');
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+  const exportPromises: Promise<string>[] = [];
+
+  for (const platform of platforms) {
+    const csvContent = platform === 'adobeStock'
+      ? generateAdobeStockCSV(items, categories)
+      : generateShutterstockCSV(items, categories);
+
+    const platformName = platform === 'adobeStock' ? 'Adobe_Stock' : 'Shutterstock';
+    const defaultFilename = `${platformName}_Export_${timestamp}.csv`;
+
+    exportPromises.push(writeCSVFile(csvContent, defaultFilename));
+  }
+
+  try {
+    const exportedFiles = await Promise.all(exportPromises);
+    const platformNames = platforms.map(p => p === 'adobeStock' ? 'Adobe Stock' : 'Shutterstock').join(', ');
+    console.log(`✓ Successfully exported ${items.length} items to ${platformNames}`);
+    console.log(`Files: ${exportedFiles.join(', ')}`);
+  } catch (error) {
+    console.error('Multi-format export error:', error);
     throw error;
   }
 }

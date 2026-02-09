@@ -15,6 +15,7 @@ interface UiState {
     };
     generationProgress: GenerationProgress;
     hasAttemptedGeneration: boolean;
+    activeLeftTab: 'category' | 'batch';
 }
 
 const initialState: UiState = {
@@ -30,6 +31,7 @@ const initialState: UiState = {
         cancelRequested: false,
     },
     hasAttemptedGeneration: false,
+    activeLeftTab: 'category',
 };
 
 const uiSlice = createSlice({
@@ -48,6 +50,9 @@ const uiSlice = createSlice({
         setHasAttemptedGeneration(state, action: PayloadAction<boolean>) {
             state.hasAttemptedGeneration = action.payload;
         },
+        setActiveLeftTab(state, action: PayloadAction<'category' | 'batch'>) {
+            state.activeLeftTab = action.payload;
+        },
     },
 });
 
@@ -56,6 +61,7 @@ export const {
     setSettingsDialogTab,
     setGenerationProgress,
     setHasAttemptedGeneration,
+    setActiveLeftTab,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

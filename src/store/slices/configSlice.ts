@@ -11,6 +11,7 @@ export type MetadataLimits = {
 export type MetadataOptions = {
   includePlaceName: boolean;
   autoSelectGenerated: boolean;
+  autoScrollOnKeyboardNavigation: boolean;
   titleAvoidWords: string[];
   keywordsAvoidWords: string[];
   descriptionAvoidWords: string[];
@@ -25,16 +26,26 @@ export type EmbedSettings = {
   };
 };
 
+export type ExportSettings = {
+  adobeStock: boolean;
+  shutterStock: boolean;
+};
+
+export type ProcessingMode = 'sequential' | 'parallel';
+
 interface ConfigState {
   api: {
     selectedProvider: Provider | '';
     selectedModel: string;
     apiKeys: Record<Provider, string>;
     requestDelay: number;
+    processingMode: ProcessingMode;
+    parallelWorkers: number;
   };
   metadataLimits: MetadataLimits;
   metadataOptions: MetadataOptions;
   embedSettings: EmbedSettings;
+  exportSettings: ExportSettings;
 }
 
 const defaultApiKeys: Record<Provider, string> = {
@@ -50,7 +61,9 @@ const initialState: ConfigState = {
     selectedProvider: '',
     selectedModel: '',
     apiKeys: defaultApiKeys,
-    requestDelay: 1000,
+    requestDelay: 0,
+    processingMode: 'sequential',
+    parallelWorkers: 5,
   },
   metadataLimits: {
     titleLimit: 200,
@@ -60,6 +73,7 @@ const initialState: ConfigState = {
   metadataOptions: {
     includePlaceName: false,
     autoSelectGenerated: true,
+    autoScrollOnKeyboardNavigation: true,
     titleAvoidWords: [],
     keywordsAvoidWords: [],
     descriptionAvoidWords: [],
@@ -71,6 +85,10 @@ const initialState: ConfigState = {
       description: true,
       keywords: true,
     },
+  },
+  exportSettings: {
+    adobeStock: true,
+    shutterStock: false,
   },
 };
 
@@ -93,6 +111,12 @@ const configSlice = createSlice({
     setRequestDelay(state, action: PayloadAction<number>) {
       state.api.requestDelay = action.payload;
     },
+    setProcessingMode(state, action: PayloadAction<ProcessingMode>) {
+      state.api.processingMode = action.payload;
+    },
+    setParallelWorkers(state, action: PayloadAction<number>) {
+      state.api.parallelWorkers = Math.max(1, Math.min(5, action.payload));
+    },
     setMetadataLimits(state, action: PayloadAction<Partial<MetadataLimits>>) {
       state.metadataLimits = { ...state.metadataLimits, ...action.payload };
     },
@@ -107,6 +131,9 @@ const configSlice = createSlice({
         state.embedSettings.fields = { ...state.embedSettings.fields, ...fields };
       }
     },
+    setExportSettings(state, action: PayloadAction<Partial<ExportSettings>>) {
+      state.exportSettings = { ...state.exportSettings, ...action.payload };
+    },
   },
 });
 
@@ -116,9 +143,12 @@ export const {
   setApiKey,
   setApiKeys,
   setRequestDelay,
+  setProcessingMode,
+  setParallelWorkers,
   setMetadataLimits,
   setMetadataOptions,
   setEmbedSettings,
+  setExportSettings,
 } = configSlice.actions;
 
 export default configSlice.reducer;
