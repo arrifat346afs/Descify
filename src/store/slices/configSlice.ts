@@ -88,7 +88,7 @@ const initialState: ConfigState = {
   },
   exportSettings: {
     adobeStock: true,
-    shutterStock: false,
+    shutterStock: true,
   },
 };
 

@@ -531,6 +531,16 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [fileState.files, flushPendingThumbnails]); // Only depend on files
 
+  // Ensure export settings are properly initialized
+  useEffect(() => {
+    if (!config.exportSettings || config.exportSettings.shutterStock === false) {
+      dispatch(configSlice.setExportSettings({
+        adobeStock: true,
+        shutterStock: true,
+      }));
+    }
+  }, [config.exportSettings, dispatch]);
+
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };
 

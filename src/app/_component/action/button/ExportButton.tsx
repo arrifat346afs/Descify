@@ -42,9 +42,6 @@ function ExportButtonComponent() {
   };
 
   const selectedFormatsCount = Object.values(exportSettings).filter(Boolean).length;
-  const tooltipText = selectedFormatsCount > 0 
-    ? `Export ${selectedFormatsCount} format${selectedFormatsCount > 1 ? 's' : ''}`
-    : 'No formats selected (configure in Settings)';
 
   return (
     <div className="flex justify-center items-center h-full">
@@ -53,14 +50,9 @@ function ExportButtonComponent() {
         onClick={handleExport}
         disabled={isExporting || generated.items.length === 0 || selectedFormatsCount === 0}
         className="gap-2 group"
-        title={tooltipText}
       >
         <DownloadIcon/>
-        {selectedFormatsCount > 0 && (
-          <span className="text-xs bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
-            {selectedFormatsCount}
-          </span>
-        )}
+        Export
       </Button>
     </div>
   );

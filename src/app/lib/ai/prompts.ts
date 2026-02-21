@@ -40,15 +40,15 @@ export const generateMetadataPrompt = (
 
   // Build avoid words sections if provided
   const titleAvoidWordsSection = avoidWords?.titleAvoidWords && avoidWords.titleAvoidWords.length > 0
-    ? `\nIMPORTANT: Avoid these words in title: ${avoidWords.titleAvoidWords.join(', ')}`
+    ? `\nSTRICTLY FORBIDDEN: You MUST NOT include any of these words in the title under any circumstances: ${avoidWords.titleAvoidWords.join(', ')}. Verify your output does not contain any of these words.`
     : '';
   
   const descriptionAvoidWordsSection = avoidWords?.descriptionAvoidWords && avoidWords.descriptionAvoidWords.length > 0
-    ? `\nIMPORTANT: Avoid these words in description: ${avoidWords.descriptionAvoidWords.join(', ')}`
+    ? `\nSTRICTLY FORBIDDEN: You MUST NOT include any of these words in the description under any circumstances: ${avoidWords.descriptionAvoidWords.join(', ')}. Verify your output does not contain any of these words.`
     : '';
   
   const keywordsAvoidWordsSection = avoidWords?.keywordsAvoidWords && avoidWords.keywordsAvoidWords.length > 0
-    ? `\nIMPORTANT: Avoid these words in keywords: ${avoidWords.keywordsAvoidWords.join(', ')}`
+    ? `\nSTRICTLY FORBIDDEN: You MUST NOT include any of these words in the keywords under any circumstances: ${avoidWords.keywordsAvoidWords.join(', ')}. Verify your output does not contain any of these words.`
     : '';
 
   // Build custom instruction section if provided
