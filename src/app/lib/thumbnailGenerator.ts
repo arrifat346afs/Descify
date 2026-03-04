@@ -133,7 +133,7 @@ export async function generateImageThumbnail(file: File): Promise<string> {
 // Configuration for display thumbnails - MAXIMUM SPEED
 const BATCH_CONFIG = {
   // Maximum concurrent thumbnail generations
-  CONCURRENCY: 12,
+  CONCURRENCY: 20,
   // Thumbnail max dimension (smaller = faster)
   MAX_THUMBNAIL_SIZE: 150,
   // JPEG quality (lower = faster encoding)
@@ -490,7 +490,7 @@ export async function generateThumbnailsBatch(
           processedInBatch++;
 
           // Yield every N files to keep UI responsive (only for large batches)
-          if (total > 100 && processedInBatch % 10 === 0) {
+          if (total > 100 && processedInBatch % 5 === 0) {
             await yieldToMain();
           }
         } catch (error) {

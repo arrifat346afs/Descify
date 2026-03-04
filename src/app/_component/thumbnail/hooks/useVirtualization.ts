@@ -58,7 +58,7 @@ export const useVirtualization = ({ files, selectedFile }: UseVirtualizationOpti
     if (!files || files.length === 0) return [];
 
     // For small lists, render all
-    if (files.length <= 100) {
+    if (files.length <= 200) {
       return files.map((file, index) => ({ file, index }));
     }
 
@@ -78,7 +78,7 @@ export const useVirtualization = ({ files, selectedFile }: UseVirtualizationOpti
 
   // Calculate left offset for virtualized items
   const leftOffset = useMemo(() => {
-    if (!files || files.length <= 100) return 0;
+    if (!files || files.length <= 200) return 0;
     return visibleRange.start * VIRTUALIZATION_CONFIG.ITEM_WIDTH;
   }, [files, visibleRange.start]);
 
@@ -88,6 +88,6 @@ export const useVirtualization = ({ files, selectedFile }: UseVirtualizationOpti
     leftOffset,
     onScroll,
     updateVisibleRangeForSelection,
-    shouldVirtualize: files?.length > 100,
+    shouldVirtualize: files?.length > 200,
   };
 };

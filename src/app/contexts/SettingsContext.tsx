@@ -496,7 +496,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
             // Schedule flush if not already scheduled (every 100ms)
             if (!flushTimerRef.current) {
-              flushTimerRef.current = window.setTimeout(flushPendingThumbnails, 100);
+              flushTimerRef.current = window.setTimeout(flushPendingThumbnails, 16);
             }
           }
         );
