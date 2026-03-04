@@ -68,6 +68,7 @@ export type SettingsContextType = {
   templateSettings: TemplateSettings;
   files: File[];
   setFiles: (files: File[]) => void;
+  addFiles: (files: File[]) => void;
   removeFile: (file: File) => void;
   filePaths: Map<File, string>;
   setFilePath: (file: File, path: string) => void;
@@ -254,6 +255,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     dispatch(fileSlice.setFiles(files));
   }, [dispatch]);
 
+  const addFilesToState = useCallback((files: File[]) => {
+    dispatch(fileSlice.addFiles(files));
+  }, [dispatch]);
+
   const removeFile = useCallback((file: File) => {
     dispatch(fileSlice.removeFile(file));
   }, [dispatch]);
@@ -353,6 +358,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     templateSettings: templateSettingsValue,
     files: fileState.files,
     setFiles,
+    addFiles: addFilesToState,
     removeFile,
     filePaths: fileState.filePaths,
     setFilePath,
@@ -404,7 +410,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     config.embedSettings, setEmbedSettings,
     config.exportSettings, setExportSettings,
     templateSettingsValue,
-    fileState.files, setFiles, removeFile,
+    fileState.files, setFiles, addFilesToState, removeFile,
     fileState.filePaths, setFilePath, getFilePath,
     fileState.thumbnails, setThumbnailsItems, upsertThumbnail, clearThumbnails, fileState.isGeneratingThumbnails, setIsGeneratingThumbnails, fileState.pendingThumbnailCount,
     metadataState.generatedMetadata, getMetadata, setMetadata, getCategories, setFileCategories, getCustomInstruction, setCustomInstruction, clearGenerated,
