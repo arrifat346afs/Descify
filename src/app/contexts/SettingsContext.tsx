@@ -479,14 +479,16 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     // Mark files as being processed IMMEDIATELY
     filesToGenerate.forEach(f => processingFilesRef.current.add(f));
 
-    const currentGenerationId = ++generationIdRef.current;
+    // Increment active-batch counter. isGenerating stays true until it returns to 0.
+    activeGenerationsRef.current += 1;
+    const batchId = activeGenerationsRef.current;
 
     if (!isGeneratingRef.current) {
       isGeneratingRef.current = true;
       dispatchRef.current(fileSlice.setIsGeneratingThumbnails(true));
     }
 
-    console.log(`🚀 Starting generation of ${filesToGenerate.length} thumbnails (batch #${currentGenerationId})...`);
+    console.log(`🚀 Starting generation of ${filesToGenerate.length} thumbnails (batch #${batchId})...`);
 
     // Dynamic import and process
     (async () => {
@@ -497,35 +499,32 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           filesToGenerate,
           () => { }, // Progress callback
           (file, thumbnailUrl) => {
-            if (generationIdRef.current !== currentGenerationId) return;
-
-            // Add to pending batch
+            // Never discard — always store the thumbnail regardless of newer batches
             pendingThumbnailsRef.current.push({ file, thumbnailUrl });
 
-            // Schedule flush if not already scheduled (every 100ms)
+            // Schedule flush if not already scheduled (flush every 16 ms)
             if (!flushTimerRef.current) {
               flushTimerRef.current = window.setTimeout(flushPendingThumbnails, 16);
             }
           }
         );
 
-        // Final flush after all done
-        if (generationIdRef.current === currentGenerationId) {
-          if (flushTimerRef.current) {
-            clearTimeout(flushTimerRef.current);
-            flushTimerRef.current = null;
-          }
-          flushPendingThumbnails();
-
-          isGeneratingRef.current = false;
-          dispatchRef.current(fileSlice.setIsGeneratingThumbnails(false));
-          console.log(`✅ Completed batch #${currentGenerationId}`);
+        // Final flush after all files in THIS batch are done
+        if (flushTimerRef.current) {
+          clearTimeout(flushTimerRef.current);
+          flushTimerRef.current = null;
         }
+        flushPendingThumbnails();
+
+        console.log(`✅ Completed batch #${batchId}`);
 
       } catch (error) {
         console.error("❌ Batch thumbnail generation failed:", error);
         filesToGenerate.forEach(f => processingFilesRef.current.delete(f));
-        if (generationIdRef.current === currentGenerationId) {
+      } finally {
+        // Decrement counter; only clear the loading flag when ALL batches are done
+        activeGenerationsRef.current -= 1;
+        if (activeGenerationsRef.current === 0) {
           isGeneratingRef.current = false;
           dispatchRef.current(fileSlice.setIsGeneratingThumbnails(false));
         }
