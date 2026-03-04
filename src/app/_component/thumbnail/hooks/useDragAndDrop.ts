@@ -114,7 +114,7 @@ export const useDragAndDrop = ({ onFilesAdded, onFileAdded, onFilePathStored, on
       console.log("🧹 Cleaning up ThumbnailSection Tauri drag & drop listener");
       unlistenPromise.then(unlisten => unlisten());
     };
-  }, [handleFiles, onFilePathStored, onExifDataFound, activeTab]);
+  }, [handleFiles, onFileAdded, onFilePathStored, onExifDataFound, activeTab]);
 
   return { isDragActive };
 };
