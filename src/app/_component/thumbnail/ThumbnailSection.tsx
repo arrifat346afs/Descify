@@ -48,6 +48,13 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   // Setup drag and drop
   const { isDragActive } = useDragAndDrop({
     activeTab,
+    // Per-file callback: fires as soon as each individual file is read from disk,
+    // so the loading thumbnail appears instantly without waiting for the whole batch.
+    onFileAdded: useCallback((file: File) => {
+      addFiles([file]);
+      setHasAttemptedGeneration(false);
+    }, [addFiles, setHasAttemptedGeneration]),
+    // Legacy batch fallback (used when onFileAdded is not provided)
     onFilesAdded: useCallback((newFiles: File[]) => {
       if (newFiles.length > 0) {
         const updatedFiles = [...(files || []), ...newFiles];

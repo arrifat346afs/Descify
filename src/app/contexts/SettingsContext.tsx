@@ -427,7 +427,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   // --- Side Effect: Thumbnail Generation ---
   // Use refs to avoid dependency loops that cause infinite re-renders
 
-  const generationIdRef = useRef(0);
+  // Tracks how many concurrent thumbnail batches are still in flight.
+  // isGenerating stays true until this reaches 0.
+  const activeGenerationsRef = useRef(0);
   const isGeneratingRef = useRef(false);
   const dispatchRef = useRef(dispatch);
   dispatchRef.current = dispatch;
