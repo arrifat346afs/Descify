@@ -282,7 +282,9 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
           >
             {filesToRender.map(({ file, index }) => {
               const thumbnail = thumbnailMap.get(file);
-              const isGenerating = !thumbnail && thumbsCtx.isGenerating;
+              // Show loading spinner for any file that doesn't have a thumbnail yet.
+              // We only add valid media files to state, so no thumbnail = still generating.
+              const isGenerating = !thumbnail;
               const hasMetadata = metadataMap.has(file);
               const isSelected = selectedFile === file;
               const hasCustomInstruction = !!generated.getCustomInstruction(file);
