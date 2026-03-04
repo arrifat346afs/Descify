@@ -27,6 +27,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     metadataOptions,
     templateSettings,
     setFiles,
+    addFiles,
     setHasAttemptedGeneration,
     setFilePath,
   } = useSettings();
