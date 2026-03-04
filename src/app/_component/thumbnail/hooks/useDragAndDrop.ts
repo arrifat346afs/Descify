@@ -76,32 +76,36 @@ export const useDragAndDrop = ({ onFilesAdded, onFileAdded, onFilePathStored, on
           }
 
           console.log("   Converting", paths.length, "paths to File objects...");
-          const newFiles: File[] = [];
-          for (let i = 0; i < paths.length; i++) {
-            const path = paths[i];
-            console.log(`      [${i + 1}] Original path: ${path}`);
-            const file = await fileFromPath(path);
-            console.log(`      [${i + 1}] Created File: name="${file.name}", type="${file.type}", size=${(file.size / 1024).toFixed(2)}KB`);
-            
-            // Store the original file path for metadata embedding
-            if (onFilePathStored) {
-              onFilePathStored(file, path);
+
+          if (onFileAdded) {
+            // Per-file path: add each file to state immediately after it is read
+            // so the loading thumbnail appears without waiting for the whole batch.
+            for (const path of paths) {
+              const file = await fileFromPath(path);
+              console.log(`✅ Dropped file ready: name="${file.name}", type="${file.type}", size=${(file.size / 1024).toFixed(2)}KB`);
+
+              if (!isValidMediaFile(file)) continue;
+
+              if (onFilePathStored) onFilePathStored(file, path);
+
+              // Show loading thumbnail immediately
+              onFileAdded(file);
+
+              // EXIF is non-blocking — fire and forget
+              if (onExifDataFound) onExifDataFound(file, path);
             }
-            
-            // Trigger EXIF data reading
-            if (onExifDataFound) {
-              onExifDataFound(file, path);
+            console.log(`✅ All ${paths.length} dropped paths queued`);
+          } else {
+            // Fallback: legacy batch mode
+            const newFiles: File[] = [];
+            for (const path of paths) {
+              const file = await fileFromPath(path);
+              if (onFilePathStored) onFilePathStored(file, path);
+              if (onExifDataFound) onExifDataFound(file, path);
+              newFiles.push(file);
             }
-            
-            newFiles.push(file);
+            handleFiles(newFiles);
           }
-
-          console.log("   ✅ Files converted:", newFiles.length);
-          newFiles.forEach((file, i) => {
-            console.log(`      ${i + 1}. ${file.name} (${file.type}, ${(file.size / 1024).toFixed(2)} KB)`);
-          });
-
-          handleFiles(newFiles);
           break;
       }
     });
