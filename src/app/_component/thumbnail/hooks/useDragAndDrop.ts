@@ -4,6 +4,8 @@ import { fileFromPath } from '../utils';
 
 interface UseDragAndDropOptions {
   onFilesAdded: (files: File[]) => void;
+  /** Called immediately for each valid file as it is converted — enables instant loading UI */
+  onFileAdded?: (file: File) => void;
   onFilePathStored?: (file: File, path: string) => void;
   onExifDataFound?: (file: File, path: string) => void;
   activeTab?: 'category' | 'batch'; // Add active tab prop
