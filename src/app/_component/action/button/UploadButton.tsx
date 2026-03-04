@@ -38,9 +38,12 @@ type UploadButtonProps = {
   onFilesSelected: (files: File[]) => void;
 };
 
+// How many files to read from disk in parallel
+const UPLOAD_CONCURRENCY = 5;
+
 const UploadButtonComponent = ({ onFilesSelected }: UploadButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { setHasAttemptedGeneration, setFilePath, generated } = useSettings();
+  const { setHasAttemptedGeneration, setFilePath, generated, setFiles, addFiles } = useSettings();
 
   const handleClick = async () => {
     console.log("🖱️  Upload button clicked - opening Tauri file dialog");
@@ -60,50 +63,51 @@ const UploadButtonComponent = ({ onFilesSelected }: UploadButtonProps) => {
     }
 
     const paths = Array.isArray(result) ? result : [result];
-    console.log("   Selected paths:", paths);
+    console.log("   Selected paths:", paths.length);
 
-    const files = await Promise.all(
-      paths.map(async (path, index) => {
-        console.log(`      [${index + 1}] Original path: ${path}`);
-        const file = await fileFromPath(path);
-        console.log(`      [${index + 1}] Created File: name="${file.name}", type="${file.type}", size=${(file.size / 1024).toFixed(2)}KB`);
-        
-        // Store the original file path for metadata embedding
-        setFilePath(file, path);
-        
-        // Read EXIF metadata and populate fields if found
-        try {
-          console.log(`      [${index + 1}] Reading EXIF metadata...`);
-          const exifData = await readExifMetadata(path);
-          
-          if (exifData.title || exifData.description || exifData.keywords) {
-            console.log(`      [${index + 1}] Found embedded metadata - Title: ${exifData.title ? 'yes' : 'no'}, Description: ${exifData.description ? 'yes' : 'no'}, Keywords: ${exifData.keywords ? 'yes' : 'no'}`);
-            
-            // Populate metadata fields with EXIF data
-            generated.setMetadata(file, {
-              title: exifData.title || '',
-              description: exifData.description || '',
-              keywords: exifData.keywords || ''
-            });
-          } else {
-            console.log(`      [${index + 1}] No embedded metadata found`);
-          }
-        } catch (error) {
-          console.warn(`      [${index + 1}] Failed to read EXIF metadata:`, error);
-          // Continue without EXIF data - not a fatal error
+    // Clear existing files immediately so the UI resets right away
+    setFiles([]);
+    setHasAttemptedGeneration(false);
+
+    // Process files with limited concurrency so each file appears on screen
+    // as soon as it is read from disk — no waiting for the whole batch.
+    const queue = [...paths];
+
+    const processPath = async (path: string) => {
+      const file = await fileFromPath(path);
+      console.log(`✅ Loaded: name="${file.name}", type="${file.type}", size=${(file.size / 1024).toFixed(2)}KB`);
+
+      // Store the original file path for metadata embedding
+      setFilePath(file, path);
+
+      // Add this single file to state immediately → shows loading thumbnail
+      addFiles([file]);
+
+      // Read EXIF in the background — do NOT await so the next file starts loading
+      readExifMetadata(path).then(exifData => {
+        if (exifData.title || exifData.description || exifData.keywords) {
+          generated.setMetadata(file, {
+            title: exifData.title || '',
+            description: exifData.description || '',
+            keywords: exifData.keywords || ''
+          });
         }
-        
-        return file;
+      }).catch(error => {
+        console.warn(`⚠️ Failed to read EXIF for ${file.name}:`, error);
+      });
+    };
+
+    // Spin up UPLOAD_CONCURRENCY workers that drain the queue
+    await Promise.all(
+      Array(Math.min(UPLOAD_CONCURRENCY, paths.length)).fill(null).map(async () => {
+        while (queue.length > 0) {
+          const path = queue.shift();
+          if (path) await processPath(path);
+        }
       })
     );
 
-    console.log("   ✅ Upload button files converted:", files.length);
-    if (onFilesSelected) {
-      onFilesSelected(files);
-    }
-    // Reset validation state when new files are uploaded
-    setHasAttemptedGeneration(false);
-    console.log("Selected files:", files);
+    console.log(`✅ All ${paths.length} files queued for display`);
   };
 
   return (
