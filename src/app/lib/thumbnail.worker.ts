@@ -7,6 +7,14 @@ const JPEG_QUALITY = 0.5;
 self.onmessage = async (e: MessageEvent<File>) => {
     const file = e.data;
 
+    // SVG files are XML-based vectors; createImageBitmap support is inconsistent
+    // across Tauri WebViews. Signal failure so the main thread falls back to
+    // URL.createObjectURL which browsers render SVGs natively.
+    if (file.type === 'image/svg+xml') {
+        self.postMessage({ success: false, error: 'SVG: use objectURL fallback' });
+        return;
+    }
+
     try {
         // fast path: createImageBitmap (available in workers)
         const bitmap = await createImageBitmap(file);
