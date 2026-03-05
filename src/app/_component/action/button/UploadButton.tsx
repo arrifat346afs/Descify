@@ -17,6 +17,7 @@ const getMimeType = (filename: string): string => {
     'png': 'image/png',
     'gif': 'image/gif',
     'webp': 'image/webp',
+    'svg': 'image/svg+xml',
     // Videos
     'mp4': 'video/mp4',
     'mov': 'video/quicktime',
@@ -52,7 +53,7 @@ const UploadButtonComponent = ({ onFilesSelected }: UploadButtonProps) => {
       filters: [
         {
           name: "Media",
-          extensions: ["jpg", "jpeg", "png", "gif", "webp", "mp4", "mov", "webm"]
+          extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "mov", "webm"]
         }
       ]
     });
