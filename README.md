@@ -17,6 +17,7 @@ Descify is a desktop application built with Tauri, React, and TypeScript, design
 
 wabhoock test 
 ## Features
+
 *   **Batch:** Batch processing of images and Generate Metadata.
 *   **AI Integration:** Supports Gemini and OpenRouter AI models.
 *   **AI-Powered Tagging:** Integrates with AI models to automatically generate tags for images.
@@ -25,11 +26,17 @@ wabhoock test
 *   **Export Functionality:** Enables users to export image metadata.
 *   **Embedding Metadata:** Embeds metadata into images Using ExifTool And It needed to have the ExifTool installed on your system.
 *   **Platform Support:** Supports Windows, macOS, and Linux.
+*   **API Key Management:** Securely store and manage your Gemini and OpenRouter API keys.
+*   **Processing Modes:**
+    *   **Sequential:** Process images one at a time (recommended for free/trial APIs to avoid rate limiting)
+    *   **Parallel:** Process multiple images simultaneously with configurable workers (1-5) for faster processing with paid APIs
+*   **Request Delay:** Configurable delay between AI requests (0-10 seconds) to prevent rate limiting
+
 > [!WARNING]
 > OpenAI isn't supported because it's "ClosedAI" and I don't have access to it.
 >
- **For Gemini:** [Get API Key](https://aistudio.google.com/api-keys)
- **For OpenRouter:** [Get API Key](https://openrouter.ai/api-keys)
+> **For Gemini:** [Get API Key](https://aistudio.google.com/api-keys)
+> **For OpenRouter:** [Get API Key](https://openrouter.ai/api-keys)
 ## Installation
 
 1.  **Prerequisites:**

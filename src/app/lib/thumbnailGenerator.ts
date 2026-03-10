@@ -187,6 +187,11 @@ export async function generateAIImage(file: File): Promise<string> {
   console.log(`🚀 DEBUG: generateAIImage called with file: ${file.name}, size: ${(file.size / 1024).toFixed(2)}KB`);
   console.log(`🎯 TARGET CONFIG: maxSize=${maxSize}px, quality=${quality}`);
 
+  // SVG: rasterise via <img> element — createImageBitmap resize is unreliable for SVG
+  if (file.type === 'image/svg+xml') {
+    return generateAIImageFallback(file);
+  }
+
   try {
     // Use createImageBitmap for efficient processing of large files
     const bitmap = await createImageBitmap(file, {
