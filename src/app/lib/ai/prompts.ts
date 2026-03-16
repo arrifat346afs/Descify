@@ -86,6 +86,23 @@ export const generateMetadataPrompt = (
       processedTemplate = processedTemplate.replace(/\$\{keywordsAvoidWords\}/g, keywordsAvoidWordsSection);
     }
 
+    // Always append avoid words as global constraints at the end.
+    // This ensures avoid words are enforced even in templates that don't
+    // have explicit ${titleAvoidWords} / ${descriptionAvoidWords} / ${keywordsAvoidWords} placeholders.
+    const hadPlaceholders =
+      customTemplate.includes('${titleAvoidWords}') ||
+      customTemplate.includes('${descriptionAvoidWords}') ||
+      customTemplate.includes('${keywordsAvoidWords}');
+
+    if (!hadPlaceholders) {
+      const globalAvoidSection = [titleAvoidWordsSection, descriptionAvoidWordsSection, keywordsAvoidWordsSection]
+        .filter(s => s.length > 0)
+        .join('\n');
+      if (globalAvoidSection) {
+        processedTemplate += '\n' + globalAvoidSection;
+      }
+    }
+
     return processedTemplate + customInstructionSection;
   }
 

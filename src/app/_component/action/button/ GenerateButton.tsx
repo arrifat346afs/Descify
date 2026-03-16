@@ -106,6 +106,11 @@ const GenerateButtonComponent = () => {
         includePlaceName: metadataOptions.includePlaceName,
         customTemplate: activeTemplate || undefined,
         customInstruction: customInstruction,
+        avoidWords: {
+          titleAvoidWords: metadataOptions.titleAvoidWords,
+          keywordsAvoidWords: metadataOptions.keywordsAvoidWords,
+          descriptionAvoidWords: metadataOptions.descriptionAvoidWords,
+        },
       });
 
       // Store metadata for this specific file
