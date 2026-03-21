@@ -13,7 +13,7 @@
 
 Descify is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently.
 
-![Media Player Screenshot](img/screenshot_2025-12-26_16-58-54.png)
+![Media Player Screenshot](img/Screenshot%20from%202026-03-21%2023-12-28.png)
 
 wabhoock test 
 ## Features
