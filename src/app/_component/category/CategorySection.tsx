@@ -80,7 +80,7 @@ export const CategorySection = () => {
           value={currentCategories.adobeStock}
           onValueChange={(value) => handleCategoryChange("adobeStock", value)}
         >
-          <SelectTrigger className="w-full justify-between px-3 font-normal">
+          <SelectTrigger className="w-full justify-between px-3 font-normal h-10">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent className="max-h-[400px]">
@@ -117,7 +117,7 @@ export const CategorySection = () => {
               handleCategoryChange("shutterStock1", value)
             }
           >
-            <SelectTrigger className="w-full justify-between px-3 font-normal">
+            <SelectTrigger className="w-full justify-between px-3 font-normal h-10">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent className="max-h-[400px]">
@@ -165,7 +165,7 @@ export const CategorySection = () => {
               handleCategoryChange("shutterStock2", value)
             }
           >
-            <SelectTrigger className="w-full justify-between px-3 font-normal">
+            <SelectTrigger className="w-full justify-between px-3 font-normal h-10">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent className="max-h-[400px]">
