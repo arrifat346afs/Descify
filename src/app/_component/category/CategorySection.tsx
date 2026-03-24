@@ -83,7 +83,7 @@ export const CategorySection = () => {
           <SelectTrigger className="w-full justify-between px-3 font-normal">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-[400px]">
             <SelectItem value="1">Animals</SelectItem>
             <SelectItem value="2">Buildings</SelectItem>
             <SelectItem value="3">Business</SelectItem>
@@ -120,7 +120,7 @@ export const CategorySection = () => {
             <SelectTrigger className="w-full justify-between px-3 font-normal">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-[400px]">
               <SelectItem value="Abstract">Abstract</SelectItem>
               <SelectItem value="Animals/Wildlife">Animals/Wildlife</SelectItem>
               <SelectItem value="Arts">Arts</SelectItem>
@@ -168,7 +168,7 @@ export const CategorySection = () => {
             <SelectTrigger className="w-full justify-between px-3 font-normal">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-[400px]">
               <SelectItem value="Abstract">Abstract</SelectItem>
               <SelectItem value="Animals/Wildlife">Animals/Wildlife</SelectItem>
               <SelectItem value="Arts">Arts</SelectItem>
