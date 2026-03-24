@@ -206,9 +206,9 @@ export function ConsoleViewer() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col gap-3">
+    <div className="w-full h-full flex flex-col gap-2">
       {/* Search Bar */}
-      <div className="relative">
+      <div className="relative shrink-0">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search logs..."
@@ -220,65 +220,65 @@ export function ConsoleViewer() {
 
       {/* Tabs for filtering */}
       <Tabs value={selectedType} onValueChange={(value) => setSelectedType(value as any)}>
-        <TabsList className="w-full grid grid-cols-5 h-8">
-          <TabsTrigger value="all" className="text-xs">
-            All <Badge variant="secondary" className="ml-1 h-5">{logCounts.all}</Badge>
+        <TabsList className="w-full grid grid-cols-5 h-7 text-[10px]">
+          <TabsTrigger value="all" className="text-[10px] py-0.5 px-1">
+            All <Badge variant="secondary" className="ml-1 h-4 text-[10px]">{logCounts.all}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="log" className="text-xs">
-            Log <Badge variant="secondary" className="ml-1 h-5">{logCounts.log}</Badge>
+          <TabsTrigger value="log" className="text-[10px] py-0.5 px-1">
+            Log <Badge variant="secondary" className="ml-1 h-4 text-[10px]">{logCounts.log}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="info" className="text-xs">
-            Info <Badge variant="default" className="ml-1 h-5">{logCounts.info}</Badge>
+          <TabsTrigger value="info" className="text-[10px] py-0.5 px-1">
+            Info <Badge variant="default" className="ml-1 h-4 text-[10px]">{logCounts.info}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="warn" className="text-xs">
-            Warn <Badge className="ml-1 h-5 bg-amber-500 hover:bg-amber-600">{logCounts.warn}</Badge>
+          <TabsTrigger value="warn" className="text-[10px] py-0.5 px-1">
+            Warn <Badge className="ml-1 h-4 text-[10px] bg-amber-500 hover:bg-amber-600">{logCounts.warn}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="error" className="text-xs">
-            Error <Badge variant="destructive" className="ml-1 h-5">{logCounts.error}</Badge>
+          <TabsTrigger value="error" className="text-[10px] py-0.5 px-1">
+            Error <Badge variant="destructive" className="ml-1 h-4 text-[10px]">{logCounts.error}</Badge>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={selectedType} className="m-0 flex-1">
-          <ScrollArea className="h-96 w-full rounded-lg border bg-card">
-            <div className="p-3 space-y-2">
+        <TabsContent value={selectedType} className="m-0 flex-1 min-h-0">
+          <ScrollArea className="h-full w-full rounded-lg border bg-card">
+            <div className="p-2 space-y-1.5">
               {filteredLogs.length === 0 ? (
-                <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
+                <div className="flex items-center justify-center h-20 text-muted-foreground text-xs">
                   {logs.length === 0 ? "No logs yet. Open the console to see logs here." : "No logs matching your search."}
                 </div>
               ) : (
                 filteredLogs.map((log, i) => (
                   <div
                     key={i}
-                    className={`group relative rounded-md p-2 border border-border hover:border-primary/50 transition-all ${colorMap[log.type].bg}`}
+                    className={`group relative rounded-md p-1.5 border border-border hover:border-primary/50 transition-all ${colorMap[log.type].bg}`}
                   >
-                    <div className="flex items-start gap-2">
-                      {/* Type Badge */}
-                      <Badge variant={badgeVariantMap[log.type]} className="shrink-0 mt-0.5 uppercase text-xs font-bold">
-                        {log.type}
-                      </Badge>
-
-                      {/* Time */}
-                      <span className="text-xs text-muted-foreground shrink-0 mt-0.5">{log.time}</span>
-
-                      {/* Message */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-mono wrap-break-word whitespace-pre-wrap text-foreground">
-                          {highlightSyntax(log.message)}
-                        </div>
-                      </div>
-
-                      {/* Copy Button */}
+                    <div className="flex items-start gap-1.5">
+                      {/* Copy Button - moved to left side */}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5 p-0"
                         onClick={() => copyToClipboard(log.message, i)}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
+
+                      {/* Type Badge */}
+                      <Badge variant={badgeVariantMap[log.type]} className="shrink-0 mt-0.5 uppercase text-[9px] font-bold">
+                        {log.type}
+                      </Badge>
+
+                      {/* Time */}
+                      <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{log.time}</span>
+
+                      {/* Message */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] font-mono wrap-break-word whitespace-pre-wrap text-foreground break-all">
+                          {highlightSyntax(log.message)}
+                        </div>
+                      </div>
                     </div>
                     {copiedIndex === i && (
-                      <span className="absolute top-0 right-0 text-xs text-muted-foreground">Copied!</span>
+                      <span className="absolute top-0 right-0 text-[10px] text-muted-foreground">Copied!</span>
                     )}
                   </div>
                 ))
@@ -290,18 +290,18 @@ export function ConsoleViewer() {
       </Tabs>
 
       {/* Footer with Clear Button */}
-      <div className="flex items-center justify-between pt-2 border-t">
-        <span className="text-xs text-muted-foreground">
+      <div className="flex items-center justify-between pt-1 border-t shrink-0">
+        <span className="text-[10px] text-muted-foreground">
           {filteredLogs.length} of {logs.length} logs
         </span>
         <Button
           variant="outline"
           size="sm"
           onClick={clear}
-          className="h-7 text-xs gap-1"
+          className="h-6 text-[10px] gap-1"
         >
           <Trash2 className="h-3 w-3" />
-          Clear All
+          Clear
         </Button>
       </div>
     </div>

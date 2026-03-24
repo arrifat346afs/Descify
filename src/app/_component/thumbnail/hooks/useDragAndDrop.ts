@@ -8,7 +8,7 @@ interface UseDragAndDropOptions {
   onFileAdded?: (file: File) => void;
   onFilePathStored?: (file: File, path: string) => void;
   onExifDataFound?: (file: File, path: string) => void;
-  activeTab?: 'category' | 'batch'; // Add active tab prop
+  activeTab?: 'category' | 'log'; // Add active tab prop
 }
 
 /** Returns true when a file is a valid image or video that should be accepted */
@@ -40,12 +40,6 @@ export const useDragAndDrop = ({ onFilesAdded, onFileAdded, onFilePathStored, on
   // Native Tauri drag & drop for thumbnail section only
   useEffect(() => {
     console.log("🔧 Setting up ThumbnailSection Tauri drag & drop listener. Active tab:", activeTab);
-    
-    // Only set up the listener when Category tab is active
-    if (activeTab === 'batch') {
-      console.log("🚫 Batch tab is active - not setting up Tauri drag listener");
-      return;
-    }
 
     const win = getCurrentWindow();
 

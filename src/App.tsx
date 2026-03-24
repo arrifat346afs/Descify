@@ -5,6 +5,7 @@ import Navbar from "./app/_component/navigation/Navbar";
 import { useEffect } from "react";
 import { useSettings } from "./app/contexts/SettingsContext";
 import { ConsoleProvider } from "./components/ConsoleContext";
+import { TooltipProvider } from "./components/ui/tooltip";
 
 
 function App() {
@@ -21,14 +22,16 @@ function App() {
 
   return (
     <ConsoleProvider>
-      <main className="flex-1">
-        <div className="h-[35px]">
-          <Navbar />
-        </div>
-        <Home />
-        <Toaster />
-        
-      </main>
+      <TooltipProvider>
+        <main className="flex-1">
+          <div className="h-[35px]">
+            <Navbar />
+          </div>
+          <Home />
+          <Toaster />
+          
+        </main>
+      </TooltipProvider>
     </ConsoleProvider>
   );
 }

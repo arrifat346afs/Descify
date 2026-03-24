@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategorySection } from "../category/CategorySection";
-import { BatchProsess } from "../batch/BatchProsess";
+import { ConsoleViewer } from "@/components/ConsoleViewer";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { setActiveLeftTab } from "@/store/slices/uiSlice";
 
@@ -9,18 +9,17 @@ const LeftTabs = () => {
   const activeTab = useAppSelector(state => state.ui.activeLeftTab);
 
   return (
-    <div>
-      <Tabs value={activeTab} onValueChange={(value) => dispatch(setActiveLeftTab(value as 'category' | 'batch'))}>
-         <TabsList className="w-full rounded-none bg-background">
+    <div className="h-full flex flex-col">
+      <Tabs value={activeTab} onValueChange={(value) => dispatch(setActiveLeftTab(value as 'category' | 'log'))}>
+         <TabsList className="w-full rounded-none bg-background shrink-0">
           <TabsTrigger value="category">Category</TabsTrigger>
-          <TabsTrigger value="batch">Batch</TabsTrigger>
+          <TabsTrigger value="log">Log</TabsTrigger>
         </TabsList>
-        <TabsContent value="category">
+        <TabsContent value="category" className="flex-1 mt-0">
           <CategorySection />
         </TabsContent>
-        <TabsContent value="batch">
-          {/* <BatchProsess /> */}
-          <BatchProsess />
+        <TabsContent value="log" className="flex-1 mt-0">
+          <ConsoleViewer />
         </TabsContent>
       </Tabs>
     </div>
