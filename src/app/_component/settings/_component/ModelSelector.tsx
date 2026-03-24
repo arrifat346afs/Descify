@@ -63,7 +63,7 @@ export function ModelSelector({
                 onOpenChange={setOpen}
             >
                 <CommandInput placeholder={searchPlaceholder} />
-                <CommandList>
+                <CommandList onWheel={(e) => e.stopPropagation()}>
                     <CommandEmpty>No models found.</CommandEmpty>
                     <CommandGroup heading="Available Models">
                         {models.map((model) => (
