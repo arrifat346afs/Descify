@@ -80,7 +80,7 @@ export const CategorySection = () => {
           value={currentCategories.adobeStock}
           onValueChange={(value) => handleCategoryChange("adobeStock", value)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full justify-between px-3 font-normal">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
