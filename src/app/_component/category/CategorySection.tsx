@@ -117,7 +117,7 @@ export const CategorySection = () => {
               handleCategoryChange("shutterStock1", value)
             }
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full justify-between px-3 font-normal">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
@@ -165,7 +165,7 @@ export const CategorySection = () => {
               handleCategoryChange("shutterStock2", value)
             }
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full justify-between px-3 font-normal">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
