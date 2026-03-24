@@ -33,11 +33,6 @@ export function ModelSelector({
 }: ModelSelectorProps) {
     const [open, setOpen] = useState(false);
 
-    // We don't need manual filtering here as CommandDialog's internal Command handles it beautifully by default
-    // providing we set the 'value' on CommandItem correctly.
-    // However, if we want custom filtering we can pass `shouldFilter={false}`.
-    // For now, let's use the default filtering for better performance and behavior.
-
     const selectedModel = useMemo(
         () => models.find((model) => model.value === value),
         [models, value]
@@ -63,7 +58,10 @@ export function ModelSelector({
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
 
-            <CommandDialog open={open} onOpenChange={setOpen}>
+            <CommandDialog
+                open={open}
+                onOpenChange={setOpen}
+            >
                 <CommandInput placeholder={searchPlaceholder} />
                 <CommandList>
                     <CommandEmpty>No models found.</CommandEmpty>
@@ -71,7 +69,7 @@ export function ModelSelector({
                         {models.map((model) => (
                             <CommandItem
                                 key={model.value}
-                                value={model.label} // Use label for searching
+                                value={model.label}
                                 onSelect={() => {
                                     onValueChange(model.value);
                                     setOpen(false);
