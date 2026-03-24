@@ -4,8 +4,8 @@
   "version": "1.2.0",
   "identifier": "com.descify.app",
   "build": {
-    "beforeDevCommand": "bun run dev --port 3000",
-    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "bun run dev --port 4000",
+    "devUrl": "http://localhost:4000",
     "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
   },
