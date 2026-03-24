@@ -1,10 +1,11 @@
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
+import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import {
   Dialog,
-  DialogContent,
+  DialogPortal,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -36,13 +37,11 @@ function CommandDialog({
   description = "Search for a command to run...",
   children,
   className,
-  showCloseButton = false,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string
   description?: string
   className?: string
-  showCloseButton?: boolean
 }) {
   return (
     <Dialog {...props}>
@@ -50,17 +49,19 @@ function CommandDialog({
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
-      <DialogContent
-        className={cn(
-          "top-1/3 translate-y-0 overflow-hidden rounded-xl! p-0",
-          className
-        )}
-        showCloseButton={showCloseButton}
-      >
-        <Command>
-          {children}
-        </Command>
-      </DialogContent>
+      <DialogPortal>
+        <DialogPrimitive.Content
+          data-slot="dialog-content"
+          className={cn(
+            "fixed top-1/3 left-1/2 z-50 -translate-x-1/2 overflow-hidden rounded-xl p-0 duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+            className
+          )}
+        >
+          <Command>
+            {children}
+          </Command>
+        </DialogPrimitive.Content>
+      </DialogPortal>
     </Dialog>
   )
 }
