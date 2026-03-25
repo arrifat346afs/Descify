@@ -5,14 +5,16 @@ import { EmbedSettings } from "./_component/EmbedSettings";
 import ApiKeyManagement from "./_component/ApiKeyManagement";
 import ExportSettings from "./_component/ExportSettings";
 import { useSettings } from "@/app/contexts/SettingsContext";
-import { Settings as SettingsIcon, Key, FileText, Code, FileType2, Download } from "lucide-react";
+import { Settings as SettingsIcon, Key, FileText, Code, FileType2, Download, Palette } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TemplateManager } from "./_component/TemplateManager";
+import { ThemePicker } from "@/components/theme-picker";
 
 const Settings = () => {
   const { settingsDialog } = useSettings();
 
   const menuItems = [
+    { id: "themes", label: "Themes", icon: Palette },
     { id: "models", label: "Model Selection", icon: SettingsIcon },
     { id: "apikeys", label: "API Keys", icon: Key },
     { id: "metadata", label: "Metadata", icon: FileText },
@@ -53,6 +55,7 @@ const Settings = () => {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 min-w-0">
+          {settingsDialog.defaultTab === "themes" && <ThemePicker />}
           {settingsDialog.defaultTab === "models" && <ApiSettings />}
           {settingsDialog.defaultTab === "apikeys" && (
             <ApiKeyManagement compact={true} showTitle={false} />

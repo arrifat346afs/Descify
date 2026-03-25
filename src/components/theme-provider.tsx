@@ -1,81 +1,111 @@
-import { createContext, useContext, useEffect, useState } from "react"
-
-type Theme = "dark" | "light" | "system"
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { ThemeId, ColorMode, ThemeDefinition, discoverThemes } from "@/lib/themes";
 
 type ThemeProviderProps = {
-  children: React.ReactNode
-  defaultTheme?: Theme
-  storageKey?: string
-}
+  children: React.ReactNode;
+  defaultTheme?: ThemeId;
+  defaultMode?: ColorMode;
+  storageKey?: string;
+  modeStorageKey?: string;
+};
 
 type ThemeProviderState = {
-  theme: Theme
-  setTheme: (theme: Theme) => void
-}
+  theme: ThemeId;
+  mode: ColorMode;
+  themes: ThemeDefinition[];
+  setTheme: (theme: ThemeId) => void;
+  setMode: (mode: ColorMode) => void;
+  toggleMode: () => void;
+};
 
 const initialState: ThemeProviderState = {
-  theme: "system",
+  theme: "default",
+  mode: "light",
+  themes: [],
   setTheme: () => null,
-}
+  setMode: () => null,
+  toggleMode: () => null,
+};
 
-const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
+const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
-  storageKey = "vite-ui-theme",
+  defaultTheme = "default",
+  defaultMode = "light",
+  storageKey = "descify-theme-id",
+  modeStorageKey = "descify-theme-mode",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  )
+  const [theme, setThemeState] = useState<ThemeId>(() => {
+    return localStorage.getItem(storageKey) || defaultTheme;
+  });
+
+  const [mode, setModeState] = useState<ColorMode>(() => {
+    return (localStorage.getItem(modeStorageKey) as ColorMode) || defaultMode;
+  });
+
+  // Themes are discovered from [data-theme='...'] selectors in App.css —
+  // no manual list needed. We populate after mount when styles are ready.
+  const [themes, setThemes] = useState<ThemeDefinition[]>([]);
 
   useEffect(() => {
-    const root = window.document.documentElement
+    setThemes(discoverThemes());
+  }, []);
 
-    root.classList.remove("light", "dark")
+  const applyTheme = useCallback((themeId: ThemeId, colorMode: ColorMode) => {
+    const root = window.document.documentElement;
 
-    if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-      const systemTheme = mediaQuery.matches ? "dark" : "light"
-      root.classList.add(systemTheme)
+    // Set the data-theme attribute — CSS [data-theme='...'] rules handle the rest
+    root.setAttribute("data-theme", themeId);
 
-      const listener = (e: MediaQueryListEvent) => {
-        root.classList.remove("light", "dark")
-        const newSystemTheme = e.matches ? "dark" : "light"
-        root.classList.add(newSystemTheme)
-      }
+    // Toggle the .dark class for dark mode support
+    root.classList.toggle("dark", colorMode === "dark");
+  }, []);
 
-      mediaQuery.addEventListener("change", listener)
+  useEffect(() => {
+    applyTheme(theme, mode);
+  }, [theme, mode, applyTheme]);
 
-      return () => {
-        mediaQuery.removeEventListener("change", listener)
-      }
-    } else {
-      root.classList.add(theme)
-    }
-  }, [theme])
-
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
+  const setTheme = useCallback(
+    (newTheme: ThemeId) => {
+      localStorage.setItem(storageKey, newTheme);
+      setThemeState(newTheme);
     },
-  }
+    [storageKey]
+  );
+
+  const setMode = useCallback(
+    (newMode: ColorMode) => {
+      localStorage.setItem(modeStorageKey, newMode);
+      setModeState(newMode);
+    },
+    [modeStorageKey]
+  );
+
+  const toggleMode = useCallback(() => {
+    setMode(mode === "light" ? "dark" : "light");
+  }, [mode, setMode]);
+
+  const value: ThemeProviderState = {
+    theme,
+    mode,
+    themes,
+    setTheme,
+    setMode,
+    toggleMode,
+  };
 
   return (
     <ThemeProviderContext.Provider {...props} value={value}>
       {children}
     </ThemeProviderContext.Provider>
-  )
+  );
 }
 
 export const useTheme = () => {
-  const context = useContext(ThemeProviderContext)
-
+  const context = useContext(ThemeProviderContext);
   if (context === undefined)
-    throw new Error("useTheme must be used within a ThemeProvider")
-
-  return context
-}
+    throw new Error("useTheme must be used within a ThemeProvider");
+  return context;
+};

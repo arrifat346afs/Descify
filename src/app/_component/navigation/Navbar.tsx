@@ -45,7 +45,7 @@ const Navbar = () => {
       <div className="flex w-full">
         <div
           data-tauri-drag-region
-          className="flex justify-center items-center"
+          className="flex justify-center items-center pl-2"
         >
           <ItemMedia variant="image">
             <img
