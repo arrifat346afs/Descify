@@ -42,7 +42,7 @@ type UploadButtonProps = {
 // How many files to read from disk in parallel
 const UPLOAD_CONCURRENCY = 5;
 
-const UploadButtonComponent = ({ onFilesSelected }: UploadButtonProps) => {
+const UploadButtonComponent = ({ }: UploadButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const { setHasAttemptedGeneration, setFilePath, generated, setFiles, addFiles } = useSettings();
 
@@ -116,7 +116,7 @@ const UploadButtonComponent = ({ onFilesSelected }: UploadButtonProps) => {
       <Button
         onClick={handleClick}
         variant={"ghost"}
-        className="gap-2 group"
+        className="gap-2 group h-10"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >

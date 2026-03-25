@@ -82,21 +82,21 @@ const Navbar = () => {
         <Button
           variant={"ghost"}
           onClick={() => appWindow.minimize()}
-          className=" rounded-none  hover:bg-zinc-500/30"
+          className="h-[35px] w-10 rounded-none  hover:bg-zinc-500/30"
         >
           <VscChromeMinimize />
         </Button>
         <Button
           variant={"ghost"}
           onClick={() => appWindow.toggleMaximize()}
-          className=" rounded-none hover:bg-zinc-500/30"
+          className="h-[35px] w-10 rounded-none hover:bg-zinc-500/30"
         >
           {isMaximized ? <VscChromeRestore /> : <VscChromeMaximize />}
         </Button>
         <Button
           variant={"ghost"}
           onClick={() => appWindow.close()}
-          className="rounded-none hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white"
+          className="h-[35px] w-10 rounded-none hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white"
         >
           <VscChromeClose />
         </Button>

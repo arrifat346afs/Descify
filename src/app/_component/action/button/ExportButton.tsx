@@ -49,7 +49,7 @@ function ExportButtonComponent() {
         variant="ghost"
         onClick={handleExport}
         disabled={isExporting || generated.items.length === 0 || selectedFormatsCount === 0}
-        className="gap-2 group"
+        className="gap-2 group h-10"
       >
         <DownloadIcon/>
         Export
