@@ -253,7 +253,7 @@ export function ConsoleViewer() {
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col gap-2">
+    <div className="w-full h-full flex flex-col gap-2 overflow-hidden">
       {/* Search Bar */}
       <div className="relative shrink-0">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -266,8 +266,8 @@ export function ConsoleViewer() {
       </div>
 
       {/* Tabs for filtering */}
-      <Tabs value={selectedType} onValueChange={(value) => setSelectedType(value as any)}>
-        <TabsList className="w-full grid grid-cols-5 h-7 text-[10px]">
+      <Tabs value={selectedType} onValueChange={(value) => setSelectedType(value as any)} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <TabsList className="w-full grid grid-cols-5 h-7 text-[10px] shrink-0">
           <TabsTrigger value="all" className="text-[10px] py-0.5 px-1">
             All <Badge variant="secondary" className="ml-1 h-4 text-[10px]">{logCounts.all}</Badge>
           </TabsTrigger>
@@ -285,7 +285,7 @@ export function ConsoleViewer() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={selectedType} className="m-0 flex-1 min-h-0">
+        <TabsContent value={selectedType} className="mt-2 flex-1 min-h-0 overflow-hidden">
           <ScrollArea className="h-full w-full rounded-lg border bg-card">
             <div className="p-2 space-y-1.5">
               {filteredLogs.length === 0 ? (
