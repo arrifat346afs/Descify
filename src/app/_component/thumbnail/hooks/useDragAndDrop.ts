@@ -39,7 +39,9 @@ export const useDragAndDrop = ({ onFilesAdded, onFileAdded, onFilePathStored, on
 
   // Native Tauri drag & drop for thumbnail section only
   useEffect(() => {
-    console.log("🔧 Setting up ThumbnailSection Tauri drag & drop listener. Active tab:", activeTab);
+    // activeTab is intentionally excluded from deps — it's display-only and must not
+    // tear down the Tauri listener every time the user switches tabs.
+    console.log("🔧 Setting up ThumbnailSection Tauri drag & drop listener. Active tab:", activeTab); // eslint-disable-line react-hooks/exhaustive-deps
 
     const win = getCurrentWindow();
 
@@ -108,7 +110,8 @@ export const useDragAndDrop = ({ onFilesAdded, onFileAdded, onFilePathStored, on
       console.log("🧹 Cleaning up ThumbnailSection Tauri drag & drop listener");
       unlistenPromise.then(unlisten => unlisten());
     };
-  }, [handleFiles, onFileAdded, onFilePathStored, onExifDataFound, activeTab]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleFiles, onFileAdded, onFilePathStored, onExifDataFound]);
 
   return { isDragActive };
 };

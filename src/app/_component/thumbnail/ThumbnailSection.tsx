@@ -34,6 +34,9 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   
   const activeTab = useAppSelector(state => state.ui.activeLeftTab);
 
+  // Stable reference: generated.setMetadata only depends on dispatch, never changes
+  const setMetadata = generated.setMetadata;
+
   const thumbnails = thumbsCtx.items;
   const thumbnailRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -55,24 +58,25 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       setHasAttemptedGeneration(false);
     }, [addFiles, setHasAttemptedGeneration]),
     // Legacy batch fallback (used when onFileAdded is not provided)
+    // Use addFiles (stable) instead of setFiles([...files, ...newFiles]) so that
+    // this callback doesn't get a new reference every time `files` changes.
     onFilesAdded: useCallback((newFiles: File[]) => {
       if (newFiles.length > 0) {
-        const updatedFiles = [...(files || []), ...newFiles];
-        setFiles(updatedFiles);
+        addFiles(newFiles);
         setHasAttemptedGeneration(false);
       }
-    }, [files, setFiles, setHasAttemptedGeneration]),
+    }, [addFiles, setHasAttemptedGeneration]),
     onFilePathStored: setFilePath,
     onExifDataFound: useCallback(async (file: File, path: string) => {
       try {
         console.log(`📸 Reading EXIF metadata for dropped file: ${file.name}`);
         const exifData = await readExifMetadata(path);
-        
+
         if (exifData.title || exifData.description || exifData.keywords) {
           console.log(`✅ Found embedded metadata for ${file.name} - Title: ${exifData.title ? 'yes' : 'no'}, Description: ${exifData.description ? 'yes' : 'no'}, Keywords: ${exifData.keywords ? 'yes' : 'no'}`);
-          
+
           // Populate metadata fields with EXIF data
-          generated.setMetadata(file, {
+          setMetadata(file, {
             title: exifData.title || '',
             description: exifData.description || '',
             keywords: exifData.keywords || ''
@@ -84,7 +88,8 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         console.warn(`⚠️ Failed to read EXIF metadata for ${file.name}:`, error);
         // Continue without EXIF data - not a fatal error
       }
-    }, [generated]),
+    // Use setMetadata (stable) instead of generated (object ref changes on every metadata update)
+    }, [setMetadata]),
   });
 
   // Setup virtualization
