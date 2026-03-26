@@ -342,7 +342,7 @@ const GenerateButtonComponent = () => {
   };
 
   const buttonText = thumbnails.isGenerating
-    ? '⏳ Generating thumbnails...'
+    ? 'Generate'
     : isGenerating
     ? <TextShimmer>Generating...</TextShimmer>
     : 'Generate';
