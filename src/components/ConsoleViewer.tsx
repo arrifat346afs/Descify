@@ -1,11 +1,12 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConsoleLogs } from "./ConsoleContext";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2, Search, Copy } from "lucide-react";
+import type { ConsoleLog } from "./ConsoleContext";
 
 const colorMap = {
   log: { bg: "bg-background hover:bg-accent", icon: "text-muted-foreground" },
@@ -21,8 +22,15 @@ const badgeVariantMap = {
   error: "destructive",
 } as const;
 
+// Module-level cache so the same message is never highlighted twice
+const highlightCache = new Map<string, JSX.Element>();
+
 // Syntax highlighting for console messages
-function highlightSyntax(message: string) {
+function highlightSyntax(message: string): JSX.Element {
+  const cached = highlightCache.get(message);
+  if (cached) return cached;
+
+  let result: JSX.Element;
   // Try to detect if it's JSON
   const trimmed = message.trim();
   const isJSON = (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
@@ -30,17 +38,20 @@ function highlightSyntax(message: string) {
 
   if (isJSON) {
     try {
-      // Parse and re-stringify to ensure valid JSON
       const parsed = JSON.parse(trimmed);
       const formatted = JSON.stringify(parsed, null, 2);
-      return highlightJSON(formatted);
+      result = highlightJSON(formatted);
     } catch {
-      // If parsing fails, fall back to basic highlighting
-      return highlightText(message);
+      result = highlightText(message);
     }
+  } else {
+    result = highlightText(message);
   }
 
-  return highlightText(message);
+  // Prevent unbounded cache growth
+  if (highlightCache.size > 2000) highlightCache.clear();
+  highlightCache.set(message, result);
+  return result;
 }
 
 function highlightJSON(json: string): JSX.Element {
@@ -169,6 +180,44 @@ function highlightText(text: string): JSX.Element {
   return <>{parts}</>;
 }
 
+interface LogItemProps {
+  log: ConsoleLog;
+  index: number;
+  isCopied: boolean;
+  onCopy: (text: string, index: number) => void;
+}
+
+const LogItem = memo(function LogItem({ log, index, isCopied, onCopy }: LogItemProps) {
+  return (
+    <div
+      className={`group relative rounded-md p-1.5 border border-border hover:border-primary/50 transition-all ${colorMap[log.type].bg}`}
+    >
+      <div className="flex items-start gap-1.5">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5 p-0"
+          onClick={() => onCopy(log.message, index)}
+        >
+          <Copy className="h-3 w-3" />
+        </Button>
+        <Badge variant={badgeVariantMap[log.type]} className="shrink-0 mt-0.5 uppercase text-[9px] font-bold">
+          {log.type}
+        </Badge>
+        <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{log.time}</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-mono wrap-break-word whitespace-pre-wrap text-foreground break-all">
+            {highlightSyntax(log.message)}
+          </div>
+        </div>
+      </div>
+      {isCopied && (
+        <span className="absolute top-0 right-0 text-[10px] text-muted-foreground">Copied!</span>
+      )}
+    </div>
+  );
+});
+
 export function ConsoleViewer() {
   const { logs, clear } = useConsoleLogs();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -176,34 +225,32 @@ export function ConsoleViewer() {
   const [selectedType, setSelectedType] = useState<"all" | "log" | "info" | "warn" | "error">("all");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-  // Auto-scroll to bottom when new logs are added
+  // Auto-scroll to bottom when new logs are added (instant to avoid expensive smooth animation)
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      scrollRef.current.scrollIntoView({ behavior: "instant", block: "end" });
     }
   }, [logs]);
 
-  // Filter logs based on search and type
-  const filteredLogs = logs.filter((log) => {
-    const matchesSearch = log.message.toLowerCase().includes(searchQuery.toLowerCase());
+  // Memoized filtering so it doesn't recompute on every render
+  const filteredLogs = useMemo(() => logs.filter((log) => {
+    const matchesSearch = searchQuery === "" || log.message.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = selectedType === "all" || log.type === selectedType;
     return matchesSearch && matchesType;
-  });
+  }), [logs, searchQuery, selectedType]);
 
-  // Get log counts
-  const logCounts = {
-    all: logs.length,
-    log: logs.filter((l) => l.type === "log").length,
-    info: logs.filter((l) => l.type === "info").length,
-    warn: logs.filter((l) => l.type === "warn").length,
-    error: logs.filter((l) => l.type === "error").length,
-  };
+  // Memoized counts - single pass instead of 4 separate filter calls
+  const logCounts = useMemo(() => {
+    const counts = { all: logs.length, log: 0, info: 0, warn: 0, error: 0 };
+    for (const l of logs) counts[l.type]++;
+    return counts;
+  }, [logs]);
 
-  const copyToClipboard = (text: string, index: number) => {
+  const copyToClipboard = useCallback((text: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
-  };
+  }, []);
 
   return (
     <div className="w-full h-full flex flex-col gap-2">
@@ -247,40 +294,13 @@ export function ConsoleViewer() {
                 </div>
               ) : (
                 filteredLogs.map((log, i) => (
-                  <div
+                  <LogItem
                     key={i}
-                    className={`group relative rounded-md p-1.5 border border-border hover:border-primary/50 transition-all ${colorMap[log.type].bg}`}
-                  >
-                    <div className="flex items-start gap-1.5">
-                      {/* Copy Button - moved to left side */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5 p-0"
-                        onClick={() => copyToClipboard(log.message, i)}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-
-                      {/* Type Badge */}
-                      <Badge variant={badgeVariantMap[log.type]} className="shrink-0 mt-0.5 uppercase text-[9px] font-bold">
-                        {log.type}
-                      </Badge>
-
-                      {/* Time */}
-                      <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{log.time}</span>
-
-                      {/* Message */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[10px] font-mono wrap-break-word whitespace-pre-wrap text-foreground break-all">
-                          {highlightSyntax(log.message)}
-                        </div>
-                      </div>
-                    </div>
-                    {copiedIndex === i && (
-                      <span className="absolute top-0 right-0 text-[10px] text-muted-foreground">Copied!</span>
-                    )}
-                  </div>
+                    log={log}
+                    index={i}
+                    isCopied={copiedIndex === i}
+                    onCopy={copyToClipboard}
+                  />
                 ))
               )}
               <div ref={scrollRef} />
