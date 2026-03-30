@@ -62,7 +62,7 @@ const Settings = () => {
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
-                  whileHover={{ x: isActive ? 0 : 3 }}
+                  whileHover={{ x: isActive ? 0 : -3 }}
                   whileTap={{ scale: 0.97 }}
                   transition={{ duration: 0.15 }}
                 >
