@@ -74,6 +74,7 @@ const Settings = () => {
                   )}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
                   whileHover={{ x: isActive ? 0 : -5 }}
                   whileTap={{ scale: 0.97 }}
                   transition={{ duration: 0.2 }}
