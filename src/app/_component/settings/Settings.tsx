@@ -77,7 +77,7 @@ const Settings = () => {
                   exit={{ opacity: 0, y: 12 }}
                   whileHover={{ x: isActive ? 0 : -5 }}
                   whileTap={{ scale: 0.97 }}
-                  transition={{ duration: 1.2 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <Icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                   <span className="truncate">{item.label}</span>
