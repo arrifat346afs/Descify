@@ -48,7 +48,7 @@ const Settings = () => {
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
+      transition={{ duration: 0.2, ease: "easeOut", staggerChildren: 0.2 }}
     >
       <DialogHeader className="px-4 sm:px-6 pt-6 pb-4 shrink-0">
         <DialogTitle className="text-xl sm:text-2xl font-bold">
@@ -76,7 +76,7 @@ const Settings = () => {
                   animate={{ opacity: 1, y: 0 }}
                   whileHover={{ x: isActive ? 0 : -5 }}
                   whileTap={{ scale: 0.97 }}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <Icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                   <span className="truncate">{item.label}</span>
