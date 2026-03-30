@@ -9,6 +9,7 @@ import { Settings as SettingsIcon, Key, FileText, Code, FileType2, Download, Pal
 import { cn } from "@/lib/utils";
 import { TemplateManager } from "./_component/TemplateManager";
 import { ThemePicker } from "@/components/theme-picker";
+import { AnimatePresence, motion } from "framer-motion";
 
 const Settings = () => {
   const { settingsDialog } = useSettings();
@@ -55,15 +56,85 @@ const Settings = () => {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 min-w-0">
-          {settingsDialog.defaultTab === "themes" && <ThemePicker />}
-          {settingsDialog.defaultTab === "models" && <ApiSettings />}
-          {settingsDialog.defaultTab === "apikeys" && (
-            <ApiKeyManagement compact={true} showTitle={false} />
-          )}
-          {settingsDialog.defaultTab === "metadata" && <MetadataSettings />}
-          {settingsDialog.defaultTab === "embed" && <EmbedSettings />}
-          {settingsDialog.defaultTab === "export" && <ExportSettings />}
-          {settingsDialog.defaultTab === "templates" && <TemplateManager />}
+          <AnimatePresence mode="wait">
+            {settingsDialog.defaultTab === "themes" && (
+              <motion.div
+                key="themes"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <ThemePicker />
+              </motion.div>
+            )}
+            {settingsDialog.defaultTab === "models" && (
+              <motion.div
+                key="models"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <ApiSettings />
+              </motion.div>
+            )}
+            {settingsDialog.defaultTab === "apikeys" && (
+              <motion.div
+                key="apikeys"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <ApiKeyManagement compact={true} showTitle={false} />
+              </motion.div>
+            )}
+            {settingsDialog.defaultTab === "metadata" && (
+              <motion.div
+                key="metadata"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <MetadataSettings />
+              </motion.div>
+            )}
+            {settingsDialog.defaultTab === "embed" && (
+              <motion.div
+                key="embed"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <EmbedSettings />
+              </motion.div>
+            )}
+            {settingsDialog.defaultTab === "export" && (
+              <motion.div
+                key="export"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <ExportSettings />
+              </motion.div>
+            )}
+            {settingsDialog.defaultTab === "templates" && (
+              <motion.div
+                key="templates"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <TemplateManager />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
