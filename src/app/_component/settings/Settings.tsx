@@ -9,6 +9,7 @@ import { Settings as SettingsIcon, Key, FileText, Code, FileType2, Download, Pal
 import { cn } from "@/lib/utils";
 import { TemplateManager } from "./_component/TemplateManager";
 import { ThemePicker } from "@/components/theme-picker";
+import { motion, AnimatePresence } from "motion/react";
 
 const Settings = () => {
   const { settingsDialog } = useSettings();
@@ -23,8 +24,24 @@ const Settings = () => {
     { id: "templates", label: "Templates", icon: FileType2 },
   ];
 
+  const tabContent: Record<string, React.ReactNode> = {
+    themes: <ThemePicker />,
+    models: <ApiSettings />,
+    apikeys: <ApiKeyManagement compact={true} showTitle={false} />,
+    metadata: <MetadataSettings />,
+    embed: <EmbedSettings />,
+    export: <ExportSettings />,
+    templates: <TemplateManager />,
+  };
+
   return (
-    <div className="flex flex-col h-full w-full">
+    <motion.div
+      className="flex flex-col h-full w-full"
+      initial={{ opacity: 0, scale: 0.97, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97, y: 8 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+    >
       <DialogHeader className="px-4 sm:px-6 pt-6 pb-4 shrink-0">
         <DialogTitle className="text-xl sm:text-2xl font-bold">Settings</DialogTitle>
       </DialogHeader>
@@ -34,39 +51,46 @@ const Settings = () => {
           <nav className="space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
+              const isActive = settingsDialog.defaultTab === item.id;
               return (
-                <button
+                <motion.button
                   key={item.id}
                   onClick={() => settingsDialog.setDefaultTab(item.id)}
                   className={cn(
                     "w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
-                    settingsDialog.defaultTab === item.id
+                    isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
+                  whileHover={{ x: isActive ? 0 : 3 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ duration: 0.15 }}
                 >
                   <Icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                   <span className="truncate">{item.label}</span>
-                </button>
+                </motion.button>
               );
             })}
           </nav>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 min-w-0">
-          {settingsDialog.defaultTab === "themes" && <ThemePicker />}
-          {settingsDialog.defaultTab === "models" && <ApiSettings />}
-          {settingsDialog.defaultTab === "apikeys" && (
-            <ApiKeyManagement compact={true} showTitle={false} />
-          )}
-          {settingsDialog.defaultTab === "metadata" && <MetadataSettings />}
-          {settingsDialog.defaultTab === "embed" && <EmbedSettings />}
-          {settingsDialog.defaultTab === "export" && <ExportSettings />}
-          {settingsDialog.defaultTab === "templates" && <TemplateManager />}
+        <div className="flex-1 overflow-hidden px-4 sm:px-6 py-4 min-w-0 relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={settingsDialog.defaultTab}
+              className="h-full overflow-y-auto"
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+            >
+              {tabContent[settingsDialog.defaultTab]}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
