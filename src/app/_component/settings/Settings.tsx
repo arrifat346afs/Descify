@@ -42,9 +42,9 @@ const Settings = () => {
       exit={{ opacity: 0, scale: 0.97, y: 8 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
-      <DialogHeader className="px-4 sm:px-6 pt-6 pb-4 shrink-0">
+      {/* <DialogHeader className="px-4 sm:px-6 pt-6 pb-4 shrink-0">
         <DialogTitle className="text-xl sm:text-2xl font-bold">Settings</DialogTitle>
-      </DialogHeader>
+      </DialogHeader> */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Sidebar */}
         <div className="w-48 sm:w-56 md:w-64 border-r bg-muted/30 px-2 sm:px-3 py-4 overflow-y-auto shrink-0">
