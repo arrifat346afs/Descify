@@ -37,9 +37,9 @@ const Settings = () => {
   return (
     <motion.div
       className="flex flex-col h-full w-full"
-      initial={{ opacity: 0, scale: 0.97, y: 8 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97, y: 8 }}
+      initial={{ opacity: 0, scale: 0.97,  }}
+      animate={{ opacity: 1, scale: 1, }}
+      exit={{ opacity: 0, scale: 0.97}}
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
       <DialogHeader className="px-4 sm:px-6 pt-6 pb-4 shrink-0">
