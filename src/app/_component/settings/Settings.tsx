@@ -75,7 +75,7 @@ const Settings = () => {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-hidden px-4 sm:px-6 py-4 min-w-0 relative">
+        <div className="flex-1 overflow-hidden px-7 sm:px-6 py-4 min-w-0 relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={settingsDialog.defaultTab}
