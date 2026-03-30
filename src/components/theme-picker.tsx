@@ -134,7 +134,7 @@ export function ThemePicker() {
       </div>
 
       {/* Theme grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-2">
         {themes.map((t) => (
           <ThemePreviewCard
             key={t.id}
