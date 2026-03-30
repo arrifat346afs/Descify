@@ -80,9 +80,9 @@ const Settings = () => {
             <motion.div
               key={settingsDialog.defaultTab}
               className="h-full overflow-y-auto"
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.18, ease: "easeInOut" }}
             >
               {tabContent[settingsDialog.defaultTab]}
