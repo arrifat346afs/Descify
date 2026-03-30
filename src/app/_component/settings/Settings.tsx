@@ -5,7 +5,15 @@ import { EmbedSettings } from "./_component/EmbedSettings";
 import ApiKeyManagement from "./_component/ApiKeyManagement";
 import ExportSettings from "./_component/ExportSettings";
 import { useSettings } from "@/app/contexts/SettingsContext";
-import { Settings as SettingsIcon, Key, FileText, Code, FileType2, Download, Palette } from "lucide-react";
+import {
+  Settings as SettingsIcon,
+  Key,
+  FileText,
+  Code,
+  FileType2,
+  Download,
+  Palette,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TemplateManager } from "./_component/TemplateManager";
 import { ThemePicker } from "@/components/theme-picker";
@@ -37,13 +45,15 @@ const Settings = () => {
   return (
     <motion.div
       className="flex flex-col h-full w-full"
-      initial={{ opacity: 0, scale: 0.97,  }}
-      animate={{ opacity: 1, scale: 1, }}
-      exit={{ opacity: 0, scale: 0.97}}
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
       <DialogHeader className="px-4 sm:px-6 pt-6 pb-4 shrink-0">
-        <DialogTitle className="text-xl sm:text-2xl font-bold">Settings</DialogTitle>
+        <DialogTitle className="text-xl sm:text-2xl font-bold">
+          Settings
+        </DialogTitle>
       </DialogHeader>
       <div className="flex flex-1 min-h-1 overflow-hidden">
         {/* Sidebar */}
@@ -60,8 +70,10 @@ const Settings = () => {
                     "w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
                     isActive
                       ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
                   whileHover={{ x: isActive ? 0 : -5 }}
                   whileTap={{ scale: 0.97 }}
                   transition={{ duration: 0.15 }}
