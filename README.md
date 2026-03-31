@@ -31,6 +31,12 @@ wabhoock test
     *   **Sequential:** Process images one at a time (recommended for free/trial APIs to avoid rate limiting)
     *   **Parallel:** Process multiple images simultaneously with configurable workers (1-5) for faster processing with paid APIs
 *   **Request Delay:** Configurable delay between AI requests (0-10 seconds) to prevent rate limiting
+*   **Prompt Templates:** Create and manage custom prompt templates for different use cases
+    *   **Preset Templates:** Built-in templates for Stock Photo, Product Catalog, and Social Media
+    *   **Custom Templates:** Create your own templates with variable placeholders
+    *   **Template Variables:** Use `${titleLimit}`, `${descriptionLimit}`, `${keywordLimit}`, `${fileName}`, `${currentDate}`
+    *   **Avoid Words:** Specify words to exclude from generated metadata
+    *   **Custom Instructions:** Add specific instructions for individual images
 
 > [!WARNING]
 > OpenAI isn't supported because it's "ClosedAI" and I don't have access to it.
