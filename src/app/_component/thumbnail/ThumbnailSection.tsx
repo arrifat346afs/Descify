@@ -237,7 +237,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   }, []);
 
   // Development logging (throttled)
-  if (process.env.NODE_ENV === 'development' && files?.length !== undefined) {
+  if (import.meta.env.DEV && files?.length !== undefined) {
     const logKey = `thumb_${files?.length}_${thumbnails?.length}`;
     const windowWithLog = window as unknown as { __lastThumbLog?: string };
     if (windowWithLog.__lastThumbLog !== logKey) {
@@ -273,61 +273,62 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
       {files && files.length > 0 && (
           <ScrollArea className="p-2 w-full overflow-hidden">
-          <div
-            ref={scrollContainerRef}
-            onScroll={shouldVirtualize ? onScroll : undefined}
-            className={`flex space-x-4 px-2 py-2 pb-4 relative ${
-              isDragActive ? 'border-2 border-dashed border-primary bg-primary/5 rounded-lg' : ''
-            }`}
-            style={{
-              width: shouldVirtualize ? `${totalWidth}px` : 'max-content',
-              paddingLeft: shouldVirtualize ? `${leftOffset}px` : undefined,
-            }}
-          >
-            {filesToRender.map(({ file, index }) => {
-              const thumbnail = thumbnailMap.get(file);
-              // Show loading spinner for any file that doesn't have a thumbnail yet.
-              // We only add valid media files to state, so no thumbnail = still generating.
-              const isGenerating = !thumbnail;
-              const hasMetadata = metadataMap.has(file);
-              const isSelected = selectedFile === file;
-              const hasCustomInstruction = !!generated.getCustomInstruction(file);
-              const isRegenerating = regeneratingFile === file;
+            <div
+              ref={scrollContainerRef}
+              onScroll={shouldVirtualize ? onScroll : undefined}
+              className={`flex space-x-4 px-2 py-2 pb-4 relative ${
+                isDragActive ? 'border-2 border-dashed border-primary bg-primary/5 rounded-lg' : ''
+              }`}
+              style={{
+                width: shouldVirtualize ? `${totalWidth}px` : 'max-content',
+                paddingLeft: shouldVirtualize ? `${leftOffset}px` : undefined,
+              }}
+            >
+              {filesToRender.map(({ file, index }) => {
+                const thumbnail = thumbnailMap.get(file);
+                // Show loading spinner for any file that doesn't have a thumbnail yet.
+                // We only add valid media files to state, so no thumbnail = still generating.
+                const isGenerating = !thumbnail;
+                const hasMetadata = metadataMap.has(file);
+                const isSelected = selectedFile === file;
+                const hasCustomInstruction = !!generated.getCustomInstruction(file);
+                const isRegenerating = regeneratingFile === file;
 
-              return (
-                <ThumbnailItem
-                  key={`${file.name}-${index}`}
-                  file={file}
-                  thumbnail={thumbnail}
-                  isGenerating={isGenerating}
-                  isSelected={isSelected}
-                  hasMetadata={hasMetadata}
-                  hasAttemptedGeneration={hasAttemptedGeneration}
-                  hasCustomInstruction={hasCustomInstruction}
-                  isRegenerating={isRegenerating}
-                  onSelect={() => handleSelectFile(file)}
-                  onDelete={() => handleDeleteFile(file)}
-                  onOpenCustomInstruction={() => handleOpenCustomInstruction(file)}
-                  onRegenerate={() => handleRegenerate(file)}
-                  onRef={handleSetRef(file)}
-                />
-              );
-            })}
-            
-            {/* Drag overlay for when files exist */}
-            {isDragActive && (
-              <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center border-4 border-dashed border-primary rounded-lg animate-in fade-in duration-200 z-10">
-                <Upload className="w-16 h-16 text-primary mb-4 animate-bounce" />
-                <p className="text-xl font-semibold text-primary">
-                  Drop files here to add them
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Images and videos will be added to your collection
-                </p>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+                return (
+                  <ThumbnailItem
+                    key={`${file.name}-${index}`}
+                    file={file}
+                    thumbnail={thumbnail}
+                    isGenerating={isGenerating}
+                    isSelected={isSelected}
+                    hasMetadata={hasMetadata}
+                    hasAttemptedGeneration={hasAttemptedGeneration}
+                    hasCustomInstruction={hasCustomInstruction}
+                    isRegenerating={isRegenerating}
+                    onSelect={() => handleSelectFile(file)}
+                    onDelete={() => handleDeleteFile(file)}
+                    onOpenCustomInstruction={() => handleOpenCustomInstruction(file)}
+                    onRegenerate={() => handleRegenerate(file)}
+                    onRef={handleSetRef(file)}
+                  />
+                );
+              })}
+              
+              {/* Drag overlay for when files exist */}
+              {isDragActive && (
+                <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center border-4 border-dashed border-primary rounded-lg animate-in fade-in duration-200 z-10">
+                  <Upload className="w-16 h-16 text-primary mb-4 animate-bounce" />
+                  <p className="text-xl font-semibold text-primary">
+                    Drop files here to add them
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Images and videos will be added to your collection
+                  </p>
+                </div>
+              )}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
       )}
 
       {/* Progress indicator for large batches */}

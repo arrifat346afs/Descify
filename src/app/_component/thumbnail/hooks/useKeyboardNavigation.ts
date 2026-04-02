@@ -16,6 +16,8 @@ export const useKeyboardNavigation = ({
   enabled = true,
 }: UseKeyboardNavigationOptions) => {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.repeat) return;
+
     // Only handle arrow keys
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
       return;
