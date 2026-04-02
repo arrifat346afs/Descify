@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const KeywordsField = () => {
+const KeywordsField = memo(function KeywordsField() {
   const { generated, selectedFile, metadataLimits } = useSettings();
   const [inputValue, setInputValue] = useState("");
 
@@ -26,7 +26,6 @@ const KeywordsField = () => {
     if (e.key === "Enter" && inputValue.trim() && selectedFile) {
       e.preventDefault();
 
-      // Check if we've reached the limit
       if (keywordArray.length >= maxKeywords) {
         alert(`Maximum ${maxKeywords} keywords allowed`);
         return;
@@ -34,7 +33,6 @@ const KeywordsField = () => {
 
       const newKeyword = inputValue.trim();
 
-      // Don't add duplicates
       if (keywordArray.includes(newKeyword)) {
         setInputValue("");
         return;
@@ -76,7 +74,6 @@ const KeywordsField = () => {
         className="mb-3"
       />
 
-      {/* Keywords as badges */}
       <ScrollArea className="h-[15vh] border rounded-md p-0">
         <div className="flex flex-wrap gap-2 min-h-20 p-2">
           {keywordArray.length === 0 ? (
@@ -107,6 +104,6 @@ const KeywordsField = () => {
       </ScrollArea>
     </div>
   );
-};
+});
 
 export default KeywordsField;

@@ -1,8 +1,8 @@
 import { Textarea } from "@/components/ui/textarea";
 import { useSettings } from '@/app/contexts/SettingsContext';
+import { memo } from "react";
 
-
-export const DescriptionField = () => {
+export const DescriptionField = memo(function DescriptionField() {
   const { generated, selectedFile, metadataLimits } = useSettings();
 
   const metadata = selectedFile ? generated.getMetadata(selectedFile) : undefined;
@@ -15,7 +15,6 @@ export const DescriptionField = () => {
   const handleChange = (e: any) => {
     if (selectedFile) {
       const newValue = e.target.value;
-      // Enforce limit
       if (newValue.length <= maxLength) {
         generated.setMetadata(selectedFile, { description: newValue });
       }
@@ -34,9 +33,7 @@ export const DescriptionField = () => {
         value={description}
         onChange={handleChange}
         placeholder={selectedFile ? "Generate metadata for this file..." : "Select a file to view metadata"}
-        
-        
       />
     </div>
   );
-}
+});

@@ -54,8 +54,6 @@ export const useKeyboardNavigation = ({
 
     const newFile = files[newIndex];
     
-    console.log(`⌨️ Keyboard navigation: ${e.key} → index ${newIndex} (${newFile.name})`);
-    
     // Update virtualization if callback provided
     if (onIndexChange) {
       onIndexChange(newIndex);

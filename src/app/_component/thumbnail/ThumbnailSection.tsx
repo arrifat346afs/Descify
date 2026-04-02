@@ -1,7 +1,6 @@
 import { useRef, useMemo, useState, useCallback, useEffect } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { useAppSelector } from "@/store/hooks";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { MdOutlineImageNotSupported } from "react-icons/md";
 import { Upload } from "lucide-react";
 import { CustomInstructionDialog } from "./CustomInstructionDialog";
@@ -38,7 +37,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
   const thumbnails = thumbsCtx.items;
   const thumbnailRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Custom instruction dialog state
   const [customInstructionDialogOpen, setCustomInstructionDialogOpen] = useState(false);
@@ -272,7 +271,15 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       )}
 
       {files && files.length > 0 && (
-        <ScrollArea className="p-2 w-full overflow-hidden">
+        <div 
+          className="p-2 w-full overflow-x-auto overflow-y-hidden"
+          onWheel={(e) => {
+            if (scrollContainerRef.current) {
+              scrollContainerRef.current.scrollLeft += e.deltaY;
+              e.preventDefault();
+            }
+          }}
+        >
           <div
             ref={scrollContainerRef}
             onScroll={shouldVirtualize ? onScroll : undefined}
@@ -327,8 +334,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               </div>
             )}
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       )}
 
       {/* Progress indicator for large batches */}

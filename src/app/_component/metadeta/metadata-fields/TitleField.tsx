@@ -1,9 +1,10 @@
 import { Textarea } from "@/components/ui/textarea";
 import { useSettings } from '@/app/contexts/SettingsContext';
 import { extractKeywordsFromTitle } from "@/app/lib/keywordUtils";
+import { memo } from "react";
 
 
-const TitleField = () => {
+function TitleField() {
   const { generated, selectedFile, metadataLimits } = useSettings();
 
   const metadata = selectedFile ? generated.getMetadata(selectedFile) : undefined;
@@ -57,4 +58,4 @@ const TitleField = () => {
   );
 }
 
-export default TitleField;
+export default memo(TitleField);
