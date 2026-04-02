@@ -3,6 +3,7 @@ import { useSettings } from "@/app/contexts/SettingsContext";
 import { useAppSelector } from "@/store/hooks";
 import { MdOutlineImageNotSupported } from "react-icons/md";
 import { Upload } from "lucide-react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { CustomInstructionDialog } from "./CustomInstructionDialog";
 import { generateMetadata } from "@/app/lib/ai";
 import { readExifMetadata } from "@/app/lib/tauri-commands";
