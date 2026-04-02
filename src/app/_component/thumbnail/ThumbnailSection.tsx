@@ -272,15 +272,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       )}
 
       {files && files.length > 0 && (
-        <div 
-          className="p-2 w-full overflow-x-auto overflow-y-hidden"
-          onWheel={(e) => {
-            if (scrollContainerRef.current) {
-              scrollContainerRef.current.scrollLeft += e.deltaY;
-              e.preventDefault();
-            }
-          }}
-        >
+          <ScrollArea className="p-2 w-full overflow-hidden">
           <div
             ref={scrollContainerRef}
             onScroll={shouldVirtualize ? onScroll : undefined}
@@ -335,7 +327,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               </div>
             )}
           </div>
-        </div>
+        </ScrollArea>
       )}
 
       {/* Progress indicator for large batches */}
