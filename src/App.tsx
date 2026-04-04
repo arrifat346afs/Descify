@@ -4,7 +4,7 @@ import { Toaster } from "./components/ui/sonner";
 import Navbar from "./app/_component/navigation/Navbar";
 import { useEffect } from "react";
 import { useSettings } from "./app/contexts/SettingsContext";
-import { ConsoleProvider } from "./components/ConsoleContext";
+// import { ConsoleProvider } from "./components/ConsoleContext";
 import { TooltipProvider } from "./components/ui/tooltip";
 
 
@@ -21,7 +21,7 @@ function App() {
   }, []); // Only run once on mount
 
   return (
-    <ConsoleProvider>
+
       <TooltipProvider>
         <main className="flex-1">
           <div className="h-[35px]">
@@ -32,7 +32,7 @@ function App() {
           
         </main>
       </TooltipProvider>
-    </ConsoleProvider>
+
   );
 }
 
