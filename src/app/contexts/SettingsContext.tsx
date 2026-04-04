@@ -289,27 +289,29 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   }, [dispatch]);
 
   // --- Generated Metadata ---
-
+  // Use ref to access current metadata state without causing re-renders
+  const metadataStateRef = useRef(metadataState);
+  metadataStateRef.current = metadataState;
 
   const getMetadata = useCallback((file: File) => {
-    return metadataState.generatedMetadata.find(m => m.file === file)?.metadata;
-  }, [metadataState.generatedMetadata]);
+    return metadataStateRef.current.generatedMetadata.find(m => m.file === file)?.metadata;
+  }, []);
 
   const setMetadata = useCallback((file: File, metadata: Partial<GeneratedMetadata>) => {
     dispatch(metadataSlice.updateFileMetadata({ file, metadata }));
   }, [dispatch]);
 
   const getCategories = useCallback((file: File) => {
-    return metadataState.generatedMetadata.find(m => m.file === file)?.categories;
-  }, [metadataState.generatedMetadata]);
+    return metadataStateRef.current.generatedMetadata.find(m => m.file === file)?.categories;
+  }, []);
 
   const setFileCategories = useCallback((file: File, categories: Partial<CategorySelection>) => {
     dispatch(metadataSlice.updateFileCategories({ file, categories }));
   }, [dispatch]);
 
   const getCustomInstruction = useCallback((file: File) => {
-    return metadataState.generatedMetadata.find(m => m.file === file)?.customInstruction;
-  }, [metadataState.generatedMetadata]);
+    return metadataStateRef.current.generatedMetadata.find(m => m.file === file)?.customInstruction;
+  }, []);
 
   const setCustomInstruction = useCallback((file: File, instruction: string) => {
     dispatch(metadataSlice.updateCustomInstruction({ file, instruction }));
