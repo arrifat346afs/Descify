@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
 import { ThemeToggle } from "@/components/mode-toggle";
 import { UpdateChecker } from "@/components/UpdateChecker";
-import { ConsolePopover } from "../ConsolePopover";
+// import { ConsolePopover } from "../ConsolePopover";
 
 const Navbar = () => {
   const appWindow = getCurrentWindow();
@@ -73,7 +73,7 @@ const Navbar = () => {
             </DialogContent>
           </Dialog>
           <ThemeToggle />
-          <ConsolePopover />
+          {/* <ConsolePopover /> */}
         </div>
         <div data-tauri-drag-region className="flex-1" />
       </div>
