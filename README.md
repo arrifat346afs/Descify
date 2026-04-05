@@ -11,15 +11,18 @@
 
 # Descify - AI Title, Keyword & Description Generator
 
-Descify is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently.
+Descify is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently. It **generates metadata for images in batch process** using AI models.
 
 ![Media Player Screenshot](img/Screenshot%20from%202026-03-21%2023-12-28.png)
 
 wabhoock test 
 ## Features
 
-*   **Batch:** Batch processing of images and Generate Metadata.
-*   **AI Integration:** Supports Gemini and OpenRouter AI models.
+*   **Batch Processing:** Generate metadata for multiple images at once.
+*   **Dual Processing System:** 
+    *   **Sequential Processing:** Process images one at a time - recommended for free/trial API keys to avoid rate limiting
+    *   **Parallel Processing:** Process multiple images simultaneously with configurable workers (1-5) - ideal for paid API keys with higher rate limits for faster processing
+*   **AI Integration:** Supports Gemini (free tier available) and OpenRouter (paid) AI models.
 *   **AI-Powered Tagging:** Integrates with AI models to automatically generate tags for images.
 *   **File Preview:** Provides a preview of the images.
 *   **Category Management:** Allows users to categorize images.
@@ -30,7 +33,7 @@ wabhoock test
 *   **Processing Modes:**
     *   **Sequential:** Process images one at a time (recommended for free/trial APIs to avoid rate limiting)
     *   **Parallel:** Process multiple images simultaneously with configurable workers (1-5) for faster processing with paid APIs
-*   **Request Delay:** Configurable delay between AI requests (0-10 seconds) to prevent rate limiting
+*   **Request Delay:** Configurable delay between AI requests (0-10 seconds) to prevent rate limiting - essential for free API keys
 *   **Prompt Templates:** Create and manage custom prompt templates for different use cases
     *   **Preset Templates:** Built-in templates for Stock Photo, Product Catalog, and Social Media
     *   **Custom Templates:** Create your own templates with variable placeholders
