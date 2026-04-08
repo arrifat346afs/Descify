@@ -1,6 +1,7 @@
 import { CiImageOn } from "react-icons/ci";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSettings } from "@/app/contexts/SettingsContext";
+import { generatePreviewImage } from "@/app/lib/thumbnailGenerator";
 
 type FileSectionProps = {
   file: File | null;
@@ -15,37 +16,88 @@ export default function FileSection({ file }: FileSectionProps) {
     );
   }
 
-  // Get thumbnail from store for instant preview
   const { thumbnails } = useSettings();
   const thumbnailItem = thumbnails.items.find((t) => t.file === file);
   const lowResUrl = thumbnailItem?.thumbnailUrl;
+  const cachedPreviewUrl = thumbnailItem?.previewUrl;
+  const upsertPreview = thumbnails.upsert;
 
   const [highResUrl, setHighResUrl] = useState<string | null>(null);
   const [isHighResLoaded, setIsHighResLoaded] = useState(false);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const isImage = file.type.startsWith("image/");
   const isVideo = file.type.startsWith("video/");
+  
+  const objectUrlRef = useRef<string | null>(null);
+  const generatedRef = useRef<Set<File>>(new Set());
 
   useEffect(() => {
-    // Reset state when file changes
     setIsHighResLoaded(false);
     setHighResUrl(null);
-
-    const objectUrl = URL.createObjectURL(file);
-    setHighResUrl(objectUrl);
-
-    // For images, listen for load event to show high-res
-    if (isImage) {
-      const img = new Image();
-      img.onload = () => setIsHighResLoaded(true);
-      img.src = objectUrl;
-    } else {
-      setIsHighResLoaded(true);
+    setIsGeneratingPreview(false);
+    
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
     }
 
-    return () => {
-      URL.revokeObjectURL(objectUrl);
+    const loadPreview = async () => {
+      if (isImage && cachedPreviewUrl && !generatedRef.current.has(file)) {
+        setHighResUrl(cachedPreviewUrl);
+        setIsHighResLoaded(true);
+        generatedRef.current.add(file);
+        return;
+      }
+
+      if (isImage && !cachedPreviewUrl && !generatedRef.current.has(file)) {
+        generatedRef.current.add(file);
+        setIsGeneratingPreview(true);
+        try {
+          const previewUrl = await generatePreviewImage(file);
+          upsertPreview({ file, thumbnailUrl: lowResUrl || '', previewUrl });
+          setHighResUrl(previewUrl);
+          setIsHighResLoaded(true);
+        } catch (error) {
+          console.error('Failed to generate preview:', error);
+          const objectUrl = URL.createObjectURL(file);
+          objectUrlRef.current = objectUrl;
+          setHighResUrl(objectUrl);
+          const img = new Image();
+          img.onload = () => setIsHighResLoaded(true);
+          img.src = objectUrl;
+        }
+        setIsGeneratingPreview(false);
+        return;
+      }
+
+      if (cachedPreviewUrl && generatedRef.current.has(file)) {
+        setHighResUrl(cachedPreviewUrl);
+        setIsHighResLoaded(true);
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(file);
+      objectUrlRef.current = objectUrl;
+      setHighResUrl(objectUrl);
+
+      if (isImage) {
+        const img = new Image();
+        img.onload = () => setIsHighResLoaded(true);
+        img.src = objectUrl;
+      } else {
+        setIsHighResLoaded(true);
+      }
     };
-  }, [file, isImage]);
+
+    loadPreview();
+
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, [file, isImage, cachedPreviewUrl, lowResUrl, upsertPreview]);
 
   const showLowRes = lowResUrl && !isHighResLoaded;
 
@@ -71,8 +123,15 @@ export default function FileSection({ file }: FileSectionProps) {
             />
           )}
 
+          {/* Loading Indicator while generating preview */}
+          {isGeneratingPreview && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          )}
+
           {/* Loading Indicator if no thumbnail and not loaded */}
-          {!isHighResLoaded && !lowResUrl && (
+          {!isHighResLoaded && !lowResUrl && !isGeneratingPreview && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
@@ -88,7 +147,6 @@ export default function FileSection({ file }: FileSectionProps) {
           autoPlay={false}
         />
       )}
-      {/* <p className="mt-2 text-sm text-gray-600 text-center truncate max-w-full">{file.name}</p> */}
     </div>
   );
 }

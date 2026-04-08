@@ -148,6 +148,12 @@ const AI_IMAGE_CONFIG = {
   JPEG_QUALITY: 0.6,
 };
 
+// Configuration for preview cache (600px with true aspect ratio)
+const PREVIEW_CONFIG = {
+  MAX_SIZE: 600,
+  JPEG_QUALITY: 0.8,
+};
+
 /**
  * Force garbage collection hint by clearing references
  */
@@ -359,6 +365,125 @@ function generateAIImageFallback(file: File): Promise<string> {
 }
 
 /**
+ * Generates a 600px preview image for caching
+ * Uses true aspect ratio (not square canvas) for smaller file sizes
+ * Generated on-demand when user clicks thumbnail
+ */
+export async function generatePreviewImage(file: File): Promise<string> {
+  const maxSize = PREVIEW_CONFIG.MAX_SIZE;
+  const quality = PREVIEW_CONFIG.JPEG_QUALITY;
+
+  if (file.type === 'image/svg+xml') {
+    return generatePreviewImageFallback(file);
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file, {
+      resizeWidth: maxSize,
+      resizeHeight: maxSize,
+      resizeQuality: 'high',
+    });
+
+    // Calculate dimensions maintaining true aspect ratio
+    let drawWidth = bitmap.width;
+    let drawHeight = bitmap.height;
+
+    if (drawWidth > maxSize || drawHeight > maxSize) {
+      if (drawWidth > drawHeight) {
+        drawHeight = Math.round((drawHeight * maxSize) / drawWidth);
+        drawWidth = maxSize;
+      } else {
+        drawWidth = Math.round((drawWidth * maxSize) / drawHeight);
+        drawHeight = maxSize;
+      }
+    }
+
+    // Create canvas with true aspect ratio (not square)
+    const canvas = document.createElement('canvas');
+    canvas.width = drawWidth;
+    canvas.height = drawHeight;
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    if (!ctx) {
+      bitmap.close();
+      throw new Error('Failed to get canvas context');
+    }
+
+    ctx.drawImage(bitmap, 0, 0, drawWidth, drawHeight);
+    bitmap.close();
+
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch (error) {
+    return generatePreviewImageFallback(file);
+  }
+}
+
+function generatePreviewImageFallback(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    const timeout = setTimeout(() => {
+      URL.revokeObjectURL(objectUrl);
+      img.src = '';
+      reject(new Error(`Timeout loading image for preview: ${file.name}`));
+    }, 15000);
+
+    img.onload = () => {
+      clearTimeout(timeout);
+      try {
+        const maxSize = PREVIEW_CONFIG.MAX_SIZE;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        if (!ctx) {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', PREVIEW_CONFIG.JPEG_QUALITY);
+
+        URL.revokeObjectURL(objectUrl);
+        img.src = '';
+        resolve(dataUrl);
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        img.src = '';
+        reject(error);
+      }
+    };
+
+    img.onerror = () => {
+      clearTimeout(timeout);
+      URL.revokeObjectURL(objectUrl);
+      img.src = '';
+      reject(new Error('Failed to load image for preview'));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+/**
  * Generates a video thumbnail by capturing a frame
  * Optimized for speed
  */
@@ -436,9 +561,16 @@ export function generateVideoThumbnail(file: File): Promise<string> {
   });
 }
 
+export type ThumbnailResult = {
+  file: File;
+  thumbnailUrl: string;
+  previewUrl: string | null;
+};
+
 /**
  * Batch generates thumbnails for multiple files with high concurrency
  * Optimized for speed while still handling 3000+ images
+ * Preview images are generated lazily on-demand when user clicks a thumbnail
  *
  * @param files - Array of files to generate thumbnails for
  * @param onProgress - Optional callback for progress updates

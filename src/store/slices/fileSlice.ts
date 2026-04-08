@@ -3,6 +3,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export type ThumbnailData = {
     file: File;
     thumbnailUrl: string;
+    previewUrl?: string | null;
 };
 
 interface FileState {

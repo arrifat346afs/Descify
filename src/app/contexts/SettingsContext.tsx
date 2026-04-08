@@ -502,7 +502,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           () => { }, // Progress callback
           (file, thumbnailUrl) => {
             // Never discard — always store the thumbnail regardless of newer batches
-            pendingThumbnailsRef.current.push({ file, thumbnailUrl });
+            pendingThumbnailsRef.current.push({ 
+              file, 
+              thumbnailUrl,
+              previewUrl: null 
+            });
 
             // Schedule flush if not already scheduled (flush every 16 ms)
             if (!flushTimerRef.current) {
