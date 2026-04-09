@@ -13,11 +13,13 @@ import {
   FileType2,
   Download,
   Palette,
+  HardDrive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TemplateManager } from "./_component/TemplateManager";
 import { ThemePicker } from "@/components/theme-picker";
 import { motion, AnimatePresence } from "motion/react";
+import CacheSettings from "./_component/CacheSettings";
 
 const Settings = () => {
   const { settingsDialog } = useSettings();
@@ -30,6 +32,7 @@ const Settings = () => {
     { id: "embed", label: "Embed", icon: Code },
     { id: "export", label: "Export", icon: Download },
     { id: "templates", label: "Templates", icon: FileType2 },
+    { id: "cache", label: "Cache", icon: HardDrive },
   ];
 
   const tabContent: Record<string, React.ReactNode> = {
@@ -40,6 +43,7 @@ const Settings = () => {
     embed: <EmbedSettings />,
     export: <ExportSettings />,
     templates: <TemplateManager />,
+    cache: <CacheSettings />,
   };
 
   return (

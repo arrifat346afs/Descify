@@ -34,3 +34,18 @@ export interface ExifData {
 export async function readExifMetadata(filePath: string): Promise<ExifData> {
   return await invoke('read_exif_metadata_command', { filePath });
 }
+
+export interface CacheDirectory {
+  name: string;
+  path: string;
+  size_bytes: number;
+  os_type: string;
+}
+
+export async function getCacheInfo(): Promise<CacheDirectory[]> {
+  return await invoke('get_cache_info');
+}
+
+export async function clearCacheDirectory(path: string): Promise<string> {
+  return await invoke('clear_cache_directory', { path });
+}
