@@ -6,6 +6,7 @@ import * as metadataSlice from '../../store/slices/metadataSlice';
 import * as templateSlice from '../../store/slices/templateSlice';
 import * as uiSlice from '../../store/slices/uiSlice';
 import * as batchSlice from '../../store/slices/batchSlice';
+import { BATCH_CONFIG } from '@/app/lib/thumbnailGenerator';
 
 // Re-export types from slices to maintain compatibility
 export type Provider = configSlice.Provider;
@@ -492,12 +493,12 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
     console.log(`🚀 Starting generation of ${filesToGenerate.length} thumbnails (batch #${batchId})...`);
 
-    // Dynamic import and process
+    // Don't await - run in background to keep UI responsive
     (async () => {
       try {
         const { generateThumbnailsBatch } = await import("@/app/lib/thumbnailGenerator");
 
-        await generateThumbnailsBatch(
+        generateThumbnailsBatch(
           filesToGenerate,
           () => { }, // Progress callback
           (file, thumbnailUrl) => {
@@ -512,7 +513,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
             if (!flushTimerRef.current) {
               flushTimerRef.current = window.setTimeout(flushPendingThumbnails, 16);
             }
-          }
+          },
+          BATCH_CONFIG.CONCURRENCY,
+          fileState.filePaths
         );
 
         // Final flush after all files in THIS batch are done

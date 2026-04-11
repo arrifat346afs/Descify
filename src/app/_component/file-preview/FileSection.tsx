@@ -16,11 +16,12 @@ export default function FileSection({ file }: FileSectionProps) {
     );
   }
 
-  const { thumbnails } = useSettings();
+  const { thumbnails, filePaths } = useSettings();
   const thumbnailItem = thumbnails.items.find((t) => t.file === file);
   const lowResUrl = thumbnailItem?.thumbnailUrl;
   const cachedPreviewUrl = thumbnailItem?.previewUrl;
   const upsertPreview = thumbnails.upsert;
+  const filePath = filePaths.get(file);
 
   const [highResUrl, setHighResUrl] = useState<string | null>(null);
   const [isHighResLoaded, setIsHighResLoaded] = useState(false);
@@ -53,7 +54,7 @@ export default function FileSection({ file }: FileSectionProps) {
         generatedRef.current.add(file);
         setIsGeneratingPreview(true);
         try {
-          const previewUrl = await generatePreviewImage(file);
+          const previewUrl = await generatePreviewImage(file, filePath);
           upsertPreview({ file, thumbnailUrl: lowResUrl || '', previewUrl });
           setHighResUrl(previewUrl);
           setIsHighResLoaded(true);
