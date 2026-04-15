@@ -54,8 +54,10 @@ export const MetadataSection = () => {
 
     setIsGenerating(true);
     try {
+      const filePath = getFilePath(selectedFile);
       const result = await generateMetadata({
-        file: selectedFile, // Use file directly for HQ AI image generation
+        file: selectedFile,
+        filePath: filePath,
         fileNames: [selectedFile.name],
         provider,
         model,

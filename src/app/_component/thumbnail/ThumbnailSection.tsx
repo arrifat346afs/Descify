@@ -29,6 +29,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     addFiles,
     setHasAttemptedGeneration,
     setFilePath,
+    filePaths,
   } = useSettings();
   
   const activeTab = useAppSelector(state => state.ui.activeLeftTab);
@@ -183,8 +184,10 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
     setRegeneratingFile(file);
     try {
+      const filePath = filePaths.get(file);
       const result = await generateMetadata({
         file: file,
+        filePath: filePath,
         fileNames: [file.name],
         provider,
         model,

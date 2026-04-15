@@ -22,6 +22,8 @@ export type GenerateMetadataOptions = {
   thumbnailUrls?: string[];
   /** The file to generate metadata for - will create HQ image on-demand */
   file?: File;
+  /** The file path for backend processing (used for videos) */
+  filePath?: string;
   fileNames: string[];
   provider?: string;
   model?: string;
@@ -42,7 +44,7 @@ export type GenerateMetadataOptions = {
  * Uses direct API calls for maximum control over tokens and payload
  */
 export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<GeneratedMetadata> => {
-  const { file, thumbnailUrls, provider = 'openai', model, apiKey, limits, includePlaceName, customTemplate, customInstruction, avoidWords } = opts;
+  const { file, filePath, thumbnailUrls, provider = 'openai', model, apiKey, limits, includePlaceName, customTemplate, customInstruction, avoidWords } = opts;
 
   try {
     console.log('🎯 Starting metadata generation with:', {
@@ -50,6 +52,7 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
       model,
       hasApiKey: !!apiKey,
       hasFile: !!file,
+      hasFilePath: !!filePath,
     });
 
     if (!apiKey) {
@@ -61,7 +64,7 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
     if (!targetModel) {
       if (provider === 'openai') targetModel = DEFAULT_OPENAI_MODEL;
       else if (provider === 'openrouter') targetModel = DEFAULT_OPENROUTER_MODEL;
-      else if (provider === 'google') targetModel = 'gemini-1.5-flash'; // Good default for Google
+      else if (provider === 'google') targetModel = 'gemini-1.5-flash';
     }
 
     // Generate the prompt
@@ -71,10 +74,12 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
     let imageDataUrl: string;
 
     if (file) {
-      // New: Generate HQ image on-demand (480px, 60% quality per optimization settings)
       console.log('🖼️ Generating optimized image for AI analysis...');
       console.log(`📁 File details: ${file.name}, ${(file.size / 1024).toFixed(2)} KB`);
-      imageDataUrl = await generateAIImage(file);
+      
+      // Pass filePath for video support
+      imageDataUrl = await generateAIImage(file, filePath);
+      
       console.log(`✅ Image generated: ${(imageDataUrl.length / 1024).toFixed(2)} KB`);
     } else if (thumbnailUrls && thumbnailUrls.length > 0) {
       console.log('⚠️ Using thumbnail (lower quality) - consider using file parameter');
@@ -88,7 +93,6 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
     const messageContent = createVisionMessageContent(textPrompt, imageDataUrl);
 
     // Call the AI API directly
-    // The response is now a string (the raw text content)
     const responseText = await callAIApi({
       provider,
       apiKey,
@@ -97,15 +101,6 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
     });
 
     console.log('✅ AI responded. Parsing metadata...');
-
-    // Parse and validate the response
-    // We wrap the text in a mock object structure because response-parser might expect the Vercel AI SDK response format
-    // OR we simply refactor response-parser to take a string. 
-    // Let's assume for now we need to adapt it. 
-    // Checking response-parser.ts would have been good, but based on `parseMetadataResponse(response, limits)` signature in original file...
-    // The original code passed `response` from `generateText`. 
-    // `generateText` returns `{ text: string, ... }`. 
-    // So we should pass an object with `text` property.
 
     const mockResponse = { text: responseText };
     return parseMetadataResponse(mockResponse, limits);

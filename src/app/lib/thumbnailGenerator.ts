@@ -28,6 +28,9 @@ export const BATCH_CONFIG = {
   JPEG_QUALITY: 0.5,
 };
 
+const VIDEO_CONCURRENCY = 2;
+const IMAGE_CONCURRENCY = 6;
+
 const AI_IMAGE_CONFIG = {
   MAX_SIZE: 480,
   JPEG_QUALITY: 0.6,
@@ -40,6 +43,88 @@ const PREVIEW_CONFIG = {
 
 function getCacheKey(filePath: string, size: number): string {
   return `${filePath}_${size}`;
+}
+
+async function generateVideoThumbnailRust(filePath: string, size: number = BATCH_CONFIG.MAX_THUMBNAIL_SIZE, signal?: AbortSignal): Promise<string | null> {
+  if (signal?.aborted) {
+    return null;
+  }
+  
+  const cacheKey = `video_${filePath}_${size}`;
+  
+  if (thumbnailCache.has(cacheKey)) {
+    return thumbnailCache.get(cacheKey) ?? null;
+  }
+  
+  try {
+    if (signal?.aborted) {
+      return null;
+    }
+    
+    const result = await invoke<GeneratedThumbnailResult>('generate_video_thumbnail_command', {
+      filePath,
+      size
+    });
+    
+    if (signal?.aborted) {
+      return null;
+    }
+    
+    const thumbnail = result.thumbnail_base64 
+      ? `data:image/jpeg;base64,${result.thumbnail_base64}` 
+      : null;
+    
+    thumbnailCache.set(cacheKey, thumbnail);
+    return thumbnail;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return null;
+    }
+    console.warn('Video thumbnail generation failed:', error);
+    thumbnailCache.set(cacheKey, null);
+    return null;
+  }
+}
+
+async function generateVideoPreviewRust(filePath: string, size: number = PREVIEW_CONFIG.MAX_SIZE, signal?: AbortSignal): Promise<string | null> {
+  if (signal?.aborted) {
+    return null;
+  }
+  
+  const cacheKey = `video_preview_${filePath}_${size}`;
+  
+  if (thumbnailCache.has(cacheKey)) {
+    return thumbnailCache.get(cacheKey) ?? null;
+  }
+  
+  try {
+    if (signal?.aborted) {
+      return null;
+    }
+    
+    const result = await invoke<GeneratedPreviewResult>('generate_video_preview_command', {
+      filePath,
+      size
+    });
+    
+    if (signal?.aborted) {
+      return null;
+    }
+    
+    const preview = result.preview_base64 
+      ? `data:image/jpeg;base64,${result.preview_base64}` 
+      : null;
+    
+    thumbnailCache.set(cacheKey, preview);
+    return preview;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return null;
+    }
+    console.warn('Video preview generation failed:', error);
+    thumbnailCache.set(cacheKey, null);
+    return null;
+  }
 }
 
 async function generateThumbnailRust(filePath: string, size: number = 150): Promise<string | null> {
@@ -175,31 +260,64 @@ function generateImageFallback(file: File, maxSize: number, quality: number): Pr
   });
 }
 
-export async function generateAIImage(file: File): Promise<string> {
+export async function generateAIImage(file: File, filePath?: string): Promise<string> {
+  if (file.type.startsWith('video/') && filePath) {
+    const videoThumb = await generateVideoThumbnailRust(filePath, AI_IMAGE_CONFIG.MAX_SIZE);
+    if (videoThumb) return videoThumb;
+    return generateVideoThumbnail(file);
+  }
   return generateImageViaCanvas(file, AI_IMAGE_CONFIG.MAX_SIZE, AI_IMAGE_CONFIG.JPEG_QUALITY);
 }
 
-export async function generatePreviewImage(file: File, filePath?: string): Promise<string> {
+export async function generatePreviewImage(file: File, filePath?: string, signal?: AbortSignal): Promise<string> {
+  if (signal?.aborted) {
+    throw new Error('Aborted');
+  }
+  
   if (filePath) {
-    try {
-      const cacheKey = `preview_${filePath}_${PREVIEW_CONFIG.MAX_SIZE}`;
-      if (thumbnailCache.has(cacheKey)) {
-        return thumbnailCache.get(cacheKey) ?? '';
+    if (file.type.startsWith('video/')) {
+      const preview = await generateVideoPreviewRust(filePath, PREVIEW_CONFIG.MAX_SIZE, signal);
+      if (preview) return preview;
+    } else {
+      try {
+        if (signal?.aborted) {
+          throw new Error('Aborted');
+        }
+        
+        const cacheKey = `preview_${filePath}_${PREVIEW_CONFIG.MAX_SIZE}`;
+        if (thumbnailCache.has(cacheKey)) {
+          return thumbnailCache.get(cacheKey) ?? '';
+        }
+        
+        const result = await invoke<GeneratedPreviewResult>('generate_preview_command', {
+          filePath,
+          size: PREVIEW_CONFIG.MAX_SIZE
+        });
+        
+        if (signal?.aborted) {
+          throw new Error('Aborted');
+        }
+        
+        if (result.preview_base64) {
+          const preview = `data:image/jpeg;base64,${result.preview_base64}`;
+          thumbnailCache.set(cacheKey, preview);
+          return preview;
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw error;
+        }
+        console.warn('Preview generation failed:', error);
       }
-      
-      const result = await invoke<GeneratedPreviewResult>('generate_preview_command', {
-        filePath,
-        size: PREVIEW_CONFIG.MAX_SIZE
-      });
-      
-      if (result.preview_base64) {
-        const preview = `data:image/jpeg;base64,${result.preview_base64}`;
-        thumbnailCache.set(cacheKey, preview);
-        return preview;
-      }
-    } catch (error) {
-      console.warn('Preview generation failed:', error);
     }
+  }
+
+  if (signal?.aborted) {
+    throw new Error('Aborted');
+  }
+  
+  if (file.type.startsWith('video/')) {
+    return generateVideoThumbnail(file);
   }
 
   return generateImageViaCanvas(file, PREVIEW_CONFIG.MAX_SIZE, PREVIEW_CONFIG.JPEG_QUALITY);
@@ -284,26 +402,28 @@ export async function generateThumbnailsBatch(
   files: File[],
   onProgress: (completed: number, total: number, fileName: string) => void = () => {},
   onThumbnailReady: (file: File, thumbnailUrl: string) => void = () => {},
-  _concurrency: number = 6,
+  _concurrency: number = BATCH_CONFIG.CONCURRENCY,
   filePaths?: Map<File, string>
 ): Promise<Map<File, string>> {
   const results = new Map<File, string>();
   const total = files.length;
   let completed = 0;
 
-  console.log(`📦 Starting thumbnail generation for ${total} files`);
+  const imageFiles = files.filter(f => f.type.startsWith('image/'));
+  const videoFiles = files.filter(f => f.type.startsWith('video/'));
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const filePath = filePaths?.get(file);
-    
+  console.log(`📦 Starting thumbnail generation: ${imageFiles.length} images, ${videoFiles.length} videos`);
+
+  const processFile = async (file: File, filePath?: string): Promise<void> => {
     try {
       let thumbnail: string | null = null;
 
       if (file.type.startsWith('image/')) {
         thumbnail = await generateImageThumbnail(file, filePath ?? undefined);
       } else if (file.type.startsWith('video/')) {
-        thumbnail = await generateVideoThumbnail(file);
+        if (filePath) {
+          thumbnail = await generateVideoThumbnailRust(filePath);
+        }
       }
 
       if (thumbnail) {
@@ -316,11 +436,29 @@ export async function generateThumbnailsBatch(
 
     completed++;
     onProgress(completed, total, file.name);
-    
-    // Yield every 5 files to keep UI responsive
-    if (i % 5 === 0) {
+  };
+
+  const processBatch = async (batch: File[], filePathList: (string | undefined)[], batchConcurrency: number): Promise<void> => {
+    for (let i = 0; i < batch.length; i += batchConcurrency) {
+      const subBatch = batch.slice(i, i + batchConcurrency);
+      const subBatchPaths = filePathList.slice(i, i + batchConcurrency);
+      
+      await Promise.all(
+        subBatch.map((file, idx) => processFile(file, subBatchPaths[idx]))
+      );
+
       await new Promise(r => setTimeout(r, 0));
     }
+  };
+
+  if (imageFiles.length > 0) {
+    const imagePaths = imageFiles.map(f => filePaths?.get(f));
+    await processBatch(imageFiles, imagePaths, IMAGE_CONCURRENCY);
+  }
+
+  if (videoFiles.length > 0) {
+    const videoPaths = videoFiles.map(f => filePaths?.get(f));
+    await processBatch(videoFiles, videoPaths, VIDEO_CONCURRENCY);
   }
 
   console.log(`✅ Completed ${results.size}/${total} thumbnails`);

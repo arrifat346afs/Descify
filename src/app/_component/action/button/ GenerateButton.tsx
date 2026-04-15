@@ -91,9 +91,11 @@ const GenerateButtonComponent = () => {
     try {
       // Get custom instruction for this specific file
       const customInstruction = generated.getCustomInstruction(item.file);
+      const filePath = getFilePath(item.file);
 
       const result = await generateMetadata({
-        file: item.file, // Use file directly for HQ AI image generation
+        file: item.file,
+        filePath: filePath,
         fileNames: [item.file.name],
         provider,
         model,

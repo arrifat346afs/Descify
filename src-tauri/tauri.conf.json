@@ -38,6 +38,9 @@
     ],
     "resources": [
       "resources/*"
+    ],
+    "externalBin": [
+      "binaries/ffmpeg-x86_64-unknown-linux-gnu"
     ]
   },
   "plugins": {

@@ -105,6 +105,7 @@ async function processSingleImage(
     
     const metadata = await generateMetadata({
       file,
+      filePath: filePath,
       fileNames: [file.name],
       provider: config.provider,
       model: config.model,

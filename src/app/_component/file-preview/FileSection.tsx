@@ -30,83 +30,74 @@ export default function FileSection({ file }: FileSectionProps) {
   const isVideo = file.type.startsWith("video/");
   
   const objectUrlRef = useRef<string | null>(null);
-  const generatedRef = useRef<Set<File>>(new Set());
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    setIsHighResLoaded(false);
-    setHighResUrl(null);
-    setIsGeneratingPreview(false);
+    if (!file) return;
     
     if (objectUrlRef.current) {
       URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = null;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    setIsHighResLoaded(false);
+    setHighResUrl(null);
+    setIsGeneratingPreview(false);
+
     const loadPreview = async () => {
-      if (isImage && cachedPreviewUrl && !generatedRef.current.has(file)) {
+      const signal = abortControllerRef.current?.signal;
+      if (signal?.aborted) return;
+
+      if (cachedPreviewUrl) {
         setHighResUrl(cachedPreviewUrl);
         setIsHighResLoaded(true);
-        generatedRef.current.add(file);
         return;
       }
 
-      if (isImage && !cachedPreviewUrl && !generatedRef.current.has(file)) {
-        generatedRef.current.add(file);
-        setIsGeneratingPreview(true);
-        try {
-          const previewUrl = await generatePreviewImage(file, filePath);
+      setIsGeneratingPreview(true);
+      
+      try {
+        const previewUrl = await generatePreviewImage(file, filePath, signal);
+        if (signal?.aborted) return;
+        
+        if (previewUrl) {
           upsertPreview({ file, thumbnailUrl: lowResUrl || '', previewUrl });
           setHighResUrl(previewUrl);
-          setIsHighResLoaded(true);
-        } catch (error) {
-          console.error('Failed to generate preview:', error);
-          const objectUrl = URL.createObjectURL(file);
-          objectUrlRef.current = objectUrl;
-          setHighResUrl(objectUrl);
-          const img = new Image();
-          img.onload = () => setIsHighResLoaded(true);
-          img.src = objectUrl;
         }
-        setIsGeneratingPreview(false);
-        return;
+      } catch (error) {
+        if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Aborted')) return;
+        console.error('Failed to generate preview:', error);
       }
-
-      if (cachedPreviewUrl && generatedRef.current.has(file)) {
-        setHighResUrl(cachedPreviewUrl);
-        setIsHighResLoaded(true);
-        return;
-      }
-
-      const objectUrl = URL.createObjectURL(file);
-      objectUrlRef.current = objectUrl;
-      setHighResUrl(objectUrl);
-
-      if (isImage) {
-        const img = new Image();
-        img.onload = () => setIsHighResLoaded(true);
-        img.src = objectUrl;
-      } else {
-        setIsHighResLoaded(true);
-      }
+      
+      if (signal?.aborted) return;
+      setIsHighResLoaded(true);
+      setIsGeneratingPreview(false);
     };
 
     loadPreview();
 
     return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
         objectUrlRef.current = null;
       }
     };
-  }, [file, isImage, cachedPreviewUrl, lowResUrl, upsertPreview]);
+  }, [file, filePath, cachedPreviewUrl, lowResUrl, upsertPreview]);
 
   const showLowRes = lowResUrl && !isHighResLoaded;
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4 relative">
-      {isImage && (
-        <div className="relative w-full h-[90%] flex items-center justify-center">
-          {/* Low Res Placeholder (Blurry) */}
+      {(isImage || isVideo) && (
+        <div className="relative w-full h-full flex items-center justify-center">
           {showLowRes && (
             <img
               src={lowResUrl}
@@ -115,38 +106,26 @@ export default function FileSection({ file }: FileSectionProps) {
             />
           )}
 
-          {/* High Res Image (Fade in) */}
-          {highResUrl && (
+          {(highResUrl || lowResUrl) && (
             <img
-              src={highResUrl}
+              src={highResUrl || lowResUrl || undefined}
               alt={file.name}
-              className={`max-w-full max-h-full object-contain transition-opacity duration-200 ${isHighResLoaded ? "opacity-100" : "opacity-0"}`}
+              className="max-w-full max-h-full object-contain"
             />
           )}
 
-          {/* Loading Indicator while generating preview */}
           {isGeneratingPreview && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/20">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
           )}
 
-          {/* Loading Indicator if no thumbnail and not loaded */}
           {!isHighResLoaded && !lowResUrl && !isGeneratingPreview && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
           )}
         </div>
-      )}
-
-      {isVideo && highResUrl && (
-        <video
-          src={highResUrl}
-          className="max-w-full max-h-[90%] object-contain"
-          controls
-          autoPlay={false}
-        />
       )}
     </div>
   );

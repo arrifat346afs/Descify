@@ -7,32 +7,28 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { readFile } from "@tauri-apps/plugin-fs";
 import { readExifMetadata } from "@/app/lib/tauri-commands";
 
-// Helper to get MIME type from file extension
-const getMimeType = (filename: string): string => {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  const mimeTypes: Record<string, string> = {
-    // Images
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'png': 'image/png',
-    'gif': 'image/gif',
-    'webp': 'image/webp',
-    'svg': 'image/svg+xml',
-    // Videos
-    'mp4': 'video/mp4',
-    'mov': 'video/quicktime',
-    'webm': 'video/webm',
-  };
-  return mimeTypes[ext] || '';
-};
-
 // Convert a file path to a File object with proper MIME type
-const fileFromPath = async (path: string): Promise<File> => {
-  const data = await readFile(path);
+// For videos, we create a lightweight File without loading content (backend reads from path)
+const fileFromPath = async (path: string, loadContent: boolean = true): Promise<File> => {
   const name = path.split("/").pop() ?? "file";
-  const mimeType = getMimeType(name);
-  console.log(`🔍 fileFromPath: ${name} -> MIME type: ${mimeType}`);
-  return new File([data], name, { type: mimeType });
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  const isVideo = ['mp4', 'mov', 'webm'].includes(ext);
+  
+  if (isVideo && !loadContent) {
+    // For videos, create lightweight placeholder - content not needed, backend reads from path
+    const mimeType = isVideo 
+      ? (ext === 'mov' ? 'video/quicktime' : `video/${ext}`)
+      : '';
+    return new File([], name, { type: mimeType });
+  }
+  
+  const data = await readFile(path);
+  const mimeTypes: Record<string, string> = {
+    'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+    'gif': 'image/gif', 'webp': 'image/webp', 'svg': 'image/svg+xml',
+    'mp4': 'video/mp4', 'mov': 'video/quicktime', 'webm': 'video/webm',
+  };
+  return new File([data], name, { type: mimeTypes[ext] || '' });
 };
 
 type UploadButtonProps = {
@@ -70,21 +66,28 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
     setFiles([]);
     setHasAttemptedGeneration(false);
 
-    // Process files with limited concurrency so each file appears on screen
-    // as soon as it is read from disk — no waiting for the whole batch.
-    const queue = [...paths];
+    // Separate images and videos - process videos one at a time to avoid UI hang
+    const imagePaths: string[] = [];
+    const videoPaths: string[] = [];
+    
+    for (const path of paths) {
+      const ext = path.split('.').pop()?.toLowerCase() ?? '';
+      if (['mp4', 'mov', 'webm'].includes(ext)) {
+        videoPaths.push(path);
+      } else {
+        imagePaths.push(path);
+      }
+    }
 
-    const processPath = async (path: string) => {
+    console.log(`📁 Processing: ${imagePaths.length} images, ${videoPaths.length} videos`);
+
+    // Process images with high concurrency
+    const imageQueue = [...imagePaths];
+    const processImage = async (path: string) => {
       const file = await fileFromPath(path);
-      console.log(`✅ Loaded: name="${file.name}", type="${file.type}", size=${(file.size / 1024).toFixed(2)}KB`);
-
-      // Store the original file path for metadata embedding
       setFilePath(file, path);
-
-      // Add this single file to state immediately → shows loading thumbnail
       addFiles([file]);
-
-      // Read EXIF in the background — do NOT await so the next file starts loading
+      
       readExifMetadata(path).then(exifData => {
         if (exifData.title || exifData.description || exifData.keywords) {
           generated.setMetadata(file, {
@@ -93,20 +96,35 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
             keywords: exifData.keywords || ''
           });
         }
-      }).catch(error => {
-        console.warn(`⚠️ Failed to read EXIF for ${file.name}:`, error);
-      });
+      }).catch(() => {});
     };
 
-    // Spin up UPLOAD_CONCURRENCY workers that drain the queue
     await Promise.all(
-      Array(Math.min(UPLOAD_CONCURRENCY, paths.length)).fill(null).map(async () => {
-        while (queue.length > 0) {
-          const path = queue.shift();
-          if (path) await processPath(path);
+      Array(Math.min(UPLOAD_CONCURRENCY, imagePaths.length)).fill(null).map(async () => {
+        while (imageQueue.length > 0) {
+          const path = imageQueue.shift();
+          if (path) await processImage(path);
         }
       })
     );
+
+    // Process videos one at a time to prevent UI freeze
+    // Use lightweight File objects - no content loaded, backend reads from path directly
+    for (const path of videoPaths) {
+      const file = await fileFromPath(path, false); // Don't load video content
+      setFilePath(file, path);
+      addFiles([file]);
+      
+      readExifMetadata(path).then(exifData => {
+        if (exifData.title || exifData.description || exifData.keywords) {
+          generated.setMetadata(file, {
+            title: exifData.title || '',
+            description: exifData.description || '',
+            keywords: exifData.keywords || ''
+          });
+        }
+      }).catch(() => {});
+    }
 
     console.log(`✅ All ${paths.length} files queued for display`);
   };

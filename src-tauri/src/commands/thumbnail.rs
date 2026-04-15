@@ -1,5 +1,6 @@
 use crate::services::thumbnail::{
-    generate_preview, generate_thumbnail, PreviewResult, ThumbnailResult,
+    generate_preview, generate_thumbnail, generate_video_preview, generate_video_thumbnail,
+    PreviewResult, ThumbnailResult,
 };
 use std::collections::HashMap;
 use tauri::command;
@@ -77,6 +78,35 @@ pub async fn generate_preview_command(file_path: String, size: Option<u32>) -> P
     let target_size = size.unwrap_or(DEFAULT_PREVIEW_SIZE);
     let path = file_path.clone();
     tokio::task::spawn_blocking(move || generate_preview(&path, target_size))
+        .await
+        .unwrap_or_else(|_| PreviewResult {
+            preview_base64: None,
+            width: None,
+            height: None,
+            from_cache: false,
+        })
+}
+
+#[command]
+pub async fn generate_video_thumbnail_command(file_path: String, size: Option<u32>) -> ThumbnailResult {
+    let target_size = size.unwrap_or(DEFAULT_THUMBNAIL_SIZE);
+    let path = file_path.clone();
+    tokio::task::spawn_blocking(move || generate_video_thumbnail(&path, target_size))
+        .await
+        .unwrap_or_else(|_| ThumbnailResult {
+            thumbnail_base64: None,
+            width: None,
+            height: None,
+            file_size: None,
+            from_cache: false,
+        })
+}
+
+#[command]
+pub async fn generate_video_preview_command(file_path: String, size: Option<u32>) -> PreviewResult {
+    let target_size = size.unwrap_or(DEFAULT_PREVIEW_SIZE);
+    let path = file_path.clone();
+    tokio::task::spawn_blocking(move || generate_video_preview(&path, target_size))
         .await
         .unwrap_or_else(|_| PreviewResult {
             preview_base64: None,

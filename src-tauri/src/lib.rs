@@ -10,7 +10,8 @@ mod services;
 use commands::metadata::{embed_metadata, read_exif_metadata_command};
 use commands::thumbnail::{
     generate_preview_command, generate_thumbnail_command, generate_thumbnails_batch_command,
-    get_native_thumbnail_command, get_native_thumbnails_batch,
+    generate_video_preview_command, generate_video_thumbnail_command, get_native_thumbnail_command,
+    get_native_thumbnails_batch,
 };
 use commands::cache::{get_cache_info, clear_cache_directory};
 
@@ -27,7 +28,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![embed_metadata, read_exif_metadata_command, get_native_thumbnail_command, get_native_thumbnails_batch, generate_thumbnail_command, generate_thumbnails_batch_command, generate_preview_command, get_cache_info, clear_cache_directory])
+        .invoke_handler(tauri::generate_handler![embed_metadata, read_exif_metadata_command, get_native_thumbnail_command, get_native_thumbnails_batch, generate_thumbnail_command, generate_thumbnails_batch_command, generate_preview_command, generate_video_thumbnail_command, generate_video_preview_command, get_cache_info, clear_cache_directory])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
