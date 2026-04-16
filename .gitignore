@@ -42,3 +42,4 @@ build/**
 *.swp
 *.swo
 Thumbs.db
+src-tauri/binaries/**
