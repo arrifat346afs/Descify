@@ -6,6 +6,7 @@ import { Upload } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { CustomInstructionDialog } from "./CustomInstructionDialog";
 import { generateMetadata } from "@/app/lib/ai";
+import { generateImageThumbnail } from "@/app/lib/thumbnailGenerator";
 import { readExifMetadata } from "@/app/lib/tauri-commands";
 import { ThumbnailItem } from "./ThumbnailItem";
 import { useAutoScroll, useKeyboardAutoScroll, useDragAndDrop, useVirtualization, useKeyboardNavigation } from "./hooks";
@@ -56,7 +57,17 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     onFileAdded: useCallback((file: File) => {
       addFiles([file]);
       setHasAttemptedGeneration(false);
-    }, [addFiles, setHasAttemptedGeneration]),
+      
+      // Generate instant thumbnail in background
+      const filePath = filePaths.get(file);
+      
+      // Generate async without blocking
+      generateImageThumbnail(file, filePath).then((thumbnailUrl) => {
+        if (thumbnailUrl) {
+          thumbsCtx.upsert({ file, thumbnailUrl, previewUrl: null });
+        }
+      }).catch(() => {});
+    }, [addFiles, setHasAttemptedGeneration, filePaths, thumbsCtx]),
     // Legacy batch fallback (used when onFileAdded is not provided)
     // Use addFiles (stable) instead of setFiles([...files, ...newFiles]) so that
     // this callback doesn't get a new reference every time `files` changes.

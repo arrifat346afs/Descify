@@ -45,21 +45,28 @@ export default function FileSection({ file }: FileSectionProps) {
     }
     abortControllerRef.current = new AbortController();
 
+    // Show loading state immediately
     setIsHighResLoaded(false);
     setHighResUrl(null);
-    setIsGeneratingPreview(false);
+    setIsGeneratingPreview(true);
 
     const loadPreview = async () => {
       const signal = abortControllerRef.current?.signal;
       if (signal?.aborted) return;
 
+      // If we already have a cached preview, show it immediately
       if (cachedPreviewUrl) {
         setHighResUrl(cachedPreviewUrl);
         setIsHighResLoaded(true);
+        setIsGeneratingPreview(false);
         return;
       }
 
-      setIsGeneratingPreview(true);
+      // If we have a low-res thumbnail, use it while generating high-res
+      if (lowResUrl) {
+        setHighResUrl(lowResUrl);
+        setIsHighResLoaded(false); // Still showing low-res
+      }
       
       try {
         const previewUrl = await generatePreviewImage(file, filePath, signal);
@@ -68,14 +75,16 @@ export default function FileSection({ file }: FileSectionProps) {
         if (previewUrl) {
           upsertPreview({ file, thumbnailUrl: lowResUrl || '', previewUrl });
           setHighResUrl(previewUrl);
+          setIsHighResLoaded(true);
         }
       } catch (error) {
         if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Aborted')) return;
         console.error('Failed to generate preview:', error);
+        // Keep showing low-res if available
+        setIsHighResLoaded(true);
       }
       
       if (signal?.aborted) return;
-      setIsHighResLoaded(true);
       setIsGeneratingPreview(false);
     };
 

@@ -15,6 +15,7 @@ pub async fn get_native_thumbnail_command(file_path: String) -> ThumbnailResult 
         .await
         .unwrap_or_else(|_| ThumbnailResult {
             thumbnail_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             file_size: None,
@@ -46,6 +47,7 @@ pub async fn generate_thumbnail_command(file_path: String, size: Option<u32>) ->
         .await
         .unwrap_or_else(|_| ThumbnailResult {
             thumbnail_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             file_size: None,
@@ -81,6 +83,7 @@ pub async fn generate_preview_command(file_path: String, size: Option<u32>) -> P
         .await
         .unwrap_or_else(|_| PreviewResult {
             preview_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             from_cache: false,
@@ -95,6 +98,7 @@ pub async fn generate_video_thumbnail_command(file_path: String, size: Option<u3
         .await
         .unwrap_or_else(|_| ThumbnailResult {
             thumbnail_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             file_size: None,
@@ -110,6 +114,7 @@ pub async fn generate_video_preview_command(file_path: String, size: Option<u32>
         .await
         .unwrap_or_else(|_| PreviewResult {
             preview_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             from_cache: false,

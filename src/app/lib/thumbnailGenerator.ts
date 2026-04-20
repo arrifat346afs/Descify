@@ -1,12 +1,89 @@
 /**
  * Background Thumbnail Generator
  * Non-blocking thumbnail generation that doesn't affect UI
+ *
+ * Memory strategy
+ * ---------------
+ * Previously every thumbnail/preview was transported as a base64-encoded string
+ * over the Tauri IPC bridge and then held in JS memory as a `data:image/…`
+ * data-URL.  For 1 000 files that alone could occupy several hundred MB.
+ *
+ * The current approach:
+ *  1. The Rust backend saves the JPEG to disk and returns its absolute path
+ *     (`cache_path`).  The frontend converts that path to an `asset://` URL via
+ *     `convertFileSrc`; WebKit loads the file directly from disk and the image
+ *     data never enters the JS heap.
+ *  2. A size-bounded LRU cache (capacity 2 000) stores these short `asset://`
+ *     strings so repeated look-ups skip the IPC round-trip entirely.  Because
+ *     the values are tiny URL strings (not multi-KB base64 blobs), memory
+ *     growth is negligible even at the cap.
+ *  3. Base64 is retained only for the AI-image path where the binary data must
+ *     be sent to a remote vision API.  `assetUrlToDataUrl` converts the cached
+ *     asset URL back to a data-URL on demand, without persisting it.
  */
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+
+// ---------------------------------------------------------------------------
+// Bounded LRU cache
+// ---------------------------------------------------------------------------
+
+/**
+ * Simple LRU cache backed by a plain `Map` (which preserves insertion order).
+ * On every `get` the entry is moved to the end (most-recently-used position).
+ * When `capacity` is reached the oldest entry (front of the Map) is evicted.
+ */
+class LRUCache<K, V> {
+  private readonly capacity: number;
+  private readonly map: Map<K, V>;
+
+  constructor(capacity: number) {
+    this.capacity = capacity;
+    this.map = new Map();
+  }
+
+  get(key: K): V | undefined {
+    if (!this.map.has(key)) return undefined;
+    // Refresh: delete-then-reinsert marks the entry as most-recently used.
+    const value = this.map.get(key) as V;
+    this.map.delete(key);
+    this.map.set(key, value);
+    return value;
+  }
+
+  set(key: K, value: V): void {
+    if (this.map.has(key)) {
+      this.map.delete(key);
+    } else if (this.map.size >= this.capacity) {
+      // Evict the oldest entry (first key in insertion order).
+      const firstKey = this.map.keys().next().value as K;
+      this.map.delete(firstKey);
+    }
+    this.map.set(key, value);
+  }
+
+  has(key: K): boolean {
+    return this.map.has(key);
+  }
+
+  delete(key: K): void {
+    this.map.delete(key);
+  }
+
+  get size(): number {
+    return this.map.size;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// IPC result shapes (must mirror src-tauri/src/services/thumbnail.rs)
+// ---------------------------------------------------------------------------
 
 interface GeneratedThumbnailResult {
+  /** Populated only when the thumbnail could not be saved to disk. Prefer cache_path. */
   thumbnail_base64: string | null;
+  /** Absolute path to the JPEG inside the app's on-disk thumbnail cache. */
+  cache_path: string | null;
   width: number | null;
   height: number | null;
   file_size: string | null;
@@ -14,13 +91,27 @@ interface GeneratedThumbnailResult {
 }
 
 interface GeneratedPreviewResult {
+  /** Populated only when the preview could not be saved to disk. Prefer cache_path. */
   preview_base64: string | null;
+  /** Absolute path to the JPEG inside the app's on-disk thumbnail cache. */
+  cache_path: string | null;
   width: number | null;
   height: number | null;
   from_cache: boolean;
 }
 
-const thumbnailCache = new Map<string, string | null>();
+// ---------------------------------------------------------------------------
+// Module-level LRU cache (replaces the unbounded Map)
+// ---------------------------------------------------------------------------
+
+/**
+ * Stores `asset://` URLs (or null for failures).  Values are short strings
+ * (~80 bytes each) so even the full 2 000-entry cap uses < 200 KB.
+ * Canvas-generated fallback data-URLs are also stored here; they are larger
+ * but the LRU eviction keeps total size bounded.
+ */
+const THUMBNAIL_CACHE_CAPACITY = 2000;
+const thumbnailCache = new LRUCache<string, string | null>(THUMBNAIL_CACHE_CAPACITY);
 
 export const BATCH_CONFIG = {
   CONCURRENCY: 6,
@@ -45,41 +136,80 @@ function getCacheKey(filePath: string, size: number): string {
   return `${filePath}_${size}`;
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve a Rust IPC result to a displayable URL.
+ *
+ * Priority:
+ *  1. `cache_path`  → convert to an `asset://` URL via `convertFileSrc`.
+ *     WebKit loads the file directly from disk; the image data never enters
+ *     the JS heap.
+ *  2. `base64`      → construct a data-URL as a last resort (disk write
+ *     failed on the Rust side).
+ *  3. `null`        → generation failed entirely.
+ */
+function resolveImageUrl(
+  base64: string | null | undefined,
+  cachePath: string | null | undefined,
+  mimePrefix = 'data:image/jpeg;base64,',
+): string | null {
+  if (cachePath) {
+    return convertFileSrc(cachePath);
+  }
+  if (base64) {
+    return `${mimePrefix}${base64}`;
+  }
+  return null;
+}
+
+/**
+ * Convert any URL (asset:// or data:) to a base64 data-URL suitable for
+ * sending to a remote AI vision API.  This is the *only* place where image
+ * data is materialised as a large JS string, and it is done transiently —
+ * the result is used immediately and not stored in any cache.
+ */
+async function assetUrlToDataUrl(url: string): Promise<string> {
+  if (url.startsWith('data:')) return url;
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Rust IPC wrappers (display path — return asset:// URLs)
+// ---------------------------------------------------------------------------
+
 async function generateVideoThumbnailRust(filePath: string, size: number = BATCH_CONFIG.MAX_THUMBNAIL_SIZE, signal?: AbortSignal): Promise<string | null> {
-  if (signal?.aborted) {
-    return null;
-  }
-  
+  if (signal?.aborted) return null;
+
   const cacheKey = `video_${filePath}_${size}`;
-  
-  if (thumbnailCache.has(cacheKey)) {
-    return thumbnailCache.get(cacheKey) ?? null;
-  }
-  
+  if (thumbnailCache.has(cacheKey)) return thumbnailCache.get(cacheKey) ?? null;
+
   try {
-    if (signal?.aborted) {
-      return null;
-    }
-    
+    if (signal?.aborted) return null;
+
     const result = await invoke<GeneratedThumbnailResult>('generate_video_thumbnail_command', {
       filePath,
       size
     });
-    
-    if (signal?.aborted) {
-      return null;
-    }
-    
-    const thumbnail = result.thumbnail_base64 
-      ? `data:image/jpeg;base64,${result.thumbnail_base64}` 
-      : null;
-    
+
+    if (signal?.aborted) return null;
+
+    // Prefer the on-disk path; fall back to base64 only if the Rust side
+    // could not persist the thumbnail (disk error).
+    const thumbnail = resolveImageUrl(result.thumbnail_base64, result.cache_path);
     thumbnailCache.set(cacheKey, thumbnail);
     return thumbnail;
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      return null;
-    }
+    if (error instanceof Error && error.name === 'AbortError') return null;
     console.warn('Video thumbnail generation failed:', error);
     thumbnailCache.set(cacheKey, null);
     return null;
@@ -87,40 +217,26 @@ async function generateVideoThumbnailRust(filePath: string, size: number = BATCH
 }
 
 async function generateVideoPreviewRust(filePath: string, size: number = PREVIEW_CONFIG.MAX_SIZE, signal?: AbortSignal): Promise<string | null> {
-  if (signal?.aborted) {
-    return null;
-  }
-  
+  if (signal?.aborted) return null;
+
   const cacheKey = `video_preview_${filePath}_${size}`;
-  
-  if (thumbnailCache.has(cacheKey)) {
-    return thumbnailCache.get(cacheKey) ?? null;
-  }
-  
+  if (thumbnailCache.has(cacheKey)) return thumbnailCache.get(cacheKey) ?? null;
+
   try {
-    if (signal?.aborted) {
-      return null;
-    }
-    
+    if (signal?.aborted) return null;
+
     const result = await invoke<GeneratedPreviewResult>('generate_video_preview_command', {
       filePath,
       size
     });
-    
-    if (signal?.aborted) {
-      return null;
-    }
-    
-    const preview = result.preview_base64 
-      ? `data:image/jpeg;base64,${result.preview_base64}` 
-      : null;
-    
+
+    if (signal?.aborted) return null;
+
+    const preview = resolveImageUrl(result.preview_base64, result.cache_path);
     thumbnailCache.set(cacheKey, preview);
     return preview;
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      return null;
-    }
+    if (error instanceof Error && error.name === 'AbortError') return null;
     console.warn('Video preview generation failed:', error);
     thumbnailCache.set(cacheKey, null);
     return null;
@@ -129,21 +245,15 @@ async function generateVideoPreviewRust(filePath: string, size: number = PREVIEW
 
 async function generateThumbnailRust(filePath: string, size: number = 150): Promise<string | null> {
   const cacheKey = getCacheKey(filePath, size);
-  
-  if (thumbnailCache.has(cacheKey)) {
-    return thumbnailCache.get(cacheKey) ?? null;
-  }
-  
+  if (thumbnailCache.has(cacheKey)) return thumbnailCache.get(cacheKey) ?? null;
+
   try {
     const result = await invoke<GeneratedThumbnailResult>('generate_thumbnail_command', {
       filePath,
       size
     });
-    
-    const thumbnail = result.thumbnail_base64 
-      ? `data:image/jpeg;base64,${result.thumbnail_base64}` 
-      : null;
-    
+
+    const thumbnail = resolveImageUrl(result.thumbnail_base64, result.cache_path);
     thumbnailCache.set(cacheKey, thumbnail);
     return thumbnail;
   } catch (error) {
@@ -162,33 +272,20 @@ async function generateImageViaCanvas(file: File, maxSize: number, quality: numb
     const bitmap = await createImageBitmap(file, {
       resizeWidth: maxSize,
       resizeHeight: maxSize,
-      resizeQuality: 'high',
+      resizeQuality: 'medium',
     });
 
-    let drawWidth = bitmap.width;
-    let drawHeight = bitmap.height;
-
-    if (drawWidth > maxSize || drawHeight > maxSize) {
-      if (drawWidth > drawHeight) {
-        drawHeight = Math.round((drawHeight * maxSize) / drawWidth);
-        drawWidth = maxSize;
-      } else {
-        drawWidth = Math.round((drawWidth * maxSize) / drawHeight);
-        drawHeight = maxSize;
-      }
-    }
-
     const canvas = document.createElement('canvas');
-    canvas.width = drawWidth;
-    canvas.height = drawHeight;
-    const ctx = canvas.getContext('2d', { alpha: false });
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: false });
 
     if (!ctx) {
       bitmap.close();
       throw new Error('Failed to get canvas context');
     }
 
-    ctx.drawImage(bitmap, 0, 0, drawWidth, drawHeight);
+    ctx.drawImage(bitmap, 0, 0);
     bitmap.close();
     return canvas.toDataURL('image/jpeg', quality);
   } catch {
@@ -260,12 +357,29 @@ function generateImageFallback(file: File, maxSize: number, quality: number): Pr
   });
 }
 
+/**
+ * Generate an image for AI vision API consumption.
+ *
+ * The result is always a base64 `data:image/jpeg;base64,...` string because
+ * remote AI providers (OpenAI, Google Gemini, OpenRouter) require inline
+ * image data.  For display purposes you should use `generateImageThumbnail` /
+ * `generatePreviewImage` instead — those return lighter `asset://` URLs.
+ *
+ * We obtain the thumbnail via the same Rust/LRU path (avoiding redundant
+ * FFmpeg invocations) and then materialise the base64 data transiently via
+ * `assetUrlToDataUrl`.  The large string is NOT stored in any cache.
+ */
 export async function generateAIImage(file: File, filePath?: string): Promise<string> {
   if (file.type.startsWith('video/') && filePath) {
     const videoThumb = await generateVideoThumbnailRust(filePath, AI_IMAGE_CONFIG.MAX_SIZE);
-    if (videoThumb) return videoThumb;
+    if (videoThumb) {
+      // The thumbnail is an asset:// URL — convert to base64 for the AI API.
+      // This is transient: the result is used immediately and not cached.
+      return assetUrlToDataUrl(videoThumb);
+    }
     return generateVideoThumbnail(file);
   }
+  // Canvas path already returns a data-URL.
   return generateImageViaCanvas(file, AI_IMAGE_CONFIG.MAX_SIZE, AI_IMAGE_CONFIG.JPEG_QUALITY);
 }
 
@@ -293,13 +407,13 @@ export async function generatePreviewImage(file: File, filePath?: string, signal
           filePath,
           size: PREVIEW_CONFIG.MAX_SIZE
         });
-        
+
         if (signal?.aborted) {
           throw new Error('Aborted');
         }
-        
-        if (result.preview_base64) {
-          const preview = `data:image/jpeg;base64,${result.preview_base64}`;
+
+        const preview = resolveImageUrl(result.preview_base64, result.cache_path);
+        if (preview) {
           thumbnailCache.set(cacheKey, preview);
           return preview;
         }

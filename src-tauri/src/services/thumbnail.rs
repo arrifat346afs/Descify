@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::Write;
@@ -9,8 +11,10 @@ use base64::Engine;
 use blake3::Hasher;
 use image::imageops::FilterType;
 use image::GenericImageView;
-use image::{DynamicImage, ImageFormat, ImageReader};
+use image::{DynamicImage, ImageReader};
 use lazy_static::lazy_static;
+
+use crate::services::gpu_thumbnail;
 
 lazy_static! {
     static ref VIDEO_GEN_LOCK: Mutex<()> = Mutex::new(());
@@ -18,7 +22,13 @@ lazy_static! {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ThumbnailResult {
+    /// Base64-encoded JPEG, populated **only** when the thumbnail could not be
+    /// written to disk (i.e. `cache_path` is None).  Prefer `cache_path`.
     pub thumbnail_base64: Option<String>,
+    /// Absolute path to the JPEG on disk inside the app's thumbnail cache dir.
+    /// The frontend should load this via `convertFileSrc` to avoid copying the
+    /// image data through the IPC bridge and into the JS heap.
+    pub cache_path: Option<String>,
     pub width: Option<u32>,
     pub height: Option<u32>,
     pub file_size: Option<u64>,
@@ -27,7 +37,11 @@ pub struct ThumbnailResult {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PreviewResult {
+    /// Base64-encoded JPEG, populated **only** when the preview could not be
+    /// written to disk (i.e. `cache_path` is None).  Prefer `cache_path`.
     pub preview_base64: Option<String>,
+    /// Absolute path to the JPEG on disk inside the app's thumbnail cache dir.
+    pub cache_path: Option<String>,
     pub width: Option<u32>,
     pub height: Option<u32>,
     pub from_cache: bool,
@@ -40,9 +54,9 @@ fn get_app_thumbnail_cache_dir() -> Option<PathBuf> {
 fn compute_cache_key(file_path: &str, mtime: u64, size: u64) -> String {
     let mut hasher = Hasher::new();
     hasher.update(file_path.as_bytes());
-    hasher.update(b"|");
+    hasher.update(b"|".as_ref());
     hasher.update(mtime.to_string().as_bytes());
-    hasher.update(b"|");
+    hasher.update(b"|".as_ref());
     hasher.update(size.to_string().as_bytes());
     hasher.finalize().to_hex().to_string()
 }
@@ -118,45 +132,37 @@ fn resize_image(img: &DynamicImage, target_size: u32) -> DynamicImage {
     img.resize(new_w, new_h, FilterType::Triangle)
 }
 
-fn encode_jpeg(img: &DynamicImage) -> Vec<u8> {
-    let mut buffer = Vec::new();
-    let mut cursor = std::io::Cursor::new(&mut buffer);
-    let _ = img.write_to(&mut cursor, ImageFormat::Jpeg);
+fn encode_jpeg_fast(img: &DynamicImage) -> Vec<u8> {
+    let rgb = img.to_rgb8();
+    let (width, height) = rgb.dimensions();
+    let mut buffer = Vec::with_capacity((width * height / 2) as usize);
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, 70);
+    encoder.encode_image(&rgb).ok();
     buffer
 }
 
-fn get_cached_thumbnail(cache_dir: &PathBuf, cache_key: &str) -> Option<(Vec<u8>, u32, u32)> {
+/// Returns the path to a cached thumbnail file if it already exists on disk,
+/// without reading or decoding the file contents (avoids unnecessary I/O).
+fn get_cached_thumbnail_path(cache_dir: &PathBuf, cache_key: &str) -> Option<PathBuf> {
     let thumb_path = cache_dir.join(format!("{}.jpg", cache_key));
-    if !thumb_path.exists() {
-        return None;
+    if thumb_path.exists() {
+        Some(thumb_path)
+    } else {
+        None
     }
-
-    let data = match fs::read(&thumb_path) {
-        Ok(d) => d,
-        Err(_) => return None,
-    };
-
-    let img = match ImageReader::new(std::io::Cursor::new(&data))
-        .with_guessed_format()
-        .ok()?
-        .decode()
-    {
-        Ok(i) => i,
-        Err(_) => return None,
-    };
-
-    let (w, h) = img.dimensions();
-    Some((data, w, h))
 }
 
-fn save_thumbnail_to_cache(cache_dir: &PathBuf, cache_key: &str, jpeg_data: &[u8]) -> Option<()> {
+/// Writes `jpeg_data` to the cache directory and returns the resulting path on
+/// success, or `None` if the write failed.  Callers fall back to returning
+/// base64-encoded data when this function returns `None`.
+fn save_thumbnail_to_cache(cache_dir: &PathBuf, cache_key: &str, jpeg_data: &[u8]) -> Option<PathBuf> {
     if !cache_dir.exists() {
         fs::create_dir_all(cache_dir).ok()?;
     }
     let thumb_path = cache_dir.join(format!("{}.jpg", cache_key));
     let mut file = File::create(&thumb_path).ok()?;
     file.write_all(jpeg_data).ok()?;
-    Some(())
+    Some(thumb_path)
 }
 
 pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult {
@@ -164,6 +170,7 @@ pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult 
     if !path.exists() || !path.is_file() {
         return ThumbnailResult {
             thumbnail_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             file_size: None,
@@ -176,6 +183,7 @@ pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult 
         None => {
             return ThumbnailResult {
                 thumbnail_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 file_size: None,
@@ -191,6 +199,7 @@ pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult 
         None => {
             return ThumbnailResult {
                 thumbnail_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 file_size: None,
@@ -199,12 +208,14 @@ pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult 
         }
     };
 
-    if let Some((cached_data, width, height)) = get_cached_thumbnail(&cache_dir, &cache_key) {
-        let base64_data = base64::engine::general_purpose::STANDARD.encode(&cached_data);
+    // Cache hit: return the on-disk path without reading or re-encoding the file.
+    // The frontend loads it via the asset:// protocol (convertFileSrc).
+    if let Some(cached_path) = get_cached_thumbnail_path(&cache_dir, &cache_key) {
         return ThumbnailResult {
-            thumbnail_base64: Some(base64_data),
-            width: Some(width),
-            height: Some(height),
+            thumbnail_base64: None,
+            cache_path: Some(cached_path.to_string_lossy().into_owned()),
+            width: None,
+            height: None,
             file_size: Some(file_size),
             from_cache: true,
         };
@@ -215,6 +226,7 @@ pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult 
         None => {
             return ThumbnailResult {
                 thumbnail_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 file_size: Some(file_size),
@@ -225,14 +237,18 @@ pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult 
 
     let resized = resize_image(&img, target_size);
     let (width, height) = resized.dimensions();
-    let jpeg_data = encode_jpeg(&resized);
+    let jpeg_data = encode_jpeg_fast(&resized);
 
-    let _ = save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data);
-
-    let base64_data = base64::engine::general_purpose::STANDARD.encode(&jpeg_data);
+    // Prefer returning a path so the image never has to cross the IPC bridge as
+    // base64.  Fall back to base64 only if the disk write failed.
+    let (cache_path, thumbnail_base64) = match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
+        Some(p) => (Some(p.to_string_lossy().into_owned()), None),
+        None => (None, Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data))),
+    };
 
     ThumbnailResult {
-        thumbnail_base64: Some(base64_data),
+        thumbnail_base64,
+        cache_path,
         width: Some(width),
         height: Some(height),
         file_size: Some(file_size),
@@ -245,6 +261,7 @@ pub fn generate_preview(file_path: &str, target_size: u32) -> PreviewResult {
     if !path.exists() || !path.is_file() {
         return PreviewResult {
             preview_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             from_cache: false,
@@ -256,6 +273,7 @@ pub fn generate_preview(file_path: &str, target_size: u32) -> PreviewResult {
         None => {
             return PreviewResult {
                 preview_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 from_cache: false,
@@ -270,6 +288,7 @@ pub fn generate_preview(file_path: &str, target_size: u32) -> PreviewResult {
         None => {
             return PreviewResult {
                 preview_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 from_cache: false,
@@ -277,12 +296,12 @@ pub fn generate_preview(file_path: &str, target_size: u32) -> PreviewResult {
         }
     };
 
-    if let Some((cached_data, width, height)) = get_cached_thumbnail(&cache_dir, &cache_key) {
-        let base64_data = base64::engine::general_purpose::STANDARD.encode(&cached_data);
+    if let Some(cached_path) = get_cached_thumbnail_path(&cache_dir, &cache_key) {
         return PreviewResult {
-            preview_base64: Some(base64_data),
-            width: Some(width),
-            height: Some(height),
+            preview_base64: None,
+            cache_path: Some(cached_path.to_string_lossy().into_owned()),
+            width: None,
+            height: None,
             from_cache: true,
         };
     }
@@ -292,6 +311,7 @@ pub fn generate_preview(file_path: &str, target_size: u32) -> PreviewResult {
         None => {
             return PreviewResult {
                 preview_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 from_cache: false,
@@ -301,14 +321,16 @@ pub fn generate_preview(file_path: &str, target_size: u32) -> PreviewResult {
 
     let resized = resize_image(&img, target_size);
     let (width, height) = resized.dimensions();
-    let jpeg_data = encode_jpeg(&resized);
+    let jpeg_data = encode_jpeg_fast(&resized);
 
-    let _ = save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data);
-
-    let base64_data = base64::engine::general_purpose::STANDARD.encode(&jpeg_data);
+    let (cache_path, preview_base64) = match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
+        Some(p) => (Some(p.to_string_lossy().into_owned()), None),
+        None => (None, Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data))),
+    };
 
     PreviewResult {
-        preview_base64: Some(base64_data),
+        preview_base64,
+        cache_path,
         width: Some(width),
         height: Some(height),
         from_cache: false,
@@ -374,36 +396,44 @@ fn generate_video_thumbnail_ffmpeg(
     let temp_dir = std::env::temp_dir();
     let output_path = temp_dir.join(format!("thumb_{}.jpg", std::process::id()));
 
-    let output = Command::new(&ffmpeg)
-        .args([
-            "-y",
-            "-ss", "00:00:01",
-            "-i", file_path,
-            "-vframes", "1",
-            "-vf", &format!("scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black", new_w, new_h, new_w, new_h),
-            "-q:v", "2",
-            output_path.to_str()?,
-        ])
-        .output()
-        .ok()?;
+    let use_gpu = gpu_thumbnail::is_gpu_available();
+    let hwaccel_args = gpu_thumbnail::get_ffmpeg_hwaccel_args();
+
+    let filter_str = if use_gpu {
+        format!("scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black,hwupload_cuda", new_w, new_h, new_w, new_h)
+    } else {
+        format!(
+            "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+            new_w, new_h, new_w, new_h
+        )
+    };
+
+    let mut args = vec!["-y".to_string(), "-ss".to_string(), "00:00:01".to_string()];
+    for arg in hwaccel_args.iter() {
+        args.push(arg.to_string());
+    }
+    args.push("-i".to_string());
+    args.push(file_path.to_string());
+    args.push("-vframes".to_string());
+    args.push("1".to_string());
+    args.push("-vf".to_string());
+    args.push(filter_str);
+    args.push("-q:v".to_string());
+    args.push("2".to_string());
+    args.push(output_path.to_str()?.to_string());
+
+    let output = Command::new(&ffmpeg).args(&args).output().ok()?;
 
     if !output.status.success() {
         let fallback_output = temp_dir.join(format!("thumb_fallback_{}.jpg", std::process::id()));
+        let fallback_filter = format!("scale={}:{}", new_w, new_h);
         let output = Command::new(&ffmpeg)
             .args([
-                "-y",
-                "-ss",
-                "00:00:01",
-                "-i",
-                file_path,
-                "-vframes",
-                "1",
-                "-vf",
-                &format!("scale={}:{}", new_w, new_h),
-                "-q:v",
-                "2",
-                fallback_output.to_str()?,
+                "-y", "-ss", "00:00:01", "-i", file_path, "-vframes", "1", "-vf",
             ])
+            .arg(&fallback_filter)
+            .args(["-q:v", "2"])
+            .arg(fallback_output.to_str()?)
             .output()
             .ok()?;
 
@@ -444,6 +474,7 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
     if !path.exists() || !path.is_file() {
         return ThumbnailResult {
             thumbnail_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             file_size: None,
@@ -475,6 +506,7 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
     if !is_video {
         return ThumbnailResult {
             thumbnail_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             file_size: None,
@@ -487,6 +519,7 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
         None => {
             return ThumbnailResult {
                 thumbnail_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 file_size: None,
@@ -505,6 +538,7 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
         None => {
             return ThumbnailResult {
                 thumbnail_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 file_size: None,
@@ -513,12 +547,12 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
         }
     };
 
-    if let Some((cached_data, width, height)) = get_cached_thumbnail(&cache_dir, &cache_key) {
-        let base64_data = base64::engine::general_purpose::STANDARD.encode(&cached_data);
+    if let Some(cached_path) = get_cached_thumbnail_path(&cache_dir, &cache_key) {
         return ThumbnailResult {
-            thumbnail_base64: Some(base64_data),
-            width: Some(width),
-            height: Some(height),
+            thumbnail_base64: None,
+            cache_path: Some(cached_path.to_string_lossy().into_owned()),
+            width: None,
+            height: None,
             file_size: Some(file_size),
             from_cache: true,
         };
@@ -529,6 +563,7 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
         None => {
             return ThumbnailResult {
                 thumbnail_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 file_size: Some(file_size),
@@ -537,12 +572,14 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
         }
     };
 
-    let _ = save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data);
-
-    let base64_data = base64::engine::general_purpose::STANDARD.encode(&jpeg_data);
+    let (cache_path, thumbnail_base64) = match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
+        Some(p) => (Some(p.to_string_lossy().into_owned()), None),
+        None => (None, Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data))),
+    };
 
     ThumbnailResult {
-        thumbnail_base64: Some(base64_data),
+        thumbnail_base64,
+        cache_path,
         width: Some(width),
         height: Some(height),
         file_size: Some(file_size),
@@ -557,6 +594,7 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
     if !path.exists() || !path.is_file() {
         return PreviewResult {
             preview_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             from_cache: false,
@@ -587,6 +625,7 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
     if !is_video {
         return PreviewResult {
             preview_base64: None,
+            cache_path: None,
             width: None,
             height: None,
             from_cache: false,
@@ -598,6 +637,7 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
         None => {
             return PreviewResult {
                 preview_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 from_cache: false,
@@ -615,6 +655,7 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
         None => {
             return PreviewResult {
                 preview_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 from_cache: false,
@@ -622,12 +663,12 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
         }
     };
 
-    if let Some((cached_data, width, height)) = get_cached_thumbnail(&cache_dir, &cache_key) {
-        let base64_data = base64::engine::general_purpose::STANDARD.encode(&cached_data);
+    if let Some(cached_path) = get_cached_thumbnail_path(&cache_dir, &cache_key) {
         return PreviewResult {
-            preview_base64: Some(base64_data),
-            width: Some(width),
-            height: Some(height),
+            preview_base64: None,
+            cache_path: Some(cached_path.to_string_lossy().into_owned()),
+            width: None,
+            height: None,
             from_cache: true,
         };
     }
@@ -637,6 +678,7 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
         None => {
             return PreviewResult {
                 preview_base64: None,
+                cache_path: None,
                 width: None,
                 height: None,
                 from_cache: false,
@@ -644,12 +686,14 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
         }
     };
 
-    let _ = save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data);
-
-    let base64_data = base64::engine::general_purpose::STANDARD.encode(&jpeg_data);
+    let (cache_path, preview_base64) = match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
+        Some(p) => (Some(p.to_string_lossy().into_owned()), None),
+        None => (None, Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data))),
+    };
 
     PreviewResult {
-        preview_base64: Some(base64_data),
+        preview_base64,
+        cache_path,
         width: Some(width),
         height: Some(height),
         from_cache: false,
