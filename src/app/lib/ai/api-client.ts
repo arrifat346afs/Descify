@@ -273,3 +273,68 @@ export const ensureBase64 = (url: string): string => {
   if (url.startsWith('data:')) return url;
   throw new Error('Expected data URL');
 };
+
+const LM_STUDIO_BASE_URL = 'http://localhost:1234';
+
+interface LocalLMStudioOptions {
+  model: string;
+  messages: any[];
+}
+
+export async function callLocalLMStudio(options: LocalLMStudioOptions): Promise<string> {
+  const { model, messages } = options;
+  console.log('🏠 Calling LM Studio local API...', { model });
+
+  try {
+    const payload = {
+      model: model,
+      messages: messages,
+      max_tokens: 1000,
+      temperature: 0.7,
+    };
+
+    const payloadString = JSON.stringify(payload);
+    console.log(`📦 LM Studio Payload size: ${(payloadString.length / 1024).toFixed(2)} KB`);
+
+    const response = await fetch(`${LM_STUDIO_BASE_URL}/api/v0/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: payloadString,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`LM Studio API Error ${response.status}: ${errorBody}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+  } catch (error: any) {
+    console.error('❌ LM Studio API call failed:', error);
+    throw new Error(`LM Studio API call failed: ${error.message || error}`);
+  }
+}
+
+/**
+ * Creates a message content array for LM Studio local API
+ * Uses file:// URLs directly - no base64 encoding needed for local models
+ */
+export function createLocalModelMessageContent(
+  prompt: string,
+  imageUrl: string
+): MessageContent[] {
+  return [
+    {
+      type: 'text',
+      text: prompt,
+    },
+    {
+      type: 'image_url',
+      image_url: {
+        url: imageUrl,
+      },
+    },
+  ];
+}

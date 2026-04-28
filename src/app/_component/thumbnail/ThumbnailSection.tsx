@@ -172,7 +172,8 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     const provider = api.selectedProvider || undefined;
     const apiKey = provider ? api.apiKeys[provider] : undefined;
 
-    if (!apiKey) {
+    // Check if using local model or API key is configured
+    if (!api.useLocalModel && !apiKey) {
       alert('Please configure your API key in Settings');
       return;
     }
@@ -203,6 +204,8 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         provider,
         model,
         apiKey,
+        useLocalModel: api.useLocalModel,
+        localModelName: api.localModelName,
         limits: {
           titleLimit: metadataLimits.titleLimit,
           descriptionLimit: metadataLimits.descriptionLimit,

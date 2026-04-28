@@ -37,6 +37,10 @@ export type ApiSettingsState = {
   setProcessingMode: (mode: configSlice.ProcessingMode) => void;
   parallelWorkers: number;
   setParallelWorkers: (workers: number) => void;
+  useLocalModel: boolean;
+  setUseLocalModel: (use: boolean) => void;
+  localModelName: string;
+  setLocalModelName: (name: string) => void;
 };
 
 export type TemplateSettings = {
@@ -149,6 +153,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     dispatch(configSlice.setParallelWorkers(workers));
   }, [dispatch]);
 
+  const setUseLocalModel = useCallback((use: boolean) => {
+    dispatch(configSlice.setUseLocalModel(use));
+  }, [dispatch]);
+
+  const setLocalModelName = useCallback((name: string) => {
+    dispatch(configSlice.setLocalModelName(name));
+  }, [dispatch]);
+
   const apiValue: ApiSettingsState = useMemo(() => ({
     selectedProvider: config.api.selectedProvider,
     setSelectedProvider,
@@ -162,7 +174,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setProcessingMode,
     parallelWorkers: config.api.parallelWorkers,
     setParallelWorkers,
-  }), [config.api, setSelectedProvider, setSelectedModel, setApiKey, setRequestDelay, setProcessingMode, setParallelWorkers]);
+    useLocalModel: config.api.useLocalModel,
+    setUseLocalModel,
+    localModelName: config.api.localModelName,
+    setLocalModelName,
+  }), [config.api, setSelectedProvider, setSelectedModel, setApiKey, setRequestDelay, setProcessingMode, setParallelWorkers, setUseLocalModel, setLocalModelName]);
 
   // --- Metadata Limits ---
   const setLimits = useCallback((l: Partial<MetadataLimits>) => {

@@ -231,3 +231,68 @@ function getFallbackGeminiModels(): ModelInfo[] {
   ];
 }
 
+const LM_STUDIO_BASE_URL = 'http://localhost:1234';
+
+type LMStudioModel = {
+  id: string;
+  display_name?: string;
+  filename?: string;
+};
+
+/**
+ * Fetches available models from LM Studio local server
+ * Returns models that support vision (image input) based on capabilities
+ */
+export async function fetchLocalModels(): Promise<ModelInfo[]> {
+  try {
+    const response = await fetch(`${LM_STUDIO_BASE_URL}/api/v0/models`);
+
+    if (!response.ok) {
+      throw new Error(`LM Studio API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const models: LMStudioModel[] = data.data || [];
+
+    console.log(`LM Studio: Total models fetched: ${models.length}`);
+
+    const localModels = models
+      .map((model) => ({
+        value: model.id,
+        label: model.display_name || model.filename || model.id,
+        supportsVision: true,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    console.log(`LM Studio: Models found: ${localModels.length}`);
+    console.log('LM Studio models:', localModels.map(m => m.label));
+
+    return localModels;
+  } catch (error) {
+    console.error('Error fetching LM Studio models:', error);
+    return getFallbackLocalModels();
+  }
+}
+
+/**
+ * Fallback models for LM Studio (used when API fails or no server)
+ */
+function getFallbackLocalModels(): ModelInfo[] {
+  return [
+    { value: 'llama3-vision', label: 'Llama 3 Vision', supportsVision: true },
+    { value: 'qwen2-vl', label: 'Qwen2 VL', supportsVision: true },
+    { value: 'phi3-vision', label: 'Phi-3 Vision', supportsVision: true },
+  ];
+}
+
+export async function checkLocalModelConnection(): Promise<boolean> {
+  try {
+    const response = await fetch(`${LM_STUDIO_BASE_URL}/api/v0/models`, {
+      method: 'HEAD',
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+

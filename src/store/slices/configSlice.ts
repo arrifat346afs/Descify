@@ -41,6 +41,8 @@ interface ConfigState {
     requestDelay: number;
     processingMode: ProcessingMode;
     parallelWorkers: number;
+    useLocalModel: boolean;
+    localModelName: string;
   };
   metadataLimits: MetadataLimits;
   metadataOptions: MetadataOptions;
@@ -64,6 +66,8 @@ const initialState: ConfigState = {
     requestDelay: 0,
     processingMode: 'sequential',
     parallelWorkers: 5,
+    useLocalModel: false,
+    localModelName: '',
   },
   metadataLimits: {
     titleLimit: 200,
@@ -117,6 +121,12 @@ const configSlice = createSlice({
     setParallelWorkers(state, action: PayloadAction<number>) {
       state.api.parallelWorkers = Math.max(1, Math.min(5, action.payload));
     },
+    setUseLocalModel(state, action: PayloadAction<boolean>) {
+      state.api.useLocalModel = action.payload;
+    },
+    setLocalModelName(state, action: PayloadAction<string>) {
+      state.api.localModelName = action.payload;
+    },
     setMetadataLimits(state, action: PayloadAction<Partial<MetadataLimits>>) {
       state.metadataLimits = { ...state.metadataLimits, ...action.payload };
     },
@@ -149,6 +159,8 @@ export const {
   setMetadataOptions,
   setEmbedSettings,
   setExportSettings,
+  setUseLocalModel,
+  setLocalModelName,
 } = configSlice.actions;
 
 export default configSlice.reducer;

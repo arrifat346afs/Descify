@@ -27,9 +27,16 @@ export const MetadataSection = () => {
     const model = api.selectedModel || undefined;
     const provider = api.selectedProvider || undefined;
     const apiKey = provider ? api.apiKeys[provider] : undefined;
+    const useLocalModel = api.useLocalModel;
+    const localModelName = api.localModelName || undefined;
 
-    if (!apiKey) {
+    if (!useLocalModel && !apiKey) {
       alert('Please configure your API key in Settings');
+      return;
+    }
+
+    if (useLocalModel && !localModelName) {
+      alert('Please select a local model in Settings');
       return;
     }
 
@@ -62,6 +69,8 @@ export const MetadataSection = () => {
         provider,
         model,
         apiKey,
+        useLocalModel,
+        localModelName,
         limits: {
           titleLimit: metadataLimits.titleLimit,
           descriptionLimit: metadataLimits.descriptionLimit,
