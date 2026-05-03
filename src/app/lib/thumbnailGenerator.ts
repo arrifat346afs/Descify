@@ -15,27 +15,14 @@ import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 // Browser-based thumbnail generation (concurrent, non-blocking)
 // ---------------------------------------------------------------------------
 
-// OffscreenCanvas-based resize: avoids DOM layout cost and runs faster on the
-// main thread (or can be moved to a worker). Falls back to the legacy
-// document.createElement path if OffscreenCanvas is unavailable (e.g. older
-// WebKit builds).
-function resizeViaCanvas(bitmap: ImageBitmap, maxDim: number, quality: number): string {
-  // Bitmap was already decoded at (approximately) maxDim resolution via the
-  // resizeWidth/resizeHeight hints on createImageBitmap, so no extra scaling
-  // calculation is needed — just draw at the actual bitmap size.
+// Draw the (already-resized) bitmap onto a small canvas and encode to WebP.
+// The bitmap arrives pre-scaled via createImageBitmap resizeWidth/resizeHeight
+// hints, so the canvas is tiny (e.g. 120×80 px) and this step is very cheap.
+// Note: OffscreenCanvas cannot produce a synchronous data-URL (only async
+// convertToBlob), so we use the regular HTMLCanvasElement here.
+function resizeViaCanvas(bitmap: ImageBitmap, _maxDim: number, quality: number): string {
   const w = bitmap.width;
   const h = bitmap.height;
-
-  if (typeof OffscreenCanvas !== 'undefined') {
-    const canvas = new OffscreenCanvas(w, h);
-    const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D;
-    ctx.drawImage(bitmap, 0, 0, w, h);
-    // OffscreenCanvas only supports convertToBlob (async), so we fall through
-    // to the synchronous path below for data-URL output.
-    // However we can still avoid the DOM hit by using a regular canvas of the
-    // already-small thumbnail size.
-  }
-
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -553,61 +540,52 @@ export async function generateThumbnailsBatch(
 
   const CONCURRENCY = BATCH_CONFIG.CONCURRENCY;
 
-  const queue = files.map(f => ({ file: f, filePath: filePaths?.get(f) }));
-  let running = 0;
+  console.log(`📦 Starting thumbnail generation: ${files.length} files, concurrency=${CONCURRENCY}`);
 
-  console.log(`📦 Starting thumbnail generation: ${files.length} files`);
+  // Promise-based pool: no setInterval polling.
+  // Each "slot" is a looping worker that pulls from the shared index until done.
+  let nextIndex = 0;
 
-  const processOne = async (item: { file: File; filePath?: string }): Promise<void> => {
-    try {
-      let thumbnail: string | null = null;
+  const worker = async (): Promise<void> => {
+    while (true) {
+      const idx = nextIndex++;
+      if (idx >= files.length) break;
 
-      if (item.file.type.startsWith('image/')) {
-        thumbnail = await generateImageThumbnail(item.file, item.filePath);
-      } else if (item.file.type.startsWith('video/')) {
-        if (item.filePath) {
-          try {
-            thumbnail = await generateVideoThumbnailRust(item.filePath);
-          } catch {
-            thumbnail = await generateVideoThumbnail(item.file);
+      const file = files[idx];
+      const filePath = filePaths?.get(file);
+
+      try {
+        let thumbnail: string | null = null;
+
+        if (file.type.startsWith('image/')) {
+          thumbnail = await generateImageThumbnail(file, filePath);
+        } else if (file.type.startsWith('video/')) {
+          if (filePath) {
+            try {
+              thumbnail = await generateVideoThumbnailRust(filePath);
+            } catch {
+              thumbnail = await generateVideoThumbnail(file);
+            }
+          } else {
+            thumbnail = await generateVideoThumbnail(file);
           }
-        } else {
-          thumbnail = await generateVideoThumbnail(item.file);
         }
+
+        if (thumbnail) {
+          results.set(file, thumbnail);
+          onThumbnailReady(file, thumbnail);
+        }
+      } catch (error) {
+        console.error(`Failed thumbnail for ${file.name}:`, error);
       }
 
-      if (thumbnail) {
-        results.set(item.file, thumbnail);
-        onThumbnailReady(item.file, thumbnail);
-      }
-    } catch (error) {
-      console.error(`Failed thumbnail for ${item.file.name}:`, error);
-    }
-
-    completed++;
-    onProgress(completed, total, item.file.name);
-    running--;
-    scheduleNext();
-  };
-
-  const scheduleNext = (): void => {
-    while (running < CONCURRENCY && queue.length > 0) {
-      running++;
-      const item = queue.shift()!;
-      processOne(item);
+      completed++;
+      onProgress(completed, total, file.name);
     }
   };
 
-  scheduleNext();
-
-  await new Promise(resolve => {
-    const check = setInterval(() => {
-      if (running === 0 && queue.length === 0) {
-        clearInterval(check);
-        resolve(true);
-      }
-    }, 50);
-  });
+  // Spin up CONCURRENCY workers and await all of them.
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
 
   console.log(`✅ Completed ${results.size}/${total} thumbnails`);
   return results;
