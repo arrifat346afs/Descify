@@ -25,29 +25,26 @@ export const Home = () => {
   return (
     <div className="min-h-screen flex flex-col m-0 p-0 relative">
       <Separator />
-      <div className="flex h-[59vh] ">
-        <div className="w-[30vw] h-full ">
-          <LeftTabs />
-        </div>
+      <div className="flex h-[65vh] ">
         <Separator orientation="vertical" />
         <div className="w-[40vw] h-full">
           <FileSection file={selectedFile} />
         </div>
         <Separator orientation="vertical" />
-        <div className="w-[30vw] h-full">
-          <MetadataSection />
+        <div className="w-[30vw] h-full p-2 mt-5">
+          <LeftTabs />
         </div>
       </div>
       <Separator />
-      <div className="flex flex-col h-[40vh]">
-        <div className="h-[6vh] shrink-0 ">
+      <div className="flex flex-col ">
+        <div className="shrink-0 ">
           <ActionsSection onFilesSelected={handleFilesSelected} />
         </div>
         <Separator />
-        <div className="h-[29vh] w-full">
+        <div className="pb-2 w-full">
           <ThumbnailSection onSelectFile={setSelectedFile} />
         </div>
-        <div className="h-[7vh] shrink-0 ">
+        <div className="shrink-0 ">
           <ProgressSection />
         </div>
       </div>

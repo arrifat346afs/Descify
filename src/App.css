@@ -18,6 +18,22 @@ body {
     overflow: hidden;
 }
 
+@media (min-width: 1536px) {
+  html {
+    /* font-size: 20px; */
+    zoom: 1.33;
+}
+}
+
+/* @media (min-width: 2300px) {
+  #root {
+    transform: scale(1.35);
+    transform-origin: top left;
+    width: calc(100vw / 1.35);
+    height: calc(100vh / 1.35);
+  }
+} */
+
 @theme inline {
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
