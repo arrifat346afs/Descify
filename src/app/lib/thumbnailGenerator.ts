@@ -1,72 +1,33 @@
 /**
- * FAST Thumbnail Generator (Pure Browser)
- * Eliminates Tauri IPC overhead for 12x speedup
- * 
- * Processing: ~400 images in 12 seconds
- * Strategy: GPU-accelerated createImageBitmap + concurrent Canvas resize
+ * Background Thumbnail Generator
+ * Non-blocking thumbnail generation that doesn't affect UI
+ *
+ * Browser-based approach (like bulk_image_processor_v3.html demo)
+ * - Uses createImageBitmap + Canvas for efficient client-side resizing
+ * - 6 concurrent workers for fast processing
+ * - Non-blocking with thumbnails appearing as they finish
+ * - Memory efficient with LRU cache for repeated lookups
  */
 
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 
-// ============================================================================
-// FAST BROWSER-BASED THUMBNAIL GENERATION (No Tauri IPC)
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Browser-based thumbnail generation (concurrent, non-blocking)
+// ---------------------------------------------------------------------------
 
-/**
- * Core resize function: Draw resized bitmap to canvas, encode to WebP
- * This is the fast path - bitmap is pre-decoded by GPU, canvas is tiny
- */
-function resizeViaCanvas(bitmap: ImageBitmap, quality: number): string {
+// Draw the (already-resized) bitmap onto a small canvas and encode to WebP.
+// The bitmap arrives pre-scaled via createImageBitmap resizeWidth/resizeHeight
+// hints, so the canvas is tiny (e.g. 120×80 px) and this step is very cheap.
+// Note: OffscreenCanvas cannot produce a synchronous data-URL (only async
+// convertToBlob), so we use the regular HTMLCanvasElement here.
+function resizeViaCanvas(bitmap: ImageBitmap, _maxDim: number, quality: number): string {
+  const w = bitmap.width;
+  const h = bitmap.height;
   const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-  (canvas.getContext('2d') as CanvasRenderingContext2D).drawImage(bitmap, 0, 0);
+  canvas.width = w;
+  canvas.height = h;
+  (canvas.getContext('2d') as CanvasRenderingContext2D).drawImage(bitmap, 0, 0, w, h);
   return canvas.toDataURL('image/webp', quality);
-}
-
-/**
- * Convert File to Blob (handles edge cases)
- */
-function readFileAsBlob(file: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const arr = new Uint8Array(e.target?.result as ArrayBuffer);
-      resolve(new Blob([arr], { type: file.type }));
-    };
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-/**
- * Process one File → resize via GPU → encode to WebP data-URL
- * Returns null if file is not an image
- */
-async function processThumbnailFast(
-  file: File,
-  maxSize: number = BATCH_CONFIG.MAX_THUMBNAIL_SIZE,
-): Promise<string | null> {
-  // Skip non-images
-  if (!file.type.startsWith('image/')) return null;
-
-  try {
-    const blob = await readFileAsBlob(file);
-    
-    // GPU decode + resize in one step (createImageBitmap does the work)
-    const scale = Math.min(maxSize / 1, maxSize / 1); // fallback scale
-    const bitmap = await createImageBitmap(blob, {
-      resizeWidth: Math.min(maxSize, 10000),
-      resizeHeight: Math.min(maxSize, 10000),
-    });
-
-    // Now bitmap is pre-scaled; draw to tiny canvas + encode
-    const dataUrl = resizeViaCanvas(bitmap, BATCH_CONFIG.JPEG_QUALITY);
-    bitmap.close();
-    return dataUrl;
-  } catch {
-    return null; // Skip on error
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -227,10 +188,85 @@ async function assetUrlToDataUrl(url: string): Promise<string> {
   });
 }
 
-// ============================================================================
-// NOTE: Removed Rust IPC wrappers (generateVideoThumbnailRust, etc.)
-// Use only browser-based functions below for speed
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Rust IPC wrappers (display path — return asset:// URLs)
+// ---------------------------------------------------------------------------
+
+async function generateVideoThumbnailRust(filePath: string, size: number = BATCH_CONFIG.MAX_THUMBNAIL_SIZE, signal?: AbortSignal): Promise<string | null> {
+  if (signal?.aborted) return null;
+
+  const cacheKey = `video_${filePath}_${size}`;
+  if (thumbnailCache.has(cacheKey)) return thumbnailCache.get(cacheKey) ?? null;
+
+  try {
+    if (signal?.aborted) return null;
+
+    const result = await invoke<GeneratedThumbnailResult>('generate_video_thumbnail_command', {
+      filePath,
+      size
+    });
+
+    if (signal?.aborted) return null;
+
+    // Prefer the on-disk path; fall back to base64 only if the Rust side
+    // could not persist the thumbnail (disk error).
+    const thumbnail = resolveImageUrl(result.thumbnail_base64, result.cache_path);
+    thumbnailCache.set(cacheKey, thumbnail);
+    return thumbnail;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') return null;
+    console.warn('Video thumbnail generation failed:', error);
+    thumbnailCache.set(cacheKey, null);
+    return null;
+  }
+}
+
+async function generateVideoPreviewRust(filePath: string, size: number = PREVIEW_CONFIG.MAX_SIZE, signal?: AbortSignal): Promise<string | null> {
+  if (signal?.aborted) return null;
+
+  const cacheKey = `video_preview_${filePath}_${size}`;
+  if (thumbnailCache.has(cacheKey)) return thumbnailCache.get(cacheKey) ?? null;
+
+  try {
+    if (signal?.aborted) return null;
+
+    const result = await invoke<GeneratedPreviewResult>('generate_video_preview_command', {
+      filePath,
+      size
+    });
+
+    if (signal?.aborted) return null;
+
+    const preview = resolveImageUrl(result.preview_base64, result.cache_path);
+    thumbnailCache.set(cacheKey, preview);
+    return preview;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') return null;
+    console.warn('Video preview generation failed:', error);
+    thumbnailCache.set(cacheKey, null);
+    return null;
+  }
+}
+
+async function generateThumbnailRust(filePath: string, size: number = 150): Promise<string | null> {
+  const cacheKey = getCacheKey(filePath, size);
+  if (thumbnailCache.has(cacheKey)) return thumbnailCache.get(cacheKey) ?? null;
+
+  try {
+    const result = await invoke<GeneratedThumbnailResult>('generate_thumbnail_command', {
+      filePath,
+      size
+    });
+
+    const thumbnail = resolveImageUrl(result.thumbnail_base64, result.cache_path);
+    thumbnailCache.set(cacheKey, thumbnail);
+    return thumbnail;
+  } catch (error) {
+    console.warn('Thumbnail generation failed:', error);
+    thumbnailCache.set(cacheKey, null);
+    return null;
+  }
+}
 
 async function generateImageViaCanvas(file: File, maxSize: number, quality: number): Promise<string> {
   if (file.type === 'image/svg+xml') {
@@ -357,13 +393,50 @@ export async function generatePreviewImage(file: File, filePath?: string, signal
     throw new Error('Aborted');
   }
   
-  // Use browser-only Canvas approach for both images and videos (no Rust IPC)
-  if (file.type.startsWith('video/')) {
-    return generateVideoThumbnail(file);
+  if (filePath) {
+    if (file.type.startsWith('video/')) {
+      const preview = await generateVideoPreviewRust(filePath, PREVIEW_CONFIG.MAX_SIZE, signal);
+      if (preview) return preview;
+    } else {
+      try {
+        if (signal?.aborted) {
+          throw new Error('Aborted');
+        }
+        
+        const cacheKey = `preview_${filePath}_${PREVIEW_CONFIG.MAX_SIZE}`;
+        if (thumbnailCache.has(cacheKey)) {
+          return thumbnailCache.get(cacheKey) ?? '';
+        }
+        
+        const result = await invoke<GeneratedPreviewResult>('generate_preview_command', {
+          filePath,
+          size: PREVIEW_CONFIG.MAX_SIZE
+        });
+
+        if (signal?.aborted) {
+          throw new Error('Aborted');
+        }
+
+        const preview = resolveImageUrl(result.preview_base64, result.cache_path);
+        if (preview) {
+          thumbnailCache.set(cacheKey, preview);
+          return preview;
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw error;
+        }
+        console.warn('Preview generation failed:', error);
+      }
+    }
   }
 
   if (signal?.aborted) {
     throw new Error('Aborted');
+  }
+  
+  if (file.type.startsWith('video/')) {
+    return generateVideoThumbnail(file);
   }
 
   return generateImageViaCanvas(file, PREVIEW_CONFIG.MAX_SIZE, PREVIEW_CONFIG.JPEG_QUALITY);
@@ -487,8 +560,15 @@ export async function generateThumbnailsBatch(
         if (file.type.startsWith('image/')) {
           thumbnail = await generateImageThumbnail(file, filePath);
         } else if (file.type.startsWith('video/')) {
-          // Use browser-only video thumbnail generation (no Rust IPC)
-          thumbnail = await generateVideoThumbnail(file);
+          if (filePath) {
+            try {
+              thumbnail = await generateVideoThumbnailRust(filePath);
+            } catch {
+              thumbnail = await generateVideoThumbnail(file);
+            }
+          } else {
+            thumbnail = await generateVideoThumbnail(file);
+          }
         }
 
         if (thumbnail) {
@@ -522,7 +602,11 @@ export function hasCachedThumbnail(filePath: string, size: number = BATCH_CONFIG
   return cached !== undefined && cached !== null;
 }
 
-export function preloadThumbnails(_filePaths: string[]): void {
-  // No-op: Browser-based approach doesn't need preloading
-  // Images are generated on-demand with LRU caching
+export function preloadThumbnails(filePaths: string[]): void {
+  for (const filePath of filePaths) {
+    const cacheKey = getCacheKey(filePath, BATCH_CONFIG.MAX_THUMBNAIL_SIZE);
+    if (!thumbnailCache.has(cacheKey)) {
+      generateThumbnailRust(filePath, BATCH_CONFIG.MAX_THUMBNAIL_SIZE);
+    }
+  }
 }
