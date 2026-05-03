@@ -13,7 +13,7 @@ export default function FileSection({ file }: FileSectionProps) {
   const lowResUrl = thumbnailItem?.thumbnailUrl;
   const cachedPreviewUrl = thumbnailItem?.previewUrl;
   const upsertPreview = thumbnails.upsert;
-  const filePath = filePaths.get(file);
+  const filePath = file ? filePaths.get(file) : undefined;
 
   const [highResUrl, setHighResUrl] = useState<string | null>(null);
   const [isHighResLoaded, setIsHighResLoaded] = useState(false);
@@ -24,18 +24,9 @@ export default function FileSection({ file }: FileSectionProps) {
   const objectUrlRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Early return AFTER all hooks
-  if (!file) {
-    return (
-      <div className="w-full h-full flex items-center justify-center text-6xl text-accent">
-        <CiImageOn />
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (!file) return;
-    
+
     if (objectUrlRef.current) {
       URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = null;
@@ -68,11 +59,11 @@ export default function FileSection({ file }: FileSectionProps) {
         setHighResUrl(lowResUrl);
         setIsHighResLoaded(false); // Still showing low-res
       }
-      
+
       try {
         const previewUrl = await generatePreviewImage(file, filePath, signal);
         if (signal?.aborted) return;
-        
+
         if (previewUrl) {
           upsertPreview({ file, thumbnailUrl: lowResUrl || '', previewUrl });
           setHighResUrl(previewUrl);
@@ -84,7 +75,7 @@ export default function FileSection({ file }: FileSectionProps) {
         // Keep showing low-res if available
         setIsHighResLoaded(true);
       }
-      
+
       if (signal?.aborted) return;
       setIsGeneratingPreview(false);
     };
@@ -101,6 +92,15 @@ export default function FileSection({ file }: FileSectionProps) {
       }
     };
   }, [file, filePath, cachedPreviewUrl, lowResUrl, upsertPreview]);
+
+  // Early return AFTER all hooks
+  if (!file) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-6xl text-accent">
+        <CiImageOn />
+      </div>
+    );
+  }
 
   const showLowRes = lowResUrl && !isHighResLoaded;
 
