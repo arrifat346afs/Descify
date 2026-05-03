@@ -27,7 +27,7 @@ export const Home = () => {
       <Separator />
       <div className="flex h-[65vh] ">
         <Separator orientation="vertical" />
-        <div className="w-[40vw] h-full">
+        <div className="w-[70vw] h-full">
           <FileSection file={selectedFile} />
         </div>
         <Separator orientation="vertical" />

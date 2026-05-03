@@ -9,6 +9,7 @@ import { embedMetadata } from '@/app/lib/tauri-commands';
 import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { CategorySection } from "../category/CategorySection";
 
 export const MetadataSection = () => {
   const { selectedFile, thumbnails, api, metadataLimits, metadataOptions, generated, getFilePath, templateSettings } = useSettings();
@@ -188,6 +189,7 @@ export const MetadataSection = () => {
             )}
           </Button>
         </div>
+         <CategorySection />
       </div>
     </ScrollArea>
   );
