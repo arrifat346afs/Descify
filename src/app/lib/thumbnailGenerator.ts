@@ -133,7 +133,9 @@ const THUMBNAIL_CACHE_CAPACITY = 2000;
 const thumbnailCache = new LRUCache<string, string | null>(THUMBNAIL_CACHE_CAPACITY);
 
 export const BATCH_CONFIG = {
-  CONCURRENCY: 6,
+  // Raised from 6 → 12: createImageBitmap is mostly I/O + GPU decode so more
+  // concurrent tasks keep the pipeline saturated without starving the main thread.
+  CONCURRENCY: 12,
   MAX_THUMBNAIL_SIZE: 120,
   JPEG_QUALITY: 0.82,
 };
