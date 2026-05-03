@@ -8,14 +8,6 @@ type FileSectionProps = {
 };
 
 export default function FileSection({ file }: FileSectionProps) {
-  if (!file) {
-    return (
-      <div className="w-full h-full flex items-center justify-center text-6xl text-accent">
-        <CiImageOn />
-      </div>
-    );
-  }
-
   const { thumbnails, filePaths } = useSettings();
   const thumbnailItem = thumbnails.items.find((t) => t.file === file);
   const lowResUrl = thumbnailItem?.thumbnailUrl;
@@ -26,11 +18,20 @@ export default function FileSection({ file }: FileSectionProps) {
   const [highResUrl, setHighResUrl] = useState<string | null>(null);
   const [isHighResLoaded, setIsHighResLoaded] = useState(false);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
-  const isImage = file.type.startsWith("image/");
-  const isVideo = file.type.startsWith("video/");
+  const isImage = file?.type.startsWith("image/") ?? false;
+  const isVideo = file?.type.startsWith("video/") ?? false;
   
   const objectUrlRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Early return AFTER all hooks
+  if (!file) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-6xl text-accent">
+        <CiImageOn />
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (!file) return;

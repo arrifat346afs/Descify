@@ -453,22 +453,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const dispatchRef = useRef(dispatch);
   dispatchRef.current = dispatch;
 
-  // Batching state - all in refs to avoid re-renders
-  const pendingThumbnailsRef = useRef<ThumbnailData[]>([]);
-  const flushTimerRef = useRef<number | null>(null);
+  // Track files being processed to avoid duplicates
   const processingFilesRef = useRef<Set<File>>(new Set());
-
-  // Flush function - dispatches pending thumbnails
-  const flushPendingThumbnails = useCallback(() => {
-    if (pendingThumbnailsRef.current.length === 0) return;
-
-    const toDispatch = [...pendingThumbnailsRef.current];
-    pendingThumbnailsRef.current = [];
-    flushTimerRef.current = null;
-
-    dispatchRef.current(fileSlice.upsertThumbnails(toDispatch));
-    toDispatch.forEach(t => processingFilesRef.current.delete(t.file));
-  }, []);
 
   useEffect(() => {
     const files = fileState.files;
@@ -518,28 +504,17 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           filesToGenerate,
           () => { }, // Progress callback
           (file, thumbnailUrl) => {
-            // Never discard — always store the thumbnail regardless of newer batches
-            pendingThumbnailsRef.current.push({ 
+            // Dispatch directly - thumbnails appear as they finish (no batching)
+            dispatchRef.current(fileSlice.upsertThumbnails([{ 
               file, 
               thumbnailUrl,
               previewUrl: null 
-            });
-
-            // Schedule flush if not already scheduled (flush every 16 ms)
-            if (!flushTimerRef.current) {
-              flushTimerRef.current = window.setTimeout(flushPendingThumbnails, 16);
-            }
+            }]));
+            processingFilesRef.current.delete(file);
           },
           BATCH_CONFIG.CONCURRENCY,
           fileState.filePaths
         );
-
-        // Final flush after all files in THIS batch are done
-        if (flushTimerRef.current) {
-          clearTimeout(flushTimerRef.current);
-          flushTimerRef.current = null;
-        }
-        flushPendingThumbnails();
 
         console.log(`✅ Completed batch #${batchId}`);
 
@@ -555,13 +530,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     })();
-
-    return () => {
-      if (flushTimerRef.current) {
-        clearTimeout(flushTimerRef.current);
-      }
-    };
-  }, [fileState.files, flushPendingThumbnails]); // Only depend on files
+  }, [fileState.files]); // Only depend on files
 
   // Ensure export settings are properly initialized
   useEffect(() => {

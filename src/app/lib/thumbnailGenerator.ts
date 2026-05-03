@@ -2,27 +2,41 @@
  * Background Thumbnail Generator
  * Non-blocking thumbnail generation that doesn't affect UI
  *
- * Memory strategy
- * ---------------
- * Previously every thumbnail/preview was transported as a base64-encoded string
- * over the Tauri IPC bridge and then held in JS memory as a `data:image/…`
- * data-URL.  For 1 000 files that alone could occupy several hundred MB.
- *
- * The current approach:
- *  1. The Rust backend saves the JPEG to disk and returns its absolute path
- *     (`cache_path`).  The frontend converts that path to an `asset://` URL via
- *     `convertFileSrc`; WebKit loads the file directly from disk and the image
- *     data never enters the JS heap.
- *  2. A size-bounded LRU cache (capacity 2 000) stores these short `asset://`
- *     strings so repeated look-ups skip the IPC round-trip entirely.  Because
- *     the values are tiny URL strings (not multi-KB base64 blobs), memory
- *     growth is negligible even at the cap.
- *  3. Base64 is retained only for the AI-image path where the binary data must
- *     be sent to a remote vision API.  `assetUrlToDataUrl` converts the cached
- *     asset URL back to a data-URL on demand, without persisting it.
+ * Browser-based approach (like bulk_image_processor_v3.html demo)
+ * - Uses createImageBitmap + Canvas for efficient client-side resizing
+ * - 6 concurrent workers for fast processing
+ * - Non-blocking with thumbnails appearing as they finish
+ * - Memory efficient with LRU cache for repeated lookups
  */
 
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+
+// ---------------------------------------------------------------------------
+// Browser-based thumbnail generation (concurrent, non-blocking)
+// ---------------------------------------------------------------------------
+
+function readFileAsBlob(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const arr = new Uint8Array(e.target!.result as ArrayBuffer);
+      resolve(new Blob([arr], { type: file.type }));
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function resizeViaCanvas(bitmap: ImageBitmap, maxDim: number, quality: number): string {
+  const scale = Math.min(maxDim / bitmap.width, maxDim / bitmap.height, 1);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, w, h);
+  return canvas.toDataURL('image/webp', quality);
+}
 
 // ---------------------------------------------------------------------------
 // Bounded LRU cache
@@ -115,12 +129,9 @@ const thumbnailCache = new LRUCache<string, string | null>(THUMBNAIL_CACHE_CAPAC
 
 export const BATCH_CONFIG = {
   CONCURRENCY: 6,
-  MAX_THUMBNAIL_SIZE: 150,
-  JPEG_QUALITY: 0.5,
+  MAX_THUMBNAIL_SIZE: 120,
+  JPEG_QUALITY: 0.82,
 };
-
-const VIDEO_CONCURRENCY = 2;
-const IMAGE_CONCURRENCY = 6;
 
 const AI_IMAGE_CONFIG = {
   MAX_SIZE: 480,
@@ -501,15 +512,18 @@ export function generateVideoThumbnail(file: File): Promise<string> {
   });
 }
 
-export async function generateImageThumbnail(file: File, filePath?: string): Promise<string> {
-  if (filePath) {
-    const thumbnail = await generateThumbnailRust(filePath, BATCH_CONFIG.MAX_THUMBNAIL_SIZE);
-    if (thumbnail) {
-      return thumbnail;
-    }
+export async function generateImageThumbnail(file: File, _filePath?: string): Promise<string> {
+  // Browser-based approach using createImageBitmap + Canvas (like demo)
+  try {
+    const blob = await readFileAsBlob(file);
+    const bitmap = await createImageBitmap(blob);
+    const thumbnail = resizeViaCanvas(bitmap, BATCH_CONFIG.MAX_THUMBNAIL_SIZE, BATCH_CONFIG.JPEG_QUALITY);
+    bitmap.close();
+    return thumbnail;
+  } catch (error) {
+    console.warn(`Browser thumbnail failed for ${file.name}, falling back to Image+Canvas:`, error);
+    return generateImageViaCanvas(file, BATCH_CONFIG.MAX_THUMBNAIL_SIZE, BATCH_CONFIG.JPEG_QUALITY);
   }
-
-  return generateImageViaCanvas(file, BATCH_CONFIG.MAX_THUMBNAIL_SIZE, BATCH_CONFIG.JPEG_QUALITY);
 }
 
 export async function generateThumbnailsBatch(
@@ -523,57 +537,63 @@ export async function generateThumbnailsBatch(
   const total = files.length;
   let completed = 0;
 
-  const imageFiles = files.filter(f => f.type.startsWith('image/'));
-  const videoFiles = files.filter(f => f.type.startsWith('video/'));
+  const CONCURRENCY = BATCH_CONFIG.CONCURRENCY;
 
-  console.log(`📦 Starting thumbnail generation: ${imageFiles.length} images, ${videoFiles.length} videos`);
+  const queue = files.map(f => ({ file: f, filePath: filePaths?.get(f) }));
+  let running = 0;
 
-  const processFile = async (file: File, filePath?: string): Promise<void> => {
+  console.log(`📦 Starting thumbnail generation: ${files.length} files`);
+
+  const processOne = async (item: { file: File; filePath?: string }): Promise<void> => {
     try {
       let thumbnail: string | null = null;
 
-      if (file.type.startsWith('image/')) {
-        thumbnail = await generateImageThumbnail(file, filePath ?? undefined);
-      } else if (file.type.startsWith('video/')) {
-        if (filePath) {
-          thumbnail = await generateVideoThumbnailRust(filePath);
+      if (item.file.type.startsWith('image/')) {
+        thumbnail = await generateImageThumbnail(item.file, item.filePath);
+      } else if (item.file.type.startsWith('video/')) {
+        if (item.filePath) {
+          try {
+            thumbnail = await generateVideoThumbnailRust(item.filePath);
+          } catch {
+            thumbnail = await generateVideoThumbnail(item.file);
+          }
+        } else {
+          thumbnail = await generateVideoThumbnail(item.file);
         }
       }
 
       if (thumbnail) {
-        results.set(file, thumbnail);
-        onThumbnailReady(file, thumbnail);
+        results.set(item.file, thumbnail);
+        onThumbnailReady(item.file, thumbnail);
       }
     } catch (error) {
-      console.error(`Failed thumbnail for ${file.name}:`, error);
+      console.error(`Failed thumbnail for ${item.file.name}:`, error);
     }
 
     completed++;
-    onProgress(completed, total, file.name);
+    onProgress(completed, total, item.file.name);
+    running--;
+    scheduleNext();
   };
 
-  const processBatch = async (batch: File[], filePathList: (string | undefined)[], batchConcurrency: number): Promise<void> => {
-    for (let i = 0; i < batch.length; i += batchConcurrency) {
-      const subBatch = batch.slice(i, i + batchConcurrency);
-      const subBatchPaths = filePathList.slice(i, i + batchConcurrency);
-      
-      await Promise.all(
-        subBatch.map((file, idx) => processFile(file, subBatchPaths[idx]))
-      );
-
-      await new Promise(r => setTimeout(r, 0));
+  const scheduleNext = (): void => {
+    while (running < CONCURRENCY && queue.length > 0) {
+      running++;
+      const item = queue.shift()!;
+      processOne(item);
     }
   };
 
-  if (imageFiles.length > 0) {
-    const imagePaths = imageFiles.map(f => filePaths?.get(f));
-    await processBatch(imageFiles, imagePaths, IMAGE_CONCURRENCY);
-  }
+  scheduleNext();
 
-  if (videoFiles.length > 0) {
-    const videoPaths = videoFiles.map(f => filePaths?.get(f));
-    await processBatch(videoFiles, videoPaths, VIDEO_CONCURRENCY);
-  }
+  await new Promise(resolve => {
+    const check = setInterval(() => {
+      if (running === 0 && queue.length === 0) {
+        clearInterval(check);
+        resolve(true);
+      }
+    }, 50);
+  });
 
   console.log(`✅ Completed ${results.size}/${total} thumbnails`);
   return results;

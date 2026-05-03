@@ -140,20 +140,20 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     updateVisibleRangeForSelection();
   }, [selectedFile, updateVisibleRangeForSelection]);
 
-  // Create lookup maps for O(1) access
+  // Create lookup maps for O(1) access - use file name as key for stable lookup
   const thumbnailMap = useMemo(() => {
-    const map = new Map<File, { thumbnailUrl: string }>();
-    thumbnails.forEach(t => map.set(t.file, t));
+    const map = new Map<string, { thumbnailUrl: string }>();
+    thumbnails.forEach(t => map.set(t.file.name, t));
     return map;
   }, [thumbnails]);
 
   const metadataMap = useMemo(() => {
-    const map = new Map<File, boolean>();
+    const map = new Map<string, boolean>();
     if (generated.items) {
       generated.items.forEach(item => {
         const hasContent = item.metadata.title || item.metadata.description || item.metadata.keywords;
         if (hasContent) {
-          map.set(item.file, true);
+          map.set(item.file.name, true);
         }
       });
     }
@@ -302,11 +302,11 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               }}
             >
               {filesToRender.map(({ file, index }) => {
-                const thumbnail = thumbnailMap.get(file);
+                const thumbnail = thumbnailMap.get(file.name);
                 // Show loading spinner for any file that doesn't have a thumbnail yet.
                 // We only add valid media files to state, so no thumbnail = still generating.
                 const isGenerating = !thumbnail;
-                const hasMetadata = metadataMap.has(file);
+                const hasMetadata = metadataMap.has(file.name);
                 const isSelected = selectedFile === file;
                 const hasCustomInstruction = !!generated.getCustomInstruction(file);
                 const isRegenerating = regeneratingFile === file;
