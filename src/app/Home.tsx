@@ -31,7 +31,7 @@ export const Home = () => {
           <FileSection file={selectedFile} />
         </div>
         <Separator orientation="vertical" />
-        <div className="w-[30vw] h-full p-2 mt-5">
+        <div className="w-[30vw] h-full">
           <MetadataSection />
         </div>
       </div>
