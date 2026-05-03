@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 
 
 
-import LeftTabs from "./_component/TabGroup/LeftTabs";
+// import LeftTabs from "./_component/TabGroup/LeftTabs";
 
 export const Home = () => {
   const {
@@ -27,12 +27,12 @@ export const Home = () => {
       <Separator />
       <div className="flex h-[65vh] ">
         <Separator orientation="vertical" />
-        <div className="w-[70vw] h-full">
+        <div className="w-[40vw] h-full">
           <FileSection file={selectedFile} />
         </div>
         <Separator orientation="vertical" />
         <div className="w-[30vw] h-full p-2 mt-5">
-          <LeftTabs />
+          <MetadataSection />
         </div>
       </div>
       <Separator />
