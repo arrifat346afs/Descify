@@ -71,7 +71,7 @@ const KeywordsField = memo(function KeywordsField() {
             ? "Add keywords here (press Enter)"
             : "Select a file to view metadata"
         }
-        className="mb-3"
+        className="mb-3 2xl:text-sm 2xl:h-9"
       />
 
       <ScrollArea className="h-[15vh] border rounded-md p-0">
@@ -85,7 +85,7 @@ const KeywordsField = memo(function KeywordsField() {
               <Badge
                 key={index}
                 variant="secondary"
-                className="h-6 text-s flex items-center gap-2 cursor-pointer hover:bg-secondary/80 rounded-sm select-none"
+                className="h-6 text-s flex items-center gap-2 cursor-pointer hover:bg-secondary/80 rounded-sm select-none 2xl:text-sm"
               >
                 {keyword}
                 <button
