@@ -130,7 +130,7 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
   };
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center ">
       <Button
         onClick={handleClick}
         variant={"ghost"}
