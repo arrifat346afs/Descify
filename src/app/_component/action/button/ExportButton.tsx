@@ -49,9 +49,9 @@ function ExportButtonComponent() {
         variant="ghost"
         onClick={handleExport}
         disabled={isExporting || generated.items.length === 0 || selectedFormatsCount === 0}
-        className="gap-2 group h-10 2xl:w-30 2xl:h-13"
+        className="gap-2 group h-10 2xl:w-30 2xl:h-13 2xl:text-sm"
       >
-        <DownloadIcon/>
+        <DownloadIcon className="2xl:text-sm" />
         Export
       </Button>
     </div>

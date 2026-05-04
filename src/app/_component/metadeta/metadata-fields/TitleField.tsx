@@ -42,7 +42,7 @@ function TitleField() {
   return (
     <div className="flex flex-col">
       <div className="flex justify-between items-center mb-1">
-        <label className="text-sm text-gray-500">Title</label>
+        <label className="text-sm text-gray-500 ">Title</label>
         <span className={`text-xs ${isOverLimit ? 'text-gray-200 font-bold' : 'text-gray-400'}`}>
           {currentLength} / {maxLength} characters
         </span>
@@ -51,7 +51,7 @@ function TitleField() {
         value={title}
         onChange={handleChange}
         placeholder={selectedFile ? "Generate metadata for this file..." : "Select a file to view metadata"}
-        className=" 2xl:h-15"
+        className=" 2xl:h-15 2xl:text-sm"
       />
     </div>
   );
