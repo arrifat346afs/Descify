@@ -85,7 +85,7 @@ const KeywordsField = memo(function KeywordsField() {
               <Badge
                 key={index}
                 variant="secondary"
-                className="h-6 text-s flex items-center gap-2 cursor-pointer hover:bg-secondary/80 rounded-sm select-none 2xl:text-sm"
+                className="h-6 text-s flex items-center gap-2 cursor-pointer rounded-sm select-none 2xl:text-sm"
               >
                 {keyword}
                 <button
