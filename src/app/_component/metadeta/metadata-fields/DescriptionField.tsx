@@ -33,6 +33,7 @@ export const DescriptionField = memo(function DescriptionField() {
         value={description}
         onChange={handleChange}
         placeholder={selectedFile ? "Generate metadata for this file..." : "Select a file to view metadata"}
+        className=" 2xl:h-25 2xl:text-sm"
       />
     </div>
   );
