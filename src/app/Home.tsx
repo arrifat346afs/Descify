@@ -23,7 +23,7 @@ export const Home = () => {
 
 
   return (
-    <div className="min-h-screen flex flex-col m-0 p-0 relative 2xl:text-2xl">
+    <div className="min-h-screen flex flex-col m-0 p-0 relative ">
       <Separator />
       <div className="flex h-[65vh] ">
         <Separator orientation="vertical" />
