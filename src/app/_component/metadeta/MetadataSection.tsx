@@ -147,7 +147,7 @@ export const MetadataSection = () => {
   };
 
   return (
-    <ScrollArea className="h-full w-full pb-0 pt-2 pl-2 pr-2">
+    <ScrollArea className="h-full w-full pb-0 pt-2 pl-2 pr-2 2xl:pt-4 2xl:pl-2 2xl:pr-2">
       <div className="flex flex-col gap-4 p-2 h-full">
         <TitleField />
         <DescriptionField />
