@@ -61,7 +61,7 @@ export const ThumbnailItem = memo(({
       onClick={onSelect}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`${borderClass} hover:border-2 hover:border-primary rounded-md overflow-hidden cursor-pointer transition-all duration-200 w-[180px] shrink-0 relative group`}
+      className={`${borderClass} hover:border-2 hover:border-primary rounded-md overflow-hidden cursor-pointer transition-all duration-200 w-[180px] shrink-0 relative group 2xl:w-[200px]`}
     >
       <AspectRatio ratio={12 / 9}>
         {thumbnail ? (
