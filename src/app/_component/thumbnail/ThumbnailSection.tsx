@@ -294,7 +294,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               ref={scrollContainerRef}
               onScroll={shouldVirtualize ? onScroll : undefined}
               className={`flex space-x-4 px-2 py-2 pb-4 relative ${
-                isDragActive ? 'border-2 border-dashed border-primary bg-primary/5 rounded-lg' : ''
+                isDragActive ? ' border-2 border-dashed border-primary bg-primary/5 rounded-lg' : ''
               }`}
               style={{
                 width: shouldVirtualize ? `${totalWidth}px` : 'max-content',
