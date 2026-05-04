@@ -134,7 +134,7 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
       <Button
         onClick={handleClick}
         variant={"ghost"}
-        className="gap-2 group h-10 2xl:w-30 2xl:h-14"
+        className="gap-2 group h-10 2xl:w-30 2xl:h-13 2xl:"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
