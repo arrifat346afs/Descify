@@ -43,7 +43,7 @@ function TitleField() {
     <div className="flex flex-col">
       <div className="flex justify-between items-center mb-1">
         <label className="text-sm text-gray-500">Title</label>
-        <span className={`text-xs ${isOverLimit ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+        <span className={`text-xs ${isOverLimit ? 'text-gray-200 font-bold' : 'text-gray-400'}`}>
           {currentLength} / {maxLength} characters
         </span>
       </div>
@@ -57,5 +57,4 @@ function TitleField() {
     </div>
   );
 }
-
-export default memo(TitleField);
+export default memo(TitleField); 
