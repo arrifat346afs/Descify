@@ -44,7 +44,7 @@ function ExportButtonComponent() {
   const selectedFormatsCount = Object.values(exportSettings).filter(Boolean).length;
 
   return (
-    <div className="flex justify-center items-center h-full">
+    <div className="flex justify-center items-center h-full ">
       <Button
         variant="ghost"
         onClick={handleExport}
