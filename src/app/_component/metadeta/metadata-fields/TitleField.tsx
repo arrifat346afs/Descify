@@ -51,8 +51,7 @@ function TitleField() {
         value={title}
         onChange={handleChange}
         placeholder={selectedFile ? "Generate metadata for this file..." : "Select a file to view metadata"}
-
-
+        className="2xl:text-sm 2xl:h-15"
       />
     </div>
   );
