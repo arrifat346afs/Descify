@@ -18,9 +18,7 @@ body {
     overflow: hidden;
 }
 
-.2xl-button{
-    @apply 2xl:w-30 2xl:h-13;
-}
+
 
 
 /* @media (min-width: 2300px) {
