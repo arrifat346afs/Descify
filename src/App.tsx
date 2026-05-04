@@ -23,7 +23,7 @@ function App() {
   return (
 
       <TooltipProvider>
-        <main className="flex-1">
+        <main className="flex-1 2xl:text-2xl">
           <div className="h-[35px]">
             <Navbar />
           </div>

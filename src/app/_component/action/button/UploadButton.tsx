@@ -134,11 +134,11 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
       <Button
         onClick={handleClick}
         variant={"ghost"}
-        className="gap-2 group h-10 2xl:w-30 2xl:h-13 2xl:text-sm"
+        className="gap-2 group h-10 2xl:w-30 2xl:h-13 "
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <UploadIcon isHovered={isHovered} className="2xl:text-sm"/>
+        <UploadIcon isHovered={isHovered} />
         Upload
       </Button>
     </div>
