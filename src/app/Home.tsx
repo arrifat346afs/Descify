@@ -16,57 +16,51 @@ export const Home = () => {
   };
 
   return (
-        // ✅ No outer wrapper — this IS the root. h-screen fills the window.
     <div className="w-screen h-screen flex flex-col overflow-hidden select-none">
- 
-      {/* ── TOP SECTION: Preview (left) + Metadata (right) ── ~75% of height */}
+      {/* ── TOP SECTION: Preview (left) + Metadata (right) ── */}
       <div className="flex min-h-0" style={{ flex: "75 1 0%" }}>
- 
-        {/* Left: file preview — 66% of width */}
+        {/* Left: file preview */}
         <div className="h-full overflow-hidden" style={{ flex: "66 1 0%" }}>
           <FileSection file={selectedFile} />
         </div>
- 
-        {/* Vertical divider */}
+
         <Separator orientation="vertical" />
- 
-        {/* Right: metadata panel — 34% of width, scrollable */}
+
+        {/* Right: metadata panel — scrollable */}
         <div className="h-full overflow-y-auto" style={{ flex: "34 1 0%" }}>
           <MetadataSection />
         </div>
- 
       </div>
- 
-      {/* ── ACTION BAR SEPARATOR ── */}
+
       <Separator />
- 
-      {/* ── ACTION BAR: Upload / Generate / Cancel / Export ── ~5% of height */}
+
+      {/* ── ACTION BAR: Upload / Generate / Cancel / Export ── */}
+      {/* ✅ No flex wrapper — let ActionsSection control its own layout */}
       <div
-        className="w-full shrink-0 flex"
+        className="w-full shrink-0"
         style={{
           flex: "5 0 0%",
-          minHeight: "36px",
+          minHeight: "40px",
           maxHeight: "60px",
         }}
       >
         <ActionsSection onFilesSelected={handleFilesSelected} />
       </div>
- 
-      {/* ── BOTTOM SECTION SEPARATOR ── */}
+
       <Separator />
- 
-      {/* ── BOTTOM SECTION: Thumbnails + Progress ── ~20% of height */}
-      <div
-        className="w-full flex flex-col"
-        style={{ flex: "20 1 0%" }}
-      >
+
+      {/* ── BOTTOM SECTION: Thumbnails + Progress bar ── */}
+      <div className="w-full flex flex-col" style={{ flex: "20 1 0%" }}>
+        {/* Thumbnails fill all available space */}
         <div className="flex-1 min-h-0 overflow-hidden">
           <ThumbnailSection onSelectFile={setSelectedFile} />
         </div>
-        <ProgressSection />
-      </div>
- 
-    </div>
 
+        {/* ✅ Progress bar: shrink-0 guarantees it is never squeezed to zero */}
+        <div className="shrink-0" style={{ minHeight: "24px" }}>
+          <ProgressSection />
+        </div>
+      </div>
+    </div>
   );
 };
