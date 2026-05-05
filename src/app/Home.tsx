@@ -20,11 +20,11 @@ export const Home = () => {
       <Separator />
       <div className="flex flex-col ">
         {/* Main content */}
-        <div className="flex  bg-red-700">
+        <div className="grid grid-cols-3 grid-rows-1 gap-0  bg-red-700">
           <Separator orientation="vertical" />
 
           {/* Left (preview) */}
-          <div className="">
+          <div className="col-span-2">
             <FileSection file={selectedFile} />
           </div>
 
