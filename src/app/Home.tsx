@@ -8,7 +8,7 @@ import { useSettings } from "./contexts/SettingsContext";
 import { Separator } from "@/components/ui/separator";
 
 // import LeftTabs from "./_component/TabGroup/LeftTabs";
-
+const PROGRESS_BAR_HEIGHT = 58; // px
 export const Home = () => {
   const { selectedFile, setSelectedFile, setFiles } = useSettings();
   const handleFilesSelected = (files: File[]) => {
