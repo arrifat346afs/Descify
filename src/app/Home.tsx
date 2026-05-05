@@ -42,7 +42,7 @@ export const Home = () => {
  
       {/* ── ACTION BAR: Upload / Generate / Cancel / Export ── ~5% of height */}
       <div
-        className="w-full shrink-0 flex items-center"
+        className="w-full shrink-0 flex"
         style={{
           flex: "5 0 0%",
           minHeight: "36px",
