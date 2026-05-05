@@ -61,14 +61,14 @@ export const ThumbnailItem = memo(({
       onClick={onSelect}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`${borderClass} hover:border-2 hover:border-primary rounded-md overflow-hidden cursor-pointer transition-all duration-200  shrink-0 relative group w-[clamp(180px,20vw,420px)] p-10`}
+      className={`${borderClass} hover:border-2 hover:border-primary rounded-md overflow-hidden cursor-pointer transition-all duration-200  shrink-0 relative group w-[clamp(8rem,20vw,28rem)] `}
     >
-      <AspectRatio ratio={16 / 9}>
+      <AspectRatio ratio={14 / 9}>
         {thumbnail ? (
           <img
             src={thumbnail.thumbnailUrl}
             alt={file.name}
-            className="w-full h-45 object-fill"
+            className="w-full object-fill"
             loading="lazy"
           />
         ) : isGenerating ? (
