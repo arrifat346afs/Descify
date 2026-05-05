@@ -23,31 +23,37 @@ export const Home = () => {
 
 
   return (
-    <div className="min-h-screen flex flex-col m-0 p-0 relative ">
-      <Separator />
-      <div className="flex h-[65vh] ">
-        <Separator orientation="vertical" />
-        <div className="w-[70vw] h-full">
-          <FileSection file={selectedFile} />
-        </div>
-        <Separator orientation="vertical" />
-        <div className="w-[30vw] h-full">
-          <MetadataSection />
-        </div>
-      </div>
-      <Separator />
-      <div className="flex flex-col ">
-        <div className="shrink-0 ">
-          <ActionsSection onFilesSelected={handleFilesSelected} />
-        </div>
-        <Separator />
-        <div className="pb-2 w-full">
-          <ThumbnailSection onSelectFile={setSelectedFile} />
-        </div>
-        <div className="shrink-0 ">
-          <ProgressSection />
-        </div>
-      </div>
+<div className="min-h-screen flex flex-col">
+  <Separator />
+
+  {/* Main content */}
+  <div className="flex flex-1 min-h-0">
+    <Separator orientation="vertical" />
+
+    {/* Left (preview) */}
+    <div className="flex-2 min-w-0">
+      <FileSection file={selectedFile} />
     </div>
+
+    <Separator orientation="vertical" />
+
+    {/* Right (metadata) */}
+    <div className="flex-1 min-w-[280px] max-w-[500px]">
+      <MetadataSection />
+    </div>
+  </div>
+
+  <Separator />
+
+  {/* Bottom section */}
+  <div className="flex flex-col shrink-0">
+    <ActionsSection onFilesSelected={handleFilesSelected} />
+    <Separator />
+    <div className="w-full overflow-x-auto">
+      <ThumbnailSection onSelectFile={setSelectedFile} />
+    </div>
+    <ProgressSection />
+  </div>
+</div>
   );
 };
