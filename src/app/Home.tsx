@@ -40,7 +40,7 @@ export const Home = () => {
       {/* ── ACTION BAR: Upload / Generate / Cancel / Export ── */}
       <div
         className="w-full shrink-0"
-        style={{ flex: "5 0 0%", minHeight: "40px", maxHeight: "60px" }}
+        style={{ flex: "5 0 0%", minHeight: "40px", maxHeight: "52px" }}
       >
         <ActionsSection onFilesSelected={handleFilesSelected} />
       </div>
