@@ -111,7 +111,7 @@ export const ThumbnailItem = memo(({
                 e.stopPropagation();
                 onOpenCustomInstruction();
               }}
-              className="shadow-lg"
+              className="shadow-lg h-2 bg-amber-300"
               title="Add custom instruction"
             >
               <FileEdit className="h-4 w-4" />

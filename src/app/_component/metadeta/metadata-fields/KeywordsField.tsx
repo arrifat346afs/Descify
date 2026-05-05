@@ -75,7 +75,7 @@ const KeywordsField = memo(function KeywordsField() {
       />
 
       <ScrollArea className="h-[15vh] border rounded-md p-0">
-        <div className="flex flex-wrap gap-2 min-h-20 p-2">
+        <div className="flex flex-wrap gap-2 min-h-20 p-3">
           {keywordArray.length === 0 ? (
             <span className="text-sm text-gray-400 italic">
               No keywords yet
@@ -85,7 +85,7 @@ const KeywordsField = memo(function KeywordsField() {
               <Badge
                 key={index}
                 variant="secondary"
-                className="h-6 text-s flex items-center gap-2 cursor-pointer rounded-sm select-none 2xl:text-sm hover:border-accent-foreground border-2"
+                className="h-6 text-s flex items-center gap-2 cursor-pointer rounded-sm select-none 2xl:text-sm hover:border-accent-foreground border"
               >
                 {keyword}
                 <button
