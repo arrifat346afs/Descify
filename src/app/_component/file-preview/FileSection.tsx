@@ -20,7 +20,7 @@ export default function FileSection({ file }: FileSectionProps) {
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const isImage = file?.type.startsWith("image/") ?? false;
   const isVideo = file?.type.startsWith("video/") ?? false;
-  
+
   const objectUrlRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -65,13 +65,17 @@ export default function FileSection({ file }: FileSectionProps) {
         if (signal?.aborted) return;
 
         if (previewUrl) {
-          upsertPreview({ file, thumbnailUrl: lowResUrl || '', previewUrl });
+          upsertPreview({ file, thumbnailUrl: lowResUrl || "", previewUrl });
           setHighResUrl(previewUrl);
           setIsHighResLoaded(true);
         }
       } catch (error) {
-        if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Aborted')) return;
-        console.error('Failed to generate preview:', error);
+        if (
+          error instanceof Error &&
+          (error.name === "AbortError" || error.message === "Aborted")
+        )
+          return;
+        console.error("Failed to generate preview:", error);
         // Keep showing low-res if available
         setIsHighResLoaded(true);
       }
@@ -105,14 +109,14 @@ export default function FileSection({ file }: FileSectionProps) {
   const showLowRes = lowResUrl && !isHighResLoaded;
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-4 relative">
+    <div className="w-full h-full relative overflow-hidden p-5">
       {(isImage || isVideo) && (
-        <div className="relative w-full h-full flex items-center justify-center">
+        <div className="relative w-full h-full">
           {showLowRes && (
             <img
               src={lowResUrl}
               alt={file.name}
-              className="absolute max-w-full max-h-full object-contain blur-sm opacity-80"
+              className="absolute inset-0 w-full h-full object-contain blur-sm opacity-80"
             />
           )}
 
@@ -120,7 +124,7 @@ export default function FileSection({ file }: FileSectionProps) {
             <img
               src={highResUrl || lowResUrl || undefined}
               alt={file.name}
-              className="max-w-full max-h-full object-contain"
+              className="w-full h-full object-contain"
             />
           )}
 
