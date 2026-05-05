@@ -23,22 +23,22 @@ export const Home = () => {
 
 
   return (
-<div className="min-h-screen flex flex-col">
+<div className="">
   <Separator />
 
   {/* Main content */}
-  <div className="flex flex-1 min-h-0">
+  <div className="bg-red-700">
     <Separator orientation="vertical" />
 
     {/* Left (preview) */}
-    <div className="flex-2 min-w-0">
+    <div className="">
       <FileSection file={selectedFile} />
     </div>
 
     <Separator orientation="vertical" />
 
     {/* Right (metadata) */}
-    <div className="flex-1 min-w-[280px] max-w-[500px]">
+    <div className="">
       <MetadataSection />
     </div>
   </div>
@@ -46,10 +46,10 @@ export const Home = () => {
   <Separator />
 
   {/* Bottom section */}
-  <div className="flex flex-col shrink-0">
+  <div className="">
     <ActionsSection onFilesSelected={handleFilesSelected} />
     <Separator />
-    <div className="w-full overflow-x-auto">
+    <div className="">
       <ThumbnailSection onSelectFile={setSelectedFile} />
     </div>
     <ProgressSection />
