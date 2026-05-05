@@ -23,7 +23,7 @@ export const Home = () => {
 
 
   return (
-<div className="">
+<div className="flex ">
   <Separator />
 
   {/* Main content */}
@@ -46,7 +46,7 @@ export const Home = () => {
   <Separator />
 
   {/* Bottom section */}
-  <div className="">
+  <div className="bg-blue-700">
     <ActionsSection onFilesSelected={handleFilesSelected} />
     <Separator />
     <div className="">
