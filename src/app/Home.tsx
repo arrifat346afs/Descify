@@ -33,7 +33,7 @@ export const Home = () => {
 
           {/* Right (metadata) */}
          
-          <div className="">
+          <div className="h-full shrink-0">
             <MetadataSection />
           </div>
         </div>
