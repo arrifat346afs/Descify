@@ -18,10 +18,10 @@ export const Home = () => {
   return (
     <div>
       <Separator />
-      <div className="flex flex-col ">
+      <div className="w-screen h-screen flex flex-col overflow-hidden select-none">
         {/* Main content */}
-        <div className="flex ">
-          <Separator orientation="vertical" />
+        <div className="flex" style={{ flex: "71 1 0%" }}>
+          
 
           {/* Left (preview) */}
           <div className="flex">
@@ -30,7 +30,7 @@ export const Home = () => {
 
 
           {/* Right (metadata) */}
-          <Separator orientation="vertical" />
+         
           <div className="">
             <MetadataSection />
           </div>
