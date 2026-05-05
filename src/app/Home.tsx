@@ -30,8 +30,8 @@ export const Home = () => {
 
 
           {/* Right (metadata) */}
+          <div className="col-start-3">
           <Separator orientation="vertical" />
-          <div className="">
             <MetadataSection />
           </div>
         </div>
