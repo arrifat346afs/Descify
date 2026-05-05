@@ -7,53 +7,47 @@ import ThumbnailSection from "./_component/thumbnail/ThumbnailSection";
 import { useSettings } from "./contexts/SettingsContext";
 import { Separator } from "@/components/ui/separator";
 
-
-
 // import LeftTabs from "./_component/TabGroup/LeftTabs";
 
 export const Home = () => {
-  const {
-    selectedFile,
-    setSelectedFile,
-    setFiles,
-  } = useSettings();
+  const { selectedFile, setSelectedFile, setFiles } = useSettings();
   const handleFilesSelected = (files: File[]) => {
     setFiles(files);
   };
 
-
   return (
-<div className="flex ">
-  <Separator />
+    <div>
+      <Separator />
+      <div className="flex flex-col ">
+        {/* Main content */}
+        <div className="bg-red-700">
+          <Separator orientation="vertical" />
 
-  {/* Main content */}
-  <div className="bg-red-700">
-    <Separator orientation="vertical" />
+          {/* Left (preview) */}
+          <div className="">
+            <FileSection file={selectedFile} />
+          </div>
 
-    {/* Left (preview) */}
-    <div className="">
-      <FileSection file={selectedFile} />
+          <Separator orientation="vertical" />
+
+          {/* Right (metadata) */}
+          <div className="">
+            <MetadataSection />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Bottom section */}
+        <div className="bg-blue-700">
+          <ActionsSection onFilesSelected={handleFilesSelected} />
+          <Separator />
+          <div className="">
+            <ThumbnailSection onSelectFile={setSelectedFile} />
+          </div>
+          <ProgressSection />
+        </div>
+      </div>
     </div>
-
-    <Separator orientation="vertical" />
-
-    {/* Right (metadata) */}
-    <div className="">
-      <MetadataSection />
-    </div>
-  </div>
-
-  <Separator />
-
-  {/* Bottom section */}
-  <div className="bg-blue-700">
-    <ActionsSection onFilesSelected={handleFilesSelected} />
-    <Separator />
-    <div className="">
-      <ThumbnailSection onSelectFile={setSelectedFile} />
-    </div>
-    <ProgressSection />
-  </div>
-</div>
   );
 };
