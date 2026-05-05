@@ -16,43 +16,57 @@ export const Home = () => {
   };
 
   return (
-    <div>
-      <Separator />
-      <div className="w-screen h-screen flex flex-col overflow-hidden select-none">
-        {/* Main content */}
-        <div className="flex" style={{ flex: "62 1 0%" }}>
-          {/* Left (preview) */}
-          <div className="h-full" style={{ flex: "66 1 0%" }}>
-            <FileSection file={selectedFile} />
-          </div>
-
-          {/* Right (metadata) */}
-
-          <div className="h-full" style={{ flex: "34 1 0%" }}>
-            <MetadataSection />
-          </div>
+        // ✅ No outer wrapper — this IS the root. h-screen fills the window.
+    <div className="w-screen h-screen flex flex-col overflow-hidden select-none">
+ 
+      {/* ── TOP SECTION: Preview (left) + Metadata (right) ── ~75% of height */}
+      <div className="flex min-h-0" style={{ flex: "75 1 0%" }}>
+ 
+        {/* Left: file preview — 66% of width */}
+        <div className="h-full overflow-hidden" style={{ flex: "66 1 0%" }}>
+          <FileSection file={selectedFile} />
         </div>
-
-        <Separator />
-        <div
-          className="w-full shrink-0 border-t border-b"
-          style={{
-            flex: "3 0 0%", // ~3% of viewport height
-            minHeight: "20px", // never disappears on tiny screens
-            maxHeight: "48px", // never gets too tall on 4K
-          }}
-        >
-          <ActionsSection onFilesSelected={handleFilesSelected} />
+ 
+        {/* Vertical divider */}
+        <Separator orientation="vertical" />
+ 
+        {/* Right: metadata panel — 34% of width, scrollable */}
+        <div className="h-full overflow-y-auto" style={{ flex: "34 1 0%" }}>
+          <MetadataSection />
         </div>
-        {/* Bottom section */}
-        <div className="w-full" style={{ flex: "26 1 0%" }}>
-          <Separator />
-          <div className="">
-            <ThumbnailSection onSelectFile={setSelectedFile} />
-          </div>
-          <ProgressSection />
-        </div>
+ 
       </div>
+ 
+      {/* ── ACTION BAR SEPARATOR ── */}
+      <Separator />
+ 
+      {/* ── ACTION BAR: Upload / Generate / Cancel / Export ── ~5% of height */}
+      <div
+        className="w-full shrink-0 flex items-center"
+        style={{
+          flex: "5 0 0%",
+          minHeight: "36px",
+          maxHeight: "60px",
+        }}
+      >
+        <ActionsSection onFilesSelected={handleFilesSelected} />
+      </div>
+ 
+      {/* ── BOTTOM SECTION SEPARATOR ── */}
+      <Separator />
+ 
+      {/* ── BOTTOM SECTION: Thumbnails + Progress ── ~20% of height */}
+      <div
+        className="w-full flex flex-col"
+        style={{ flex: "20 1 0%" }}
+      >
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ThumbnailSection onSelectFile={setSelectedFile} />
+        </div>
+        <ProgressSection />
+      </div>
+ 
     </div>
+
   );
 };
