@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useSettings } from "./app/contexts/SettingsContext";
 // import { ConsoleProvider } from "./components/ConsoleContext";
 import { TooltipProvider } from "./components/ui/tooltip";
+import { Separator } from "./components/ui/separator";
 
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <div className="h-[35px]">
             <Navbar />
           </div>
+          <Separator />
           <Home />
           <Toaster />
           
