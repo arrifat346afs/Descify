@@ -20,7 +20,7 @@ export const Home = () => {
       <Separator />
       <div className="w-screen h-screen flex flex-col overflow-hidden select-none">
         {/* Main content */}
-        <div className="flex" style={{ flex: "71 1 0%" }}>
+        <div className="flex" style={{ flex: "62 1 0%" }}>
           {/* Left (preview) */}
           <div className="h-full" style={{ flex: "66 1 0%" }}>
             <FileSection file={selectedFile} />
