@@ -20,17 +20,17 @@ export const Home = () => {
       <Separator />
       <div className="flex flex-col ">
         {/* Main content */}
-        <div className="grid grid-cols-3 grid-rows-1 gap-0  bg-red-700">
+        <div className="grid grid-cols-3 grid-rows-1 gap-0 ">
           <Separator orientation="vertical" />
 
           {/* Left (preview) */}
-          <div className="col-span-2">
+          <div className="col-span-2 bg-amber-500">
             <FileSection file={selectedFile} />
           </div>
 
 
           {/* Right (metadata) */}
-          <div className="col-start-3">
+          <div className="col-start-3 bg-blue-500">
           <Separator orientation="vertical" />
             <MetadataSection />
           </div>
