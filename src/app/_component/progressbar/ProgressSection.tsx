@@ -1,4 +1,4 @@
-import { Progress } from "@/components/ui/progress"
+// import { Progress } from "@/components/ui/progress"
 import { useSettings } from "@/app/contexts/SettingsContext"
 
 
@@ -21,7 +21,7 @@ export const ProgressSection = () => {
     <div className="w-full  flex flex-col gap-2 ">
       <div className="flex items-center gap-2">
         <div className="flex-1">
-          <Progress value={progressValue} key={`progress-${completedFiles}-${totalFiles}`} className="h-2" />
+          {/* <Progress value={progressValue} key={`progress-${completedFiles}-${totalFiles}`} className="h-2" /> */}
         </div>
         {totalFiles > 0 && (
           <span className="text-sm whitespace-nowrap font-medium pr-3">
