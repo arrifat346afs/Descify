@@ -18,25 +18,28 @@ export const Home = () => {
   return (
     <div>
       <Separator />
-      <div className="grid grid-cols-3 grid-rows-1 gap-0 ">
+      <div className="flex flex-col ">
         {/* Main content */}
-       
+        <div className="flex ">
+          <Separator orientation="vertical" />
+
           {/* Left (preview) */}
-          <div className="col-span-2">
+          <div className="">
             <FileSection file={selectedFile} />
           </div>
 
+
           {/* Right (metadata) */}
-          <div className="col-start-3">
-           
+          <Separator orientation="vertical" />
+          <div className="">
             <MetadataSection />
           </div>
+        </div>
 
-
+        <Separator />
 
         {/* Bottom section */}
-        <div className="col-span-3 row-start-2 ">
-          <Separator />
+        <div className="bg-blue-700">
           <ActionsSection onFilesSelected={handleFilesSelected} />
           <Separator />
           <div className="">
