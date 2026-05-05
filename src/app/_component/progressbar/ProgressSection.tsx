@@ -18,7 +18,7 @@ export const ProgressSection = () => {
 
   console.log('📊 Progress:', completedFiles, '/', totalFiles, '=', progressValue.toFixed(1) + '%');
   return (
-    <div className="w-full  flex flex-col gap-2 ">
+    <div className="w-full flex flex-col gap-2 bg-muted/5">
       <div className="flex items-center gap-2">
         <div className="flex-1">
           {/* <Progress value={progressValue} key={`progress-${completedFiles}-${totalFiles}`} className="h-2" /> */}
