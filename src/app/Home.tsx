@@ -33,7 +33,9 @@ export const Home = () => {
 
           {/* Right (metadata) */}
          
-          <div className="h-full shrink-0">
+          <div           className="h-full"
+          style={{ flex: "34 1 0%" }}
+>
             <MetadataSection />
           </div>
         </div>
