@@ -24,7 +24,7 @@ export const Home = () => {
           <Separator orientation="vertical" />
 
           {/* Left (preview) */}
-          <div className="">
+          <div className="flex">
             <FileSection file={selectedFile} />
           </div>
 
