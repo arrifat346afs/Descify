@@ -45,9 +45,7 @@ export const Home = () => {
           <ActionsSection onFilesSelected={handleFilesSelected} />
         </div>
         {/* Bottom section */}
-        <div         className="w-full"
-        style={{ flex: "26 1 0%"}}
->
+        <div className="w-full" style={{ flex: "26 1 0%" }}>
           <Separator />
           <div className="">
             <ThumbnailSection onSelectFile={setSelectedFile} />
