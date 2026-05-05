@@ -61,7 +61,7 @@ export const ThumbnailItem = memo(({
       onClick={onSelect}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`${borderClass} hover:border-2 hover:border-primary rounded-md overflow-hidden cursor-pointer transition-all duration-200 w-[180px] shrink-0 relative group 2xl:w-[300px]`}
+      className={`${borderClass} hover:border-2 hover:border-primary rounded-md overflow-hidden cursor-pointer transition-all duration-200 w-[180px] shrink-0 relative group 2xl:w-[400px]`}
     >
       <AspectRatio ratio={12 / 9}>
         {thumbnail ? (
@@ -111,7 +111,7 @@ export const ThumbnailItem = memo(({
                 e.stopPropagation();
                 onOpenCustomInstruction();
               }}
-              className="shadow-lg h-2 bg-amber-300"
+              className="shadow-lg bg-amber-300"
               title="Add custom instruction"
             >
               <FileEdit className="h-4 w-4" />
