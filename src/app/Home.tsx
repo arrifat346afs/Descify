@@ -24,7 +24,9 @@ export const Home = () => {
           
 
           {/* Left (preview) */}
-          <div className="flex">
+          <div className="h-full"
+          style={{ flex: "66 1 0%"}}
+>
             <FileSection file={selectedFile} />
           </div>
 
