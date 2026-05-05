@@ -21,30 +21,33 @@ export const Home = () => {
       <div className="w-screen h-screen flex flex-col overflow-hidden select-none">
         {/* Main content */}
         <div className="flex" style={{ flex: "71 1 0%" }}>
-          
-
           {/* Left (preview) */}
-          <div className="h-full"
-          style={{ flex: "66 1 0%"}}
->
+          <div className="h-full" style={{ flex: "66 1 0%" }}>
             <FileSection file={selectedFile} />
           </div>
 
-
           {/* Right (metadata) */}
-         
-          <div           className="h-full"
-          style={{ flex: "34 1 0%" }}
->
+
+          <div className="h-full" style={{ flex: "34 1 0%" }}>
             <MetadataSection />
           </div>
         </div>
 
         <Separator />
-
-        {/* Bottom section */}
-        <div className="bg-blue-700">
+        <div
+          className="w-full shrink-0 border-t border-b"
+          style={{
+            flex: "3 0 0%", // ~3% of viewport height
+            minHeight: "20px", // never disappears on tiny screens
+            maxHeight: "48px", // never gets too tall on 4K
+          }}
+        >
           <ActionsSection onFilesSelected={handleFilesSelected} />
+        </div>
+        {/* Bottom section */}
+        <div         className="w-full"
+        style={{ flex: "26 1 0%"}}
+>
           <Separator />
           <div className="">
             <ThumbnailSection onSelectFile={setSelectedFile} />
