@@ -109,7 +109,7 @@ export default function FileSection({ file }: FileSectionProps) {
   const showLowRes = lowResUrl && !isHighResLoaded;
 
   return (
-    <div className="w-full h-full relative overflow-hidden p-5">
+    <div className="w-full h-full relative overflow-hidden p-15">
       {(isImage || isVideo) && (
         <div className="relative w-full h-full">
           {showLowRes && (
