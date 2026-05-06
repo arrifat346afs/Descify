@@ -176,3 +176,66 @@ jobs:
           draft: true
           files: |
             ${{ steps.get-package.outputs.name }}-bin/${{ steps.get-package.outputs.name }}-bin-${{ steps.get-package.outputs.version }}-1-${{ env.ARCH }}.pkg.tar.zst
+
+      - name: install flatpak and flatpak-builder (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: setup flathub repo (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
+
+      - name: create flatpak build directory (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        env:
+          RELEASE_PATH: ./src-tauri/target/release/bundle/
+        run: |
+          mkdir -p flatpak-build
+
+          # Copy binary (find the actual binary)
+          BINARY=$(find ${{ env.RELEASE_PATH }} -type f -name "descify" ! -name "*.app" ! -name "*.deb" | head -1)
+          cp "$BINARY" flatpak-build/descify
+
+          # Copy icon
+          cp src-tauri/icons/icon.png flatpak-build/icon.png
+
+          # Create desktop entry
+          cat <<EOF > flatpak-build/com.descify.app.desktop
+[Desktop Entry]
+Name=Descify
+Comment=AI-powered image metadata editor
+Exec=descify
+Icon=com.descify.app
+Terminal=false
+Type=Application
+Categories=Graphics;Utility;
+EOF
+
+          # Copy Flatpak manifest
+          cp .github/workflows/com.yourapp.App.yml flatpak-build/com.descify.app.yml
+
+          ls -la flatpak-build/
+
+      - name: build flatpak (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        working-directory: flatpak-build
+        run: |
+          flatpak-builder --force-clean --user --install-deps-from=flathub build-dir com.descify.app.yml
+
+      - name: create flatpak bundle (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          flatpak build-bundle ~/.local/share/flatpak/appstream com.descify.app-${{ steps.get-package.outputs.version }}.flatpak --repo=flatpak-build/build-dir com.descify.app
+
+      - name: upload flatpak release (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: app-v${{ steps.get-package.outputs.version }}
+          draft: true
+          files: |
+            com.descify.app-*.flatpak

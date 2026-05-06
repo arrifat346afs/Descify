@@ -1,0 +1,34 @@
+app-id: com.descify.app
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+
+command: descify
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --share=network
+  - --filesystem=home
+  - --filesystem=xdg-download
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - name: descify
+    buildsystem: simple
+
+    build-commands:
+      - mkdir -p /app/bin /app/share/applications /app/share/icons/hicolor/128x128/apps
+      - install -Dm755 descify /app/bin/descify
+      - install -Dm644 com.descify.app.desktop /app/share/applications/com.descify.app.desktop
+      - install -Dm644 icon.png /app/share/icons/hicolor/128x128/apps/com.descify.app.png
+
+    sources:
+      - type: file
+        path: descify
+      - type: file
+        path: com.descify.app.desktop
+      - type: file
+        path: icon.png

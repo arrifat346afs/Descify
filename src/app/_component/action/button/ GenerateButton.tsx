@@ -304,7 +304,7 @@ const GenerateButtonComponent = () => {
 
     const model = api.selectedModel || undefined;
     const provider = api.selectedProvider || undefined;
-    const apiKey = provider ? api.apiKeys[provider] : undefined;
+    const apiKey = provider ? api.apiKeys[provider]! : undefined;
     const useLocalModel = api.useLocalModel;
     const localModelName = api.localModelName || undefined;
 
@@ -339,9 +339,9 @@ const GenerateButtonComponent = () => {
 
     // Process items based on selected mode
     if (processingMode === 'parallel') {
-      await processItemsParallel(items, parallelWorkers, provider, model, apiKey, useLocalModel, localModelName);
+      await processItemsParallel(items, parallelWorkers, provider, model, apiKey!, useLocalModel, localModelName);
     } else {
-      await processItemsSequential(items, provider, model, apiKey, useLocalModel, localModelName);
+      await processItemsSequential(items, provider, model, apiKey!, useLocalModel, localModelName);
     }
 
     const wasCancelled = generationProgress.cancelRequested;
