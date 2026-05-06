@@ -204,17 +204,45 @@ jobs:
 
           # Create desktop entry
           cat <<EOF > flatpak-build/com.descify.app.desktop
-[Desktop Entry]
-Name=Descify
-Comment=AI-powered image metadata editor
-Exec=descify
-Icon=com.descify.app
-Terminal=false
-Type=Application
-Categories=Graphics;Utility;
-EOF
+          [Desktop Entry]
+          Name=Descify
+          Comment=AI-powered image metadata editor
+          Exec=descify
+          Icon=com.descify.app
+          Terminal=false
+          Type=Application
+          Categories=Graphics;Utility;
+          EOF
 
           ls -la flatpak-build/
+
+      - name: create flatpak manifest (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          cat <<EOF > flatpak-build/com.descify.app.yml
+app-id: com.descify.app
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+
+command: descify
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=x11
+
+modules:
+  - name: descify
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 descify /app/bin/descify
+      - install -Dm644 icon.png /app/share/icons/hicolor/128x128/apps/com.descify.app.png
+      - install -Dm644 com.descify.app.desktop /app/share/applications/com.descify.app.desktop
+    sources:
+      - type: dir
+        path: .
+EOF
 
       - name: build flatpak (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
