@@ -189,14 +189,11 @@ jobs:
 
       - name: create flatpak build directory (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
-        env:
-          RELEASE_PATH: ./src-tauri/target/release/bundle/
         run: |
           mkdir -p flatpak-build
 
-          # Copy binary (find the actual binary)
-          BINARY=$(find ${{ env.RELEASE_PATH }} -type f -name "descify" ! -name "*.app" ! -name "*.deb" | head -1)
-          cp "$BINARY" flatpak-build/descify
+          # Copy binary directly from release folder
+          cp ./src-tauri/target/release/Descify flatpak-build/descify
 
           # Copy icon
           cp src-tauri/icons/icon.png flatpak-build/icon.png
