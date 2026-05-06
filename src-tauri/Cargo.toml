@@ -1,9 +1,9 @@
 [package]
 name = "Descify"
-version = "1.2.0"
+version = "3.0.0"
 description = "AI powered image metadata manager"
 authors = ["arrifat346afs"]
-edition = "2021"
+edition = "2026"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
