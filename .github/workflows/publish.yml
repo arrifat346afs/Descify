@@ -219,7 +219,7 @@ jobs:
       - name: create flatpak manifest (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          cat <<EOF > flatpak-build/com.descify.app.yml
+          cat > flatpak-build/com.descify.app.yml <<'EOF'
 app-id: com.descify.app
 runtime: org.freedesktop.Platform
 runtime-version: '23.08'
