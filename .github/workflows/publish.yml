@@ -214,9 +214,6 @@ Type=Application
 Categories=Graphics;Utility;
 EOF
 
-          # Copy Flatpak manifest
-          cp .github/workflows/com.yourapp.App.yml flatpak-build/com.descify.app.yml
-
           ls -la flatpak-build/
 
       - name: build flatpak (ubuntu only)
