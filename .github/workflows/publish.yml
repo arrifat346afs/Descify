@@ -29,10 +29,9 @@ jobs:
 
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
-        # 2. UPDATED: Added libxdo-dev (often needed for automation tools)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm libxdo-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm libxdo-dev ffmpeg
 
       - name: setup node
         uses: actions/setup-node@v4
