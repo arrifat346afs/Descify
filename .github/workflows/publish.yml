@@ -211,3 +211,72 @@ jobs:
           EOF
 
           ls -la flatpak-build/
+
+      - name: create flatpak manifest (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          cat <<'FLATPAKEOF' > flatpak-build/com.descify.app.json
+          {
+            "app-id": "com.descify.app",
+            "runtime": "org.freedesktop.Platform",
+            "runtime-version": "23.08",
+            "sdk": "org.freedesktop.Sdk",
+            "command": "descify",
+            "finish-args": [
+              "--share=ipc",
+              "--socket=x11",
+              "--socket=wayland",
+              "--device=dri",
+              "--filesystem=home"
+            ],
+            "modules": [
+              {
+                "name": "descify",
+                "buildsystem": "simple",
+                "build-commands": [
+                  "install -Dm755 descify /app/bin/descify",
+                  "install -Dm644 icon.png /app/share/icons/hicolor/256x256/apps/com.descify.app.png",
+                  "install -Dm644 com.descify.app.desktop /app/share/applications/com.descify.app.desktop"
+                ],
+                "sources": [
+                  {
+                    "type": "file",
+                    "path": "flatpak-build/descify",
+                    "dest-filename": "descify"
+                  },
+                  {
+                    "type": "file",
+                    "path": "flatpak-build/icon.png",
+                    "dest-filename": "icon.png"
+                  },
+                  {
+                    "type": "file",
+                    "path": "flatpak-build/com.descify.app.desktop",
+                    "dest-filename": "com.descify.app.desktop"
+                  }
+                ]
+              }
+            ]
+          }
+          FLATPAKEOF
+          cat flatpak-build/com.descify.app.json
+
+      - name: build flatpak (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          flatpak-builder --user --disable-rofiles-fuse --force-clean flatpak-build-dir flatpak-build/com.descify.app.json
+
+      - name: create flatpak bundle (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          flatpak build-bundle flatpak-build-dir descify-${{ steps.get-package.outputs.version }}.flatpak com.descify.app
+
+      - name: upload flatpak release (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: app-v${{ steps.get-package.outputs.version }}
+          draft: true
+          files: |
+            descify-${{ steps.get-package.outputs.version }}.flatpak
