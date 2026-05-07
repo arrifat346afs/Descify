@@ -264,24 +264,15 @@ jobs:
       - name: install flatpak sdk (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          for i in 1 2 3; do
-            echo "Attempt $i: Adding flathub repo..."
-            flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo && break
-            sleep 5
-          done
-          echo "Installing SDK and Platform (this may take a few minutes)..."
-          for i in 1 2 3; do
-            flatpak install -y flathub org.freedesktop.Sdk//23.08 org.freedesktop.Platform//23.08 && break
-            echo "Retry $i..."
-            sleep 10
-          done
-          echo "Listing installed:"
-          flatpak list
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
+          flatpak install -y flathub org.freedesktop.Platform//23.08 || true
+          flatpak list --user
+          ls -la ~/.local/share/flatpak/ || true
 
       - name: build flatpak (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          flatpak-builder --user --disable-rofiles-fuse --force-clean flatpak-build-dir flatpak-build/com.descify.app.json
+          flatpak-builder --user --install-deps --disable-rofiles-fuse --force-clean flatpak-build-dir flatpak-build/com.descify.app.json
 
       - name: create flatpak bundle (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
