@@ -261,11 +261,18 @@ jobs:
           FLATPAKEOF
           cat flatpak-build/com.descify.app.json
 
+      - name: install flatpak sdk and runtime (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
+          flatpak install -y flathub org.freedesktop.Platform//23.08
+          flatpak list --user
+          echo "SDK installation complete"
+
       - name: build flatpak (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          flatpak install --user --noninteractive flathub org.freedesktop.Sdk//23.08 org.freedesktop.Platform//23.08
-          flatpak-builder --user --disable-rofiles-fuse --force-clean flatpak-build-dir flatpak-build/com.descify.app.json
+          flatpak-builder --user --install-deps --disable-rofiles-fuse --force-clean flatpak-build-dir flatpak-build/com.descify.app.json
 
       - name: create flatpak bundle (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
