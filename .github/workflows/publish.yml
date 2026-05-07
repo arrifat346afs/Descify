@@ -264,11 +264,18 @@ jobs:
       - name: install flatpak sdk (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          echo "Adding flathub repo..."
-          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
-          echo "Installing SDK and Platform..."
-          flatpak install -y flathub org.freedesktop.Sdk//23.08 org.freedesktop.Platform//23.08
-          echo "Installation complete, listing installed:"
+          for i in 1 2 3; do
+            echo "Attempt $i: Adding flathub repo..."
+            flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo && break
+            sleep 5
+          done
+          echo "Installing SDK and Platform (this may take a few minutes)..."
+          for i in 1 2 3; do
+            flatpak install -y flathub org.freedesktop.Sdk//23.08 org.freedesktop.Platform//23.08 && break
+            echo "Retry $i..."
+            sleep 10
+          done
+          echo "Listing installed:"
           flatpak list
 
       - name: build flatpak (ubuntu only)
