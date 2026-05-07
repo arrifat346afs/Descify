@@ -264,10 +264,10 @@ jobs:
       - name: install flatpak sdk (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
-          flatpak install -y flathub org.freedesktop.Platform//23.08 || true
-          flatpak list --user
-          ls -la ~/.local/share/flatpak/ || true
+          set -x
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y flathub org.freedesktop.Platform//23.08
+          flatpak list
 
       - name: build flatpak (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
