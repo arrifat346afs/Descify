@@ -109,14 +109,14 @@ export default function FileSection({ file }: FileSectionProps) {
   const showLowRes = lowResUrl && !isHighResLoaded;
 
   return (
-    <div className="w-full h-full relative overflow-hidden p-15 ">
+    <div className="w-full h-full relative overflow-hidden">
       {(isImage || isVideo) && (
-        <div className="relative w-full h-full border-2 rounded-2xl">
+        <div className="relative w-full h-full p-10 ">
           {showLowRes && (
             <img
               src={lowResUrl}
               alt={file.name}
-              className="absolute inset-0 w-full h-full object-contain blur-sm opacity-80"
+              className="absolute inset-0 w-full h-full object-contain blur-sm opacity-80 rounded-2xl"
             />
           )}
 
@@ -124,7 +124,7 @@ export default function FileSection({ file }: FileSectionProps) {
             <img
               src={highResUrl || lowResUrl || undefined}
               alt={file.name}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain rounded-2xl"
             />
           )}
 

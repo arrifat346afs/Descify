@@ -111,7 +111,7 @@ export const ThumbnailItem = memo(({
                 e.stopPropagation();
                 onOpenCustomInstruction();
               }}
-              className="shadow-lg"
+              className="shadow-lg 2xl:h-8 2xl:w-8 h-6 w-6"
               title="Add custom instruction"
             >
               <FileEdit className="h-4 w-4" />
@@ -125,20 +125,20 @@ export const ThumbnailItem = memo(({
                 e.stopPropagation();
                 onRegenerate();
               }}
-              className="shadow-lg"
+              className="shadow-lg 2xl:h-8 2xl:w-8 h-6 w-6"
               title="Regenerate metadata"
               disabled={isRegenerating}
             >
               {isRegenerating ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <RefreshCw className="h-4 w-4 animate-spin 2xl:h-8 2xl:w-8 " />
               ) : (
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4 2xl:h-8 2xl:w-8" />
               )}
             </Button>
           </div>
 
           {/* Delete button */}
-          <div className="absolute top-2 right-2 z-10">
+          <div className="absolute top-2 right-2 z-10 ">
             <Button
               variant="destructive"
               size="icon-sm"
@@ -146,7 +146,7 @@ export const ThumbnailItem = memo(({
                 e.stopPropagation();
                 onDelete();
               }}
-              className="shadow-lg"
+              className="shadow-lg 2xl:h-8 2xl:w-8 h-6 w-6"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
