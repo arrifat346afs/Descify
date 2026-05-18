@@ -17,7 +17,7 @@ export const useVirtualization = ({ files, selectedFile }: UseVirtualizationOpti
     const containerWidth = container.clientWidth;
 
     const itemWidth = VIRTUALIZATION_CONFIG.ITEM_WIDTH;
-    const buffer = VIRTUALIZATION_CONFIG.BUFFER_SIZE;
+    const buffer = VIRTUALIZATION_CONFIG.VISIBLE_BUFFER;
 
     const startIndex = Math.max(0, Math.floor(scrollLeft / itemWidth) - buffer);
     const visibleCount = Math.ceil(containerWidth / itemWidth);
@@ -44,7 +44,7 @@ export const useVirtualization = ({ files, selectedFile }: UseVirtualizationOpti
     if (selectedFile && files) {
       const selectedIndex = files.indexOf(selectedFile);
       if (selectedIndex !== -1 && (selectedIndex < visibleRange.start || selectedIndex > visibleRange.end)) {
-        const buffer = VIRTUALIZATION_CONFIG.BUFFER_SIZE;
+        const buffer = VIRTUALIZATION_CONFIG.VISIBLE_BUFFER;
         setVisibleRange({
           start: Math.max(0, selectedIndex - buffer),
           end: Math.min(files.length - 1, selectedIndex + buffer * 2)
@@ -58,7 +58,7 @@ export const useVirtualization = ({ files, selectedFile }: UseVirtualizationOpti
     if (!files || files.length === 0) return [];
 
     // For small lists, render all
-    if (files.length <= 200) {
+    if (files.length <= VIRTUALIZATION_CONFIG.VIRTUALIZATION_THRESHOLD) {
       return files.map((file, index) => ({ file, index }));
     }
 
@@ -78,7 +78,7 @@ export const useVirtualization = ({ files, selectedFile }: UseVirtualizationOpti
 
   // Calculate left offset for virtualized items
   const leftOffset = useMemo(() => {
-    if (!files || files.length <= 200) return 0;
+    if (!files || files.length <= VIRTUALIZATION_CONFIG.VIRTUALIZATION_THRESHOLD) return 0;
     return visibleRange.start * VIRTUALIZATION_CONFIG.ITEM_WIDTH;
   }, [files, visibleRange.start]);
 
@@ -88,6 +88,6 @@ export const useVirtualization = ({ files, selectedFile }: UseVirtualizationOpti
     leftOffset,
     onScroll,
     updateVisibleRangeForSelection,
-    shouldVirtualize: files?.length > 200,
+    shouldVirtualize: files?.length > VIRTUALIZATION_CONFIG.VIRTUALIZATION_THRESHOLD,
   };
 };

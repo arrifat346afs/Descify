@@ -43,9 +43,13 @@ export const fileFromPath = async (path: string): Promise<File> => {
 // Configuration for virtualization
 export const VIRTUALIZATION_CONFIG = {
   // Show this many items on each side of visible area
-  BUFFER_SIZE: 10,
+  BUFFER_SIZE: 20,
   // Thumbnail width including margins (approx)
   ITEM_WIDTH: 200,
   // Throttle scroll events (ms)
   SCROLL_THROTTLE: 100,
+  // Start virtualizing when items exceed this count
+  VIRTUALIZATION_THRESHOLD: 500,
+  // Visible buffer for large lists
+  VISIBLE_BUFFER: 100,
 };

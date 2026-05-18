@@ -16,7 +16,7 @@ const CancelButtonComponent = () => {
     <Button
       onClick={handleCancel}
       variant="ghost"
-      className="gap-2 group h-10 2xl:w-30 2xl:h-13 2xl:text-sm"
+      className="gap-2 group h-full max-h-10 min-h-8 2xl:w-30 2xl:max-h-13 2xl:text-sm"
       disabled={!isGenerating}
     >
       <X className="h-4 w-4 transition-transform group-hover:scale-110 group-hover:rotate-90 2xl:text-sm" />

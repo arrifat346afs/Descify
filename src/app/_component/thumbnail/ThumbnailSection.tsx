@@ -3,7 +3,7 @@ import { useSettings } from "@/app/contexts/SettingsContext";
 import { useAppSelector } from "@/store/hooks";
 import { MdOutlineImageNotSupported } from "react-icons/md";
 import { Upload } from "lucide-react";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ThumbnailScrollContainer } from "./ThumbnailScrollContainer";
 import { CustomInstructionDialog } from "./CustomInstructionDialog";
 import { generateMetadata } from "@/app/lib/ai";
 import { generateImageThumbnail } from "@/app/lib/thumbnailGenerator";
@@ -289,17 +289,19 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       )}
 
       {files && files.length > 0 && (
-          <ScrollArea className="p-2 w-full overflow-hidden">
+          <ThumbnailScrollContainer
+            className="p-2 w-full"
+            scrollRef={scrollContainerRef}
+            onScroll={shouldVirtualize ? onScroll : undefined}
+            style={{
+              width: shouldVirtualize ? `${totalWidth}px` : undefined,
+              paddingLeft: shouldVirtualize ? `${leftOffset}px` : undefined,
+            }}
+          >
             <div
-              ref={scrollContainerRef}
-              onScroll={shouldVirtualize ? onScroll : undefined}
               className={`flex space-x-4 px-2 py-2 pb-4 relative ${
                 isDragActive ? ' border-2 border-dashed border-primary bg-primary/5 rounded-lg' : ''
               }`}
-              style={{
-                width: shouldVirtualize ? `${totalWidth}px` : 'max-content',
-                paddingLeft: shouldVirtualize ? `${leftOffset}px` : undefined,
-              }}
             >
               {filesToRender.map(({ file, index }) => {
                 const thumbnail = thumbnailMap.get(file.name);
@@ -344,8 +346,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                 </div>
               )}
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </ThumbnailScrollContainer>
       )}
 
       {/* Progress indicator for large batches */}

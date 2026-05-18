@@ -130,11 +130,11 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
   };
 
   return (
-    <div className="flex flex-col items-center ">
+    <div className="flex flex-col items-center justify-center h-full">
       <Button
         onClick={handleClick}
         variant={"ghost"}
-        className="gap-2 group h-10 2xl:w-30 2xl:h-13 2xl:text-sm"
+        className="gap-2 group h-full max-h-10 min-h-8 2xl:w-30 2xl:max-h-13 2xl:text-sm"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >

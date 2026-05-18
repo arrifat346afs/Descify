@@ -366,7 +366,7 @@ const GenerateButtonComponent = () => {
       onClick={handleGenerate}
       variant={"ghost"}
       disabled={thumbnails.isGenerating || isGenerating}
-      className="gap-2 group h-10 2xl:w-30 2xl:h-13 2xl:text-sm"
+      className="gap-2 group h-full max-h-10 min-h-8 2xl:w-30 2xl:max-h-13 2xl:text-sm"
     >
       <Sparkle
         className={`h-4 w-4 transition-all ${
