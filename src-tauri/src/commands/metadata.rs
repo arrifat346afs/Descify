@@ -1,7 +1,8 @@
 // Tauri command handlers for metadata operations
 use crate::models::metadata::{EmbedMetadataRequest, EmbedMetadataResult, ExifData};
 use crate::services::exiftool::{
-    build_exiftool_command, execute_exiftool, get_exiftool_path, has_metadata, read_exif_metadata, validate_file,
+    build_exiftool_command, execute_exiftool, get_exiftool_path, has_metadata, read_exif_metadata,
+    validate_file,
 };
 
 /// Embed metadata into image/video files using exiftool

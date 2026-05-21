@@ -24,7 +24,9 @@ pub async fn get_native_thumbnail_command(file_path: String) -> ThumbnailResult 
 }
 
 #[command]
-pub async fn get_native_thumbnails_batch(file_paths: Vec<String>) -> HashMap<String, ThumbnailResult> {
+pub async fn get_native_thumbnails_batch(
+    file_paths: Vec<String>,
+) -> HashMap<String, ThumbnailResult> {
     let paths = file_paths.clone();
     tokio::task::spawn_blocking(move || {
         paths
@@ -91,7 +93,10 @@ pub async fn generate_preview_command(file_path: String, size: Option<u32>) -> P
 }
 
 #[command]
-pub async fn generate_video_thumbnail_command(file_path: String, size: Option<u32>) -> ThumbnailResult {
+pub async fn generate_video_thumbnail_command(
+    file_path: String,
+    size: Option<u32>,
+) -> ThumbnailResult {
     let target_size = size.unwrap_or(DEFAULT_THUMBNAIL_SIZE);
     let path = file_path.clone();
     tokio::task::spawn_blocking(move || generate_video_thumbnail(&path, target_size))

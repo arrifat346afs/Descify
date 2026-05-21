@@ -1,3 +1,5 @@
+import { fetch } from "@tauri-apps/plugin-http";
+
 /**
  * Model Fetcher Module
  * Handles dynamic fetching of available models from different AI providers

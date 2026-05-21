@@ -4,6 +4,7 @@
  * Removes dependency on Vercel AI SDK for more control over payload and tokens
  */
 import { toast } from "sonner";
+import { fetch } from "@tauri-apps/plugin-http";
 
 export type MessageContent = {
   type: 'text' | 'image_url'; // OpenAI/OpenRouter standard

@@ -155,7 +155,11 @@ fn get_cached_thumbnail_path(cache_dir: &PathBuf, cache_key: &str) -> Option<Pat
 /// Writes `jpeg_data` to the cache directory and returns the resulting path on
 /// success, or `None` if the write failed.  Callers fall back to returning
 /// base64-encoded data when this function returns `None`.
-fn save_thumbnail_to_cache(cache_dir: &PathBuf, cache_key: &str, jpeg_data: &[u8]) -> Option<PathBuf> {
+fn save_thumbnail_to_cache(
+    cache_dir: &PathBuf,
+    cache_key: &str,
+    jpeg_data: &[u8],
+) -> Option<PathBuf> {
     if !cache_dir.exists() {
         fs::create_dir_all(cache_dir).ok()?;
     }
@@ -241,10 +245,14 @@ pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult 
 
     // Prefer returning a path so the image never has to cross the IPC bridge as
     // base64.  Fall back to base64 only if the disk write failed.
-    let (cache_path, thumbnail_base64) = match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
-        Some(p) => (Some(p.to_string_lossy().into_owned()), None),
-        None => (None, Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data))),
-    };
+    let (cache_path, thumbnail_base64) =
+        match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
+            Some(p) => (Some(p.to_string_lossy().into_owned()), None),
+            None => (
+                None,
+                Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data)),
+            ),
+        };
 
     ThumbnailResult {
         thumbnail_base64,
@@ -323,10 +331,14 @@ pub fn generate_preview(file_path: &str, target_size: u32) -> PreviewResult {
     let (width, height) = resized.dimensions();
     let jpeg_data = encode_jpeg_fast(&resized);
 
-    let (cache_path, preview_base64) = match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
-        Some(p) => (Some(p.to_string_lossy().into_owned()), None),
-        None => (None, Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data))),
-    };
+    let (cache_path, preview_base64) =
+        match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
+            Some(p) => (Some(p.to_string_lossy().into_owned()), None),
+            None => (
+                None,
+                Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data)),
+            ),
+        };
 
     PreviewResult {
         preview_base64,
@@ -572,10 +584,14 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
         }
     };
 
-    let (cache_path, thumbnail_base64) = match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
-        Some(p) => (Some(p.to_string_lossy().into_owned()), None),
-        None => (None, Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data))),
-    };
+    let (cache_path, thumbnail_base64) =
+        match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
+            Some(p) => (Some(p.to_string_lossy().into_owned()), None),
+            None => (
+                None,
+                Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data)),
+            ),
+        };
 
     ThumbnailResult {
         thumbnail_base64,
@@ -686,10 +702,14 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
         }
     };
 
-    let (cache_path, preview_base64) = match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
-        Some(p) => (Some(p.to_string_lossy().into_owned()), None),
-        None => (None, Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data))),
-    };
+    let (cache_path, preview_base64) =
+        match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
+            Some(p) => (Some(p.to_string_lossy().into_owned()), None),
+            None => (
+                None,
+                Some(base64::engine::general_purpose::STANDARD.encode(&jpeg_data)),
+            ),
+        };
 
     PreviewResult {
         preview_base64,
