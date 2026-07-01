@@ -1,4 +1,3 @@
-// Web Worker for thumbnail generation
 // Handles resizing of large images off the main thread
 
 const MAX_THUMBNAIL_SIZE = 150;

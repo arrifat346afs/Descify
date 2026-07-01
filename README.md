@@ -1,107 +1,126 @@
-
-
 <div align="center">
   <a>
-    <img src="./img/desifytext.png" alt="Descify" width="200">
+    <img src="./img/desifytext.png" alt="Descify" width="250">
   </a>
+
+  <h1 align="center">Descify</h1>
+
+  <p align="center">
+    AI-powered batch metadata generator for images
+  </p>
+
+  <p align="center">
+    <img src="https://img.shields.io/badge/Tauri-2.x-FFC131?logo=tauri&logoColor=white" alt="Tauri">
+    <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" alt="React">
+    <img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
+    <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
+    <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform">
+  </p>
 </div>
 
+## Overview
 
+Descify is a cross-platform desktop application that **generates titles, keywords, and descriptions for images in batch** using AI models. Built with Tauri, React, and TypeScript, it streamlines metadata workflows for stock photographers, e-commerce catalogs, and content managers.
 
+![Screenshot](img/Screenshot%20from%202026-03-21%2023-12-28.png)
 
-# Descify - AI Title, Keyword & Description Generator
-
-Descify is a desktop application built with Tauri, React, and TypeScript, designed to help users manage and organize image metadata efficiently. It **generates metadata for images in batch process** using AI models.
-
-![Media Player Screenshot](img/Screenshot%20from%202026-03-21%2023-12-28.png)
-
-wabhoock test 
 ## Features
 
-*   **Batch Processing:** Generate metadata for multiple images at once.
-*   **Dual Processing System:** 
-    *   **Sequential Processing:** Process images one at a time - recommended for free/trial API keys to avoid rate limiting
-    *   **Parallel Processing:** Process multiple images simultaneously with configurable workers (1-5) - ideal for paid API keys with higher rate limits for faster processing
-*   **AI Integration:** Supports Gemini (free tier available) and OpenRouter (paid) AI models.
-*   **AI-Powered Tagging:** Integrates with AI models to automatically generate tags for images.
-*   **File Preview:** Provides a preview of the images.
-*   **Category Management:** Allows users to categorize images.
-*   **Export Functionality:** Enables users to export image metadata.
-*   **Embedding Metadata:** Embeds metadata into images Using ExifTool And It needed to have the ExifTool installed on your system.
-*   **Platform Support:** Supports Windows, macOS, and Linux.
-*   **API Key Management:** Securely store and manage your Gemini and OpenRouter API keys.
-*   **Processing Modes:**
-    *   **Sequential:** Process images one at a time (recommended for free/trial APIs to avoid rate limiting)
-    *   **Parallel:** Process multiple images simultaneously with configurable workers (1-5) for faster processing with paid APIs
-*   **Request Delay:** Configurable delay between AI requests (0-10 seconds) to prevent rate limiting - essential for free API keys
-*   **Prompt Templates:** Create and manage custom prompt templates for different use cases
-    *   **Preset Templates:** Built-in templates for Stock Photo, Product Catalog, and Social Media
-    *   **Custom Templates:** Create your own templates with variable placeholders
-    *   **Template Variables:** Use `${titleLimit}`, `${descriptionLimit}`, `${keywordLimit}`, `${fileName}`, `${currentDate}`
-    *   **Avoid Words:** Specify words to exclude from generated metadata
-    *   **Custom Instructions:** Add specific instructions for individual images
+### AI Integration
+- **Gemini** (free tier available) and **OpenRouter** (paid) support
+- Configurable AI prompt templates with variables (`${titleLimit}`, `${descriptionLimit}`, `${keywordLimit}`, `${fileName}`, `${currentDate}`)
+- Built-in preset templates for **Stock Photo**, **Product Catalog**, and **Social Media**
+- Create and save custom templates with custom instructions
+- **Avoid Words** list to exclude specific terms from generated metadata
 
-> [!WARNING]
-> OpenAI isn't supported because it's "ClosedAI" and I don't have access to it.
->
-> **For Gemini:** [Get API Key](https://aistudio.google.com/api-keys)
-> **For OpenRouter:** [Get API Key](https://openrouter.ai/api-keys)
-## Installation
+### Processing
+- **Batch processing** for multiple images at once
+- **Sequential mode** — process one by one to avoid rate limiting on free/trial API keys
+- **Parallel mode** — process up to 5 images simultaneously with paid API keys
+- Configurable **request delay** (0–10s) between AI requests
+- ExifTool integration for embedding metadata directly into image files
 
-1.  **Prerequisites:**
-    *   Node.js and npm (or yarn/pnpm)
-    *   Rust and Cargo (for building the Tauri backend)
-2.  **Clone the repository:**
+### Management
+- Secure API key storage (Gemini & OpenRouter)
+- Image preview with file browser
+- Category tagging and organization
+- Metadata export and embedding
 
-    ```bash
-    git clone https://github.com/arrifat346afs/Descify.git
-    cd Descify
-    ```
+## Getting Started
 
-3.  **Install dependencies:**
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v18+) and [Bun](https://bun.sh/)
+- [Rust](https://www.rust-lang.org/) and Cargo (for Tauri)
+- [ExifTool](https://exiftool.org/) (optional, for metadata embedding)
 
-    ```bash
-    bun install
-    ```
+### Installation
 
-4.  **Run the application:**
+```bash
+git clone https://github.com/arrifat346afs/Descify.git
+cd Descify
+bun install
+```
 
-    ```bash
-    bun run tauri dev
-    ```
+### Development
 
-    This command will build and run the application in development mode.  For production builds, use `bun run tauri build`.
+```bash
+bun run tauri dev
+```
+
+### Production Build
+
+```bash
+bun run tauri build
+```
 
 ## Usage
 
-1.  **Open the application.**
-2.  **Open Settings:** Click the "Settings" button to configure API keys and other settings.
-3.  **Import Images:** Use the "Upload" button to select images.
-4.  **View and Edit Metadata:** The application will display the image and its metadata. Edit the fields as needed.
-5.  **Generate Tags:** Use the "Generate" button to generate tags using AI.
-6.  **Save Metadata:** Click the "Save" button to save the changes.
-7.  **Export Metadata:** Use the "Export" button to export the metadata.
+1. **Configure API Keys** — Open Settings and add your Gemini or OpenRouter key
+2. **Import Images** — Use the Upload button to select one or more images
+3. **Select Mode** — Choose Sequential (free APIs) or Parallel (paid APIs)
+4. **Generate** — Click Generate to produce AI-powered metadata
+5. **Review & Save** — Edit results, save metadata, or export
 
-## Technologies Used
+## Tech Stack
 
-*   **Tauri:** For building the desktop application.
-*   **React:** For the user interface.
-*   **TypeScript:** For type-safe development.
-*   **Vite:** For bundling and development.
-*   **Rust:** For the Tauri backend.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues.
+| Layer | Technology |
+|-------|-----------|
+| Desktop Shell | [Tauri](https://tauri.app/) 2.x |
+| Frontend | [React](https://react.dev/) 18 + [TypeScript](https://www.typescriptlang.org/) 5.6 |
+| Bundler | [Vite](https://vitejs.dev/) |
+| Styling | [Tailwind CSS](https://tailwindcss.com/) 4 + [Radix UI](https://www.radix-ui.com/) |
+| AI SDK | [Vercel AI SDK](https://sdk.vercel.ai/) (Google & OpenRouter providers) |
+| State | [Redux Toolkit](https://redux-toolkit.js.org/) |
+| Backend (Rust) | Tauri commands for file I/O, ExifTool, and OS integration |
 
 ## Project Structure
 
-*   `src/`: Contains the React application source code.
-*   `src/app/`: Contains the application components.
-*   `src-tauri/`: Contains the Tauri backend code.
-*   `public/`: Contains static assets.
-*   `README.md`: This file, containing project documentation.
-*   `package.json`: Contains project dependencies and scripts.
-*   `vite.config.ts`: Vite configuration file.
+```
+Descify/
+├── src/                # React application source
+│   └── app/            # Application components
+├── src-tauri/          # Tauri Rust backend
+├── public/             # Static assets
+├── img/                # Logo & screenshots
+├── scripts/            # Utility scripts
+├── package.json
+└── vite.config.ts
+```
 
-</content>
+## API Keys
+
+> [!WARNING]
+> OpenAI is not supported. The project uses Gemini (free) and OpenRouter (paid).
+
+| Service | Get Key |
+|---------|---------|
+| Gemini | [Google AI Studio](https://aistudio.google.com/api-keys) |
+| OpenRouter | [OpenRouter](https://openrouter.ai/api-keys) |
+
+## Contributing
+
+Contributions, issues, and feature requests are welcome. Feel free to open a [pull request](https://github.com/arrifat346afs/Descify/pulls) or [issue](https://github.com/arrifat346afs/Descify/issues).
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.

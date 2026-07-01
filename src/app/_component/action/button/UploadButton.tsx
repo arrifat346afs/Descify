@@ -88,15 +88,17 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
       setFilePath(file, path);
       addFiles([file]);
       
-      readExifMetadata(path).then(exifData => {
-        if (exifData.title || exifData.description || exifData.keywords) {
-          generated.setMetadata(file, {
-            title: exifData.title || '',
-            description: exifData.description || '',
-            keywords: exifData.keywords || ''
-          });
-        }
-      }).catch(() => {});
+      if (file.type !== 'image/svg+xml') {
+        readExifMetadata(path).then(exifData => {
+          if (exifData.title || exifData.description || exifData.keywords) {
+            generated.setMetadata(file, {
+              title: exifData.title || '',
+              description: exifData.description || '',
+              keywords: exifData.keywords || ''
+            });
+          }
+        }).catch(() => {});
+      }
     };
 
     await Promise.all(

@@ -17,7 +17,7 @@ export type FileMetadata = {
   categories?: CategorySelection;
 };
 
-export type CategorySelection = {
+ export type CategorySelection = {
   adobeStock: string;
   shutterStock1: string;
   shutterStock2: string;

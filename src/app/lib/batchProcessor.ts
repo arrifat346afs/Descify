@@ -123,8 +123,8 @@ async function processSingleImage(
       return;
     }
     
-    // Step 3: Embed metadata using Tauri/ExifTool (if enabled)
-    if (config.embedEnabled) {
+    // Step 3: Embed metadata using Tauri/ExifTool (if enabled, skip SVG)
+    if (config.embedEnabled && file.type !== 'image/svg+xml') {
       console.log(`💾 Embedding metadata for ${file.name}...`);
       
       const embedResult = await invoke('embed_metadata', {
@@ -142,6 +142,8 @@ async function processSingleImage(
       } else {
         console.log(`✅ Metadata embedded for ${file.name}`);
       }
+    } else if (config.embedEnabled && file.type === 'image/svg+xml') {
+      console.log(`ℹ️ Skipping metadata embedding for SVG file: ${file.name} (use CSV export)`);
     }
     
     // Step 4: Apply delay before next request (with cancellation check)

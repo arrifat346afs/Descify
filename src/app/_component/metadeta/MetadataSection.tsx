@@ -120,6 +120,13 @@ export const MetadataSection = () => {
 
     setIsSaving(true);
     try {
+      if (selectedFile.type === 'image/svg+xml') {
+        console.log(`ℹ️ Skipping metadata embedding for SVG file: ${selectedFile.name}`);
+        toast.info('Metadata saved to memory — use CSV export for SVG files');
+        setIsSaving(false);
+        return;
+      }
+
       console.log(`💾 Saving metadata for ${selectedFile.name}...`);
 
       const embedRequest = {

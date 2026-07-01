@@ -79,6 +79,10 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     }, [addFiles, setHasAttemptedGeneration]),
     onFilePathStored: setFilePath,
     onExifDataFound: useCallback(async (file: File, path: string) => {
+      if (file.type === 'image/svg+xml') {
+        console.log(`ℹ️ Skipping EXIF read for SVG file: ${file.name}`);
+        return;
+      }
       try {
         console.log(`📸 Reading EXIF metadata for dropped file: ${file.name}`);
         const exifData = await readExifMetadata(path);
