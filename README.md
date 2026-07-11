@@ -58,19 +58,19 @@ Descify is a cross-platform desktop application that **generates titles, keyword
 ```bash
 git clone https://github.com/arrifat346afs/Descify.git
 cd Descify
-bun install
+pnpm install
 ```
 
 ### Development
 
 ```bash
-bun run tauri dev
+pnpm run tauri dev
 ```
 
 ### Production Build
 
 ```bash
-bun run tauri build
+pnpm run tauri build
 ```
 
 ## Usage
