@@ -22,7 +22,7 @@
 
 Descify is a cross-platform desktop application that **generates titles, keywords, and descriptions for images in batch** using AI models. Built with Tauri, React, and TypeScript, it streamlines metadata workflows for stock photographers, e-commerce catalogs, and content managers.
 
-![Screenshot](img/Screenshot%20from%202026-03-21%2023-12-28.png)
+![Screenshot](img/app.png)
 
 ## Features
 
