@@ -43,7 +43,6 @@ Descify is a cross-platform desktop application that **generates titles, keyword
 
 ### Management
 - Secure API key storage (Gemini & OpenRouter)
-- Image preview with file browser
 - Category tagging and organization
 - Metadata export and embedding
 
