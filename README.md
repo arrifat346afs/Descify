@@ -28,6 +28,7 @@ Descify is a cross-platform desktop application that **generates titles, keyword
 
 ### AI Integration
 - **Gemini** (free tier available) and **OpenRouter** (paid) support
+-Supports local AI models via LM Studio (optional).
 - Configurable AI prompt templates with variables (`${titleLimit}`, `${descriptionLimit}`, `${keywordLimit}`, `${fileName}`, `${currentDate}`)
 - Built-in preset templates for **Stock Photo**, **Product Catalog**, and **Social Media**
 - Create and save custom templates with custom instructions
