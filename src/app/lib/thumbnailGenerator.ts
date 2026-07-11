@@ -338,6 +338,8 @@ function generateImageFallback(file: File, maxSize: number, quality: number): Pr
           return;
         }
 
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
         const dataUrl = canvas.toDataURL('image/jpeg', quality);
 
