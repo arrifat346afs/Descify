@@ -1,4 +1,0 @@
-allowBuilds:
-  esbuild: true
-  png-img: true
-  wd: true
