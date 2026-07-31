@@ -2,14 +2,40 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSettings } from "@/app/contexts/SettingsContext";
-
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { open } from '@tauri-apps/plugin-dialog';
 const ExportSettings = () => {
   const { exportSettings } = useSettings();
+  const [selectedDirectory, setSelectedDirectory] = useState<string | undefined>(undefined);
 
   const handleExportToggle = (format: keyof typeof exportSettings, checked: boolean) => {
     exportSettings.setExportSettings({ [format]: checked });
   };
+  // Load saved export path on mount
+  useEffect(() => {
+    const savedPath = localStorage.getItem('exportPath');
+    if (savedPath) {
+      setSelectedDirectory(savedPath);
+    }
+  }, []);
+  function savePath(path: string) {
+    localStorage.setItem("exportPath", path);
+  }
+  const handleFileSelect = async () => {
+    // Implement file selection logic here
+    try {
+      console.log('File select clicked');
+      const selectedDir = await open({ directory: true, multiple: false });
+      console.log('Selected directory:', selectedDir);
+      setSelectedDirectory(selectedDir as string | undefined);
+      savePath(selectedDir as string);
+    } catch (error) {
+      console.error('Failed to open path:', error);
 
+    }
+  };
   const exportFormats = [
     {
       key: 'adobeStock' as const,
@@ -68,6 +94,24 @@ const ExportSettings = () => {
           <li>• Files are saved to your chosen export location</li>
           <li>• Format selection is preserved for future exports</li>
         </ul>
+        <div className="flex flex-col gap-2">
+          <h4 className="p-2">Select Output Directory</h4>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={selectedDirectory || ''}
+              readOnly
+              placeholder="No directory selected"
+            />
+            <Button
+              variant="outline"
+              className="w-30"
+              onClick={handleFileSelect}
+            >
+              Browse
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

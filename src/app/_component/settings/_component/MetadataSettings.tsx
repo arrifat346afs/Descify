@@ -2,23 +2,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useSettings } from '@/app/contexts/SettingsContext'
-import { open } from '@tauri-apps/plugin-dialog';
-import { useState, useEffect } from 'react';
 import { AvoidWordsTextarea } from './AvoidWordsTextarea';
 // import { readFile } from '@tauri-apps/plugin-fs';
 // import * as path from '@tauri-apps/api/path';
 
 const MetadataSettings = () => {
   const { metadataLimits, metadataOptions } = useSettings();
-  const [selectedDirectory, setSelectedDirectory] = useState<string | undefined>(undefined);
-
-  // Load saved export path on mount
-  useEffect(() => {
-    const savedPath = localStorage.getItem('exportPath');
-    if (savedPath) {
-      setSelectedDirectory(savedPath);
-    }
-  }, []);
 
   const handleReset = () => {
     metadataLimits.setLimits({
@@ -27,25 +16,10 @@ const MetadataSettings = () => {
       keywordLimit: 80,
     });
   };
-  function savePath(path: string) {
-  localStorage.setItem("exportPath", path);
-}
-  const handleFileSelect = async () => {
-    // Implement file selection logic here
-    try {
-      console.log('File select clicked');
-      const selectedDir = await open({ directory: true, multiple: false });
-      console.log('Selected directory:', selectedDir);
-      setSelectedDirectory(selectedDir as string | undefined);
-      savePath(selectedDir as string);
-    } catch (error) {
-      console.error('Failed to open path:', error);
-      
-    }
-  };
+
 
   return (
-     <div className="flex flex-col items-center gap-6 ">
+    <div className="flex flex-col items-center gap-6 ">
       {/* <h2 className="text-2xl font-bold text-gray-400">Metadata Settings</h2> */}
       <div className="w-full max-w-md flex flex-col gap-4">
         <div>
@@ -54,7 +28,6 @@ const MetadataSettings = () => {
             <span className="text-xs ">(characters)</span>
           </div>
           <Input
-           
             type="number"
             value={metadataLimits.titleLimit}
             onChange={(e) =>
@@ -66,7 +39,7 @@ const MetadataSettings = () => {
           <AvoidWordsTextarea
             label="Title Avoid Words"
             avoidWords={metadataOptions.titleAvoidWords}
-            onAvoidWordsChange={(words) => 
+            onAvoidWordsChange={(words) =>
               metadataOptions.setOptions({ titleAvoidWords: words })
             }
             placeholder="Enter words to avoid in titles (comma-separated)"
@@ -78,7 +51,6 @@ const MetadataSettings = () => {
             <span className="text-xs ">(characters)</span>
           </div>
           <Input
-           
             type="number"
             value={metadataLimits.descriptionLimit}
             onChange={(e) => metadataLimits.setLimits({ descriptionLimit: parseInt(e.target.value || '1') })}
@@ -88,7 +60,7 @@ const MetadataSettings = () => {
           <AvoidWordsTextarea
             label="Description Avoid Words"
             avoidWords={metadataOptions.descriptionAvoidWords}
-            onAvoidWordsChange={(words) => 
+            onAvoidWordsChange={(words) =>
               metadataOptions.setOptions({ descriptionAvoidWords: words })
             }
             placeholder="Enter words to avoid in descriptions (comma-separated)"
@@ -100,7 +72,7 @@ const MetadataSettings = () => {
             <span className="text-xs ">(number of keywords)</span>
           </div>
           <Input
-            
+
             type="number"
             value={metadataLimits.keywordLimit}
             onChange={(e) => metadataLimits.setLimits({ keywordLimit: parseInt(e.target.value || '1') })}
@@ -110,7 +82,7 @@ const MetadataSettings = () => {
           <AvoidWordsTextarea
             label="Keywords Avoid Words"
             avoidWords={metadataOptions.keywordsAvoidWords}
-            onAvoidWordsChange={(words) => 
+            onAvoidWordsChange={(words) =>
               metadataOptions.setOptions({ keywordsAvoidWords: words })
             }
             placeholder="Enter words to avoid in keywords (comma-separated)"
@@ -123,25 +95,6 @@ const MetadataSettings = () => {
         </div>
         <div className="text-xs text-center">
           Current: Title={metadataLimits.titleLimit}, Description={metadataLimits.descriptionLimit}, Keywords={metadataLimits.keywordLimit}
-        </div>
-        <div className="flex flex-col gap-2">
-          <h4 className="p-2">Select Output Directory</h4>
-          <div className="flex gap-2">
-            <Input
-             
-              type="text"
-              value={selectedDirectory || ''}
-              readOnly
-              placeholder="No directory selected"
-            />
-            <Button
-              variant="outline"
-              className="w-30"
-              onClick={handleFileSelect}
-            >
-              Browse
-            </Button>
-          </div>
         </div>
         <div className="flex justify-between items-center p-2">
           <div className="flex flex-col gap-1">
@@ -175,7 +128,7 @@ const MetadataSettings = () => {
             }
           />
         </div>
-        
+
       </div>
     </div>
   )
