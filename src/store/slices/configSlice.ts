@@ -43,6 +43,7 @@ interface ConfigState {
     parallelWorkers: number;
     useLocalModel: boolean;
     localModelName: string;
+    localApiUrl: string;
   };
   metadataLimits: MetadataLimits;
   metadataOptions: MetadataOptions;
@@ -68,6 +69,7 @@ const initialState: ConfigState = {
     parallelWorkers: 5,
     useLocalModel: false,
     localModelName: '',
+    localApiUrl: '',
   },
   metadataLimits: {
     titleLimit: 200,
@@ -127,6 +129,9 @@ const configSlice = createSlice({
     setLocalModelName(state, action: PayloadAction<string>) {
       state.api.localModelName = action.payload;
     },
+    setLocalApiUrl(state, action: PayloadAction<string>) {
+      state.api.localApiUrl = action.payload;
+    },
     setMetadataLimits(state, action: PayloadAction<Partial<MetadataLimits>>) {
       state.metadataLimits = { ...state.metadataLimits, ...action.payload };
     },
@@ -161,6 +166,7 @@ export const {
   setExportSettings,
   setUseLocalModel,
   setLocalModelName,
+  setLocalApiUrl,
 } = configSlice.actions;
 
 export default configSlice.reducer;

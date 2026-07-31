@@ -5,6 +5,7 @@
  */
 import { toast } from "sonner";
 import { fetch } from "@tauri-apps/plugin-http";
+import { normalizeLocalBaseUrl } from "../modelFetcher";
 
 export type MessageContent = {
   type: 'text' | 'image_url'; // OpenAI/OpenRouter standard
@@ -275,16 +276,22 @@ export const ensureBase64 = (url: string): string => {
   throw new Error('Expected data URL');
 };
 
-const LM_STUDIO_BASE_URL = 'http://localhost:1234';
-
-interface LocalLMStudioOptions {
+interface LocalOpenAICompatibleOptions {
   model: string;
   messages: any[];
+  /** Base URL of the OpenAI-compatible local server (e.g. http://localhost:1234/v1) */
+  baseUrl?: string;
 }
 
-export async function callLocalLMStudio(options: LocalLMStudioOptions): Promise<string> {
-  const { model, messages } = options;
-  console.log('🏠 Calling LM Studio local API...', { model });
+export async function callLocalOpenAICompatible(options: LocalOpenAICompatibleOptions): Promise<string> {
+  const { model, messages, baseUrl } = options;
+  const url = normalizeLocalBaseUrl(baseUrl);
+
+  if (!url) {
+    throw new Error('No local AI server URL configured. Please set it in Settings.');
+  }
+
+  console.log('🏠 Calling local OpenAI-compatible API...', { model, url });
 
   try {
     const payload = {
@@ -295,9 +302,9 @@ export async function callLocalLMStudio(options: LocalLMStudioOptions): Promise<
     };
 
     const payloadString = JSON.stringify(payload);
-    console.log(`📦 LM Studio Payload size: ${(payloadString.length / 1024).toFixed(2)} KB`);
+    console.log(`📦 Local AI Payload size: ${(payloadString.length / 1024).toFixed(2)} KB`);
 
-    const response = await fetch(`${LM_STUDIO_BASE_URL}/api/v0/chat/completions`, {
+    const response = await fetch(`${url}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -307,22 +314,22 @@ export async function callLocalLMStudio(options: LocalLMStudioOptions): Promise<
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(`LM Studio API Error ${response.status}: ${errorBody}`);
+      throw new Error(`Local AI API Error ${response.status}: ${errorBody}`);
     }
 
     const data = await response.json();
     return data.choices?.[0]?.message?.content || '';
   } catch (error: any) {
-    console.error('❌ LM Studio API call failed:', error);
-    throw new Error(`LM Studio API call failed: ${error.message || error}`);
+    console.error('❌ Local AI API call failed:', error);
+    throw new Error(`Local AI API call failed: ${error.message || error}`);
   }
 }
 
 /**
- * Creates a message content array for LM Studio local API
- * Uses file:// URLs directly - no base64 encoding needed for local models
+ * Creates a message content array for local OpenAI-compatible APIs
+ * Uses base64 data URLs - supported by most local vision servers
  */
-export function createLocalModelMessageContent(
+export function createLocalMessageContent(
   prompt: string,
   imageUrl: string
 ): MessageContent[] {

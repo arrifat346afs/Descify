@@ -5,7 +5,7 @@
 
 import { generateMetadataPrompt } from './ai/prompts';
 import { parseMetadataResponse } from './ai/response-parser';
-import { ensureBase64, callAIApi, createVisionMessageContent, callLocalLMStudio, createLocalModelMessageContent } from './ai/api-client';
+import { ensureBase64, callAIApi, createVisionMessageContent, callLocalOpenAICompatible, createLocalMessageContent } from './ai/api-client';
 import { generateAIImage } from './thumbnailGenerator';
 // Provider-specific configs can be kept if they have useful constants, but factory functions are no longer needed
 import { DEFAULT_OPENAI_MODEL } from './ai/providers/openai';
@@ -28,10 +28,12 @@ export type GenerateMetadataOptions = {
   provider?: string;
   model?: string;
   apiKey?: string;
-  /** Use local LM Studio model instead of remote API */
+  /** Use local OpenAI-compatible model instead of remote API */
   useLocalModel?: boolean;
   /** Local model name (when useLocalModel is true) */
   localModelName?: string;
+  /** Base URL of the local OpenAI-compatible server (when useLocalModel is true) */
+  localApiUrl?: string;
   limits?: { titleLimit?: number; descriptionLimit?: number; keywordLimit?: number };
   includePlaceName?: boolean;
   customTemplate?: string;
@@ -48,7 +50,7 @@ export type GenerateMetadataOptions = {
  * Uses direct API calls for maximum control over tokens and payload
  */
 export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<GeneratedMetadata> => {
-  const { file, filePath, thumbnailUrls, provider = 'openai', model, apiKey, useLocalModel, localModelName, limits, includePlaceName, customTemplate, customInstruction, avoidWords } = opts;
+  const { file, filePath, thumbnailUrls, provider = 'openai', model, apiKey, useLocalModel, localModelName, localApiUrl, limits, includePlaceName, customTemplate, customInstruction, avoidWords } = opts;
 
   try {
     console.log('🎯 Starting metadata generation with:', {
@@ -86,17 +88,22 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
     let responseText: string;
 
     if (useLocalModel) {
-      // Use local LM Studio model - no API key needed, uses file URL directly
+      // Use local OpenAI-compatible model - no API key needed
       if (!localModelName) {
         throw new Error('No local model selected. Please select a model from Settings.');
       }
 
-      console.log('🏠 Using local LM Studio model:', localModelName);
+      if (!localApiUrl) {
+        throw new Error('No local AI server URL configured. Please set it in Settings.');
+      }
 
-      const messageContent = createLocalModelMessageContent(textPrompt, imageDataUrl);
+      console.log('🏠 Using local model:', localModelName);
 
-      responseText = await callLocalLMStudio({
+      const messageContent = createLocalMessageContent(textPrompt, imageDataUrl);
+
+      responseText = await callLocalOpenAICompatible({
         model: localModelName,
+        baseUrl: localApiUrl,
         messages: [{ role: 'user', content: messageContent }],
       });
     } else {

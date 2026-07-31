@@ -210,6 +210,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         apiKey,
         useLocalModel: api.useLocalModel,
         localModelName: api.localModelName,
+        localApiUrl: api.localApiUrl,
         limits: {
           titleLimit: metadataLimits.titleLimit,
           descriptionLimit: metadataLimits.descriptionLimit,

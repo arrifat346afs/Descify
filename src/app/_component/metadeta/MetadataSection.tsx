@@ -72,6 +72,7 @@ export const MetadataSection = () => {
         apiKey,
         useLocalModel,
         localModelName,
+        localApiUrl: api.localApiUrl,
         limits: {
           titleLimit: metadataLimits.titleLimit,
           descriptionLimit: metadataLimits.descriptionLimit,

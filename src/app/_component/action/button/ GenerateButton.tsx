@@ -80,7 +80,7 @@ const GenerateButtonComponent = () => {
   }, [generationProgress.cancelRequested]);
 
   // Process a single item with all logic (metadata generation, embedding, etc.)
-  const processSingleItem = async (item: any, index: number, total: number, provider: any, model: string | undefined, apiKey: string, useLocalModel: boolean, localModelName: string | undefined) => {
+  const processSingleItem = async (item: any, index: number, total: number, provider: any, model: string | undefined, apiKey: string, useLocalModel: boolean, localModelName: string | undefined, localApiUrl: string | undefined) => {
     // Update progress for this item
     setGenerationProgress({
       currentIndex: index + 1,
@@ -102,6 +102,7 @@ const GenerateButtonComponent = () => {
         apiKey,
         useLocalModel,
         localModelName,
+        localApiUrl,
         limits: {
           titleLimit: metadataLimits.titleLimit,
           descriptionLimit: metadataLimits.descriptionLimit,
@@ -203,7 +204,7 @@ const GenerateButtonComponent = () => {
   };
 
   // Process items sequentially (current behavior)
-  const processItemsSequential = async (items: any[], provider: any, model: string | undefined, apiKey: string, useLocalModel: boolean, localModelName: string | undefined) => {
+  const processItemsSequential = async (items: any[], provider: any, model: string | undefined, apiKey: string, useLocalModel: boolean, localModelName: string | undefined, localApiUrl: string | undefined) => {
     for (let i = 0; i < items.length; i++) {
       // Check if cancellation was requested
       if (cancelRequestedRef.current) {
@@ -211,7 +212,7 @@ const GenerateButtonComponent = () => {
         break;
       }
 
-      await processSingleItem(items[i], i, items.length, provider, model, apiKey, useLocalModel, localModelName);
+      await processSingleItem(items[i], i, items.length, provider, model, apiKey, useLocalModel, localModelName, localApiUrl);
 
       // Apply delay before next request (except for last item)
       if (i < items.length - 1 && api.requestDelay > 0) {
@@ -222,7 +223,7 @@ const GenerateButtonComponent = () => {
   };
 
   // Process items in parallel (similar to batchFolder system)
-  const processItemsParallel = async (items: any[], workers: number, provider: any, model: string | undefined, apiKey: string, useLocalModel: boolean, localModelName: string | undefined) => {
+  const processItemsParallel = async (items: any[], workers: number, provider: any, model: string | undefined, apiKey: string, useLocalModel: boolean, localModelName: string | undefined, localApiUrl: string | undefined) => {
     // Process items in batches starting from the beginning
     for (let i = 0; i < items.length; i += workers) {
       // Check if cancellation was requested
@@ -237,7 +238,7 @@ const GenerateButtonComponent = () => {
       const batchPromises = batch.map(async (item) => {
         if (!cancelRequestedRef.current) {
           const itemIndex = i + items.indexOf(item);
-          return processSingleItem(item, itemIndex, items.length, provider, model, apiKey, useLocalModel, localModelName);
+          return processSingleItem(item, itemIndex, items.length, provider, model, apiKey, useLocalModel, localModelName, localApiUrl);
         }
         return { success: false, error: 'Cancelled' };
       });
@@ -309,11 +310,13 @@ const GenerateButtonComponent = () => {
     const apiKey = provider ? api.apiKeys[provider]! : undefined;
     const useLocalModel = api.useLocalModel;
     const localModelName = api.localModelName || undefined;
+    const localApiUrl = api.localApiUrl || undefined;
 
     console.log('Provider:', provider);
     console.log('Model:', model);
     console.log('Use Local Model:', useLocalModel);
     console.log('Local Model Name:', localModelName);
+    console.log('Local API URL:', localApiUrl);
     console.log('API Key exists:', !!apiKey);
 
     if (!useLocalModel && !apiKey) {
@@ -325,6 +328,12 @@ const GenerateButtonComponent = () => {
     if (useLocalModel && !localModelName) {
       console.error('No local model selected');
       alert('Please select a local model in Settings');
+      return;
+    }
+
+    if (useLocalModel && !localApiUrl) {
+      console.error('No local API URL configured');
+      alert('Please set your local AI server URL in Settings');
       return;
     }
 
@@ -341,9 +350,9 @@ const GenerateButtonComponent = () => {
 
     // Process items based on selected mode
     if (processingMode === 'parallel') {
-      await processItemsParallel(items, parallelWorkers, provider, model, apiKey!, useLocalModel, localModelName);
+      await processItemsParallel(items, parallelWorkers, provider, model, apiKey!, useLocalModel, localModelName, localApiUrl);
     } else {
-      await processItemsSequential(items, provider, model, apiKey!, useLocalModel, localModelName);
+      await processItemsSequential(items, provider, model, apiKey!, useLocalModel, localModelName, localApiUrl);
     }
 
     const wasCancelled = generationProgress.cancelRequested;

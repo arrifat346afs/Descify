@@ -41,6 +41,8 @@ export type ApiSettingsState = {
   setUseLocalModel: (use: boolean) => void;
   localModelName: string;
   setLocalModelName: (name: string) => void;
+  localApiUrl: string;
+  setLocalApiUrl: (url: string) => void;
 };
 
 export type TemplateSettings = {
@@ -161,6 +163,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     dispatch(configSlice.setLocalModelName(name));
   }, [dispatch]);
 
+  const setLocalApiUrl = useCallback((url: string) => {
+    dispatch(configSlice.setLocalApiUrl(url));
+  }, [dispatch]);
+
   const apiValue: ApiSettingsState = useMemo(() => ({
     selectedProvider: config.api.selectedProvider,
     setSelectedProvider,
@@ -178,7 +184,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setUseLocalModel,
     localModelName: config.api.localModelName,
     setLocalModelName,
-  }), [config.api, setSelectedProvider, setSelectedModel, setApiKey, setRequestDelay, setProcessingMode, setParallelWorkers, setUseLocalModel, setLocalModelName]);
+    localApiUrl: config.api.localApiUrl,
+    setLocalApiUrl,
+  }), [config.api, setSelectedProvider, setSelectedModel, setApiKey, setRequestDelay, setProcessingMode, setParallelWorkers, setUseLocalModel, setLocalModelName, setLocalApiUrl]);
 
   // --- Metadata Limits ---
   const setLimits = useCallback((l: Partial<MetadataLimits>) => {

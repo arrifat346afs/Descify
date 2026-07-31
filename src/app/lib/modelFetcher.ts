@@ -233,7 +233,9 @@ function getFallbackGeminiModels(): ModelInfo[] {
   ];
 }
 
-const LM_STUDIO_BASE_URL = 'http://localhost:1234';
+export function normalizeLocalBaseUrl(url?: string): string {
+  return (url || '').trim().replace(/\/+$/, '');
+}
 
 type LMStudioModel = {
   id: string;
@@ -242,21 +244,28 @@ type LMStudioModel = {
 };
 
 /**
- * Fetches available models from LM Studio local server
+ * Fetches available models from an OpenAI-compatible local server
  * Returns models that support vision (image input) based on capabilities
  */
-export async function fetchLocalModels(): Promise<ModelInfo[]> {
+export async function fetchLocalModels(baseUrl?: string): Promise<ModelInfo[]> {
+  const url = normalizeLocalBaseUrl(baseUrl);
+
+  if (!url) {
+    console.warn('Local AI: No server URL provided');
+    return [];
+  }
+
   try {
-    const response = await fetch(`${LM_STUDIO_BASE_URL}/api/v0/models`);
+    const response = await fetch(`${url}/models`);
 
     if (!response.ok) {
-      throw new Error(`LM Studio API error: ${response.statusText}`);
+      throw new Error(`Local AI API error: ${response.statusText}`);
     }
 
     const data = await response.json();
     const models: LMStudioModel[] = data.data || [];
 
-    console.log(`LM Studio: Total models fetched: ${models.length}`);
+    console.log(`Local AI: Total models fetched: ${models.length}`);
 
     const localModels = models
       .map((model) => ({
@@ -266,18 +275,18 @@ export async function fetchLocalModels(): Promise<ModelInfo[]> {
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
 
-    console.log(`LM Studio: Models found: ${localModels.length}`);
-    console.log('LM Studio models:', localModels.map(m => m.label));
+    console.log(`Local AI: Models found: ${localModels.length}`);
+    console.log('Local AI models:', localModels.map(m => m.label));
 
     return localModels;
   } catch (error) {
-    console.error('Error fetching LM Studio models:', error);
+    console.error('Error fetching local AI models:', error);
     return getFallbackLocalModels();
   }
 }
 
 /**
- * Fallback models for LM Studio (used when API fails or no server)
+ * Fallback models for local AI (used when API fails or no server)
  */
 function getFallbackLocalModels(): ModelInfo[] {
   return [
@@ -287,11 +296,13 @@ function getFallbackLocalModels(): ModelInfo[] {
   ];
 }
 
-export async function checkLocalModelConnection(): Promise<boolean> {
+export async function checkLocalModelConnection(baseUrl?: string): Promise<boolean> {
+  const url = normalizeLocalBaseUrl(baseUrl);
+
+  if (!url) return false;
+
   try {
-    const response = await fetch(`${LM_STUDIO_BASE_URL}/api/v0/models`, {
-      method: 'HEAD',
-    });
+    const response = await fetch(`${url}/models`);
     return response.ok;
   } catch {
     return false;

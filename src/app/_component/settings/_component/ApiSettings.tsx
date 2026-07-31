@@ -24,6 +24,7 @@ const ApiSettings = () => {
   const [localParallelWorkers, setLocalParallelWorkers] = useState(api.parallelWorkers);
   const [localUseLocalModel, setLocalUseLocalModel] = useState(api.useLocalModel);
   const [localLocalModelName, setLocalLocalModelName] = useState(api.localModelName);
+  const [localLocalApiUrl, setLocalLocalApiUrl] = useState(api.localApiUrl);
 
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [localModels, setLocalModels] = useState<ModelInfo[]>([]);
@@ -49,7 +50,8 @@ const ApiSettings = () => {
     setLocalParallelWorkers(api.parallelWorkers);
     setLocalUseLocalModel(api.useLocalModel);
     setLocalLocalModelName(api.localModelName);
-  }, [api.selectedProvider, api.selectedModel, api.apiKeys, api.requestDelay, api.processingMode, api.parallelWorkers, api.useLocalModel, api.localModelName]);
+    setLocalLocalApiUrl(api.localApiUrl);
+  }, [api.selectedProvider, api.selectedModel, api.apiKeys, api.requestDelay, api.processingMode, api.parallelWorkers, api.useLocalModel, api.localModelName, api.localApiUrl]);
 
   // Detect unsaved changes (excluding API keys and processing mode as they're managed separately)
   useEffect(() => {
@@ -59,31 +61,37 @@ const ApiSettings = () => {
       localRequestDelay !== api.requestDelay ||
       localParallelWorkers !== api.parallelWorkers ||
       localUseLocalModel !== api.useLocalModel ||
-      localLocalModelName !== api.localModelName;
+      localLocalModelName !== api.localModelName ||
+      localLocalApiUrl !== api.localApiUrl;
 
     setHasUnsavedChanges(hasChanges);
-  }, [localProvider, localModel, localRequestDelay, localParallelWorkers, api, localUseLocalModel, localLocalModelName]);
+  }, [localProvider, localModel, localRequestDelay, localParallelWorkers, api, localUseLocalModel, localLocalModelName, localLocalApiUrl]);
 
   // Check local model connection
   useEffect(() => {
+    if (!localLocalApiUrl) {
+      setLocalModelConnected(false);
+      return;
+    }
+
     const checkConnection = async () => {
-      const connected = await checkLocalModelConnection();
+      const connected = await checkLocalModelConnection(localLocalApiUrl);
       setLocalModelConnected(connected);
     };
     checkConnection();
-  }, []);
+  }, [localLocalApiUrl]);
 
   // Fetch local models when toggle is enabled
   useEffect(() => {
     const loadLocalModels = async () => {
-      if (!localUseLocalModel) {
+      if (!localUseLocalModel || !localLocalApiUrl) {
         setLocalModels([]);
         return;
       }
 
       setIsLoadingLocalModels(true);
       try {
-        const fetchedModels = await fetchLocalModels();
+        const fetchedModels = await fetchLocalModels(localLocalApiUrl);
         setLocalModels(fetchedModels);
       } catch (error) {
         console.error('Error loading local models:', error);
@@ -95,7 +103,7 @@ const ApiSettings = () => {
     };
 
     loadLocalModels();
-  }, [localUseLocalModel]);
+  }, [localUseLocalModel, localLocalApiUrl]);
 
   // Fetch models when local provider changes
   useEffect(() => {
@@ -144,6 +152,7 @@ const ApiSettings = () => {
     api.setParallelWorkers(localParallelWorkers);
     api.setUseLocalModel(localUseLocalModel);
     api.setLocalModelName(localLocalModelName);
+    api.setLocalApiUrl(localLocalApiUrl);
 
     toast.success('Settings saved successfully!');
 
@@ -163,15 +172,20 @@ const ApiSettings = () => {
     setLocalParallelWorkers(api.parallelWorkers);
     setLocalUseLocalModel(api.useLocalModel);
     setLocalLocalModelName(api.localModelName);
+    setLocalLocalApiUrl(api.localApiUrl);
     toast.info('Changes discarded');
   };
 
   const handleTestConnection = async () => {
-    const connected = await checkLocalModelConnection();
+    if (!localLocalApiUrl) {
+      toast.error('Please enter your local AI server URL first.');
+      return;
+    }
+    const connected = await checkLocalModelConnection(localLocalApiUrl);
     if (connected) {
-      toast.success('LM Studio connection successful!');
+      toast.success('Local AI connection successful!');
     } else {
-      toast.error('Could not connect to LM Studio. Make sure the server is running.');
+      toast.error('Could not connect to the local AI server. Make sure it is running and the URL is correct.');
     }
     setLocalModelConnected(connected);
   };
@@ -203,10 +217,10 @@ const ApiSettings = () => {
       )}
 
       {/* Use Local Model Toggle */}
-      <div className="flex items-center justify-between p-4 bg-slate-500/10 border border-slate-500/20 rounded-md">
+      <div className="flex items-center justify-between p-4 bg-accent rounded-md">
         <div>
           <Label htmlFor="useLocalModel" className="text-base font-medium">
-            Use Local Model (LM Studio)
+            Use Local Model
           </Label>
           <p className="text-xs text-gray-400 mt-1">
             Use a local AI model instead of cloud API
@@ -228,7 +242,11 @@ const ApiSettings = () => {
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${localModelConnected ? 'bg-green-500' : 'bg-red-500'}`} />
           <span className="text-sm text-gray-500">
-            {localModelConnected ? 'LM Studio connected' : 'LM Studio not running'}
+            {!localLocalApiUrl
+              ? 'Enter a local AI server URL'
+              : localModelConnected
+                ? 'Local AI connected'
+                : 'Local AI not reachable'}
           </span>
           <Button variant="ghost" size="sm" onClick={handleTestConnection}>
             Test
@@ -241,19 +259,32 @@ const ApiSettings = () => {
         // Local Model UI
         <div className="space-y-4">
           <div>
+            <Label htmlFor="localApiUrl" className="text-base font-medium mb-2">Local AI Server URL</Label>
+            <Input
+              type="url"
+              id="localApiUrl"
+              value={localLocalApiUrl}
+              onChange={(e) => setLocalLocalApiUrl(e.target.value)}
+              placeholder="http://localhost:1234/v1"
+            />
+          </div>
+
+          <div>
             <Label htmlFor="localModel" className="text-base font-medium mb-2">Local Model</Label>
             <ModelSelector
               models={localModels}
               value={localLocalModelName}
               onValueChange={setLocalLocalModelName}
               isLoading={isLoadingLocalModels}
-              disabled={!localModelConnected}
+              disabled={!localModelConnected || !localLocalApiUrl}
               placeholder={
-                !localModelConnected
-                  ? "LM Studio not connected"
-                  : localModels.length === 0 && !isLoadingLocalModels
-                    ? "No local models found"
-                    : "Select a model"
+                !localLocalApiUrl
+                  ? "Enter a local AI server URL"
+                  : !localModelConnected
+                    ? "Local AI not connected"
+                    : localModels.length === 0 && !isLoadingLocalModels
+                      ? "No local models found"
+                      : "Select a model"
               }
             />
           </div>
@@ -289,12 +320,12 @@ const ApiSettings = () => {
 
             {/* Parallel Workers Slider (only show in parallel mode) */}
             {localProcessingMode === 'parallel' && (
-              <div className="mt-3 pl-4 border-l-2 border-muted">
+              <div className="mt-3 border-muted b">
                 <Label htmlFor="parallelWorkersLocal" className="text-sm font-medium mb-2">
                   Parallel Workers: {localParallelWorkers}
                 </Label>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400">1</span>
+                  <span className="text-xs text-gray-600">1</span>
                   <input
                     type="range"
                     id="parallelWorkersLocal"
@@ -306,9 +337,6 @@ const ApiSettings = () => {
                   />
                   <span className="text-xs text-gray-400">5</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  Number of images to process simultaneously. Lower values use less GPU memory.
-                </p>
               </div>
             )}
           </div>
@@ -322,7 +350,7 @@ const ApiSettings = () => {
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a provider" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="ring-foreground/10">
                 {providers.map((provider) => (
                   <SelectItem key={provider.value} value={provider.value}>
                     {provider.label}
@@ -349,7 +377,7 @@ const ApiSettings = () => {
               }
             />
           </div>
-          <div>
+          <div className="pt-5 border-t flex flex-row justify-between gap-2">
             <Label htmlFor="requestDelay" className="text-base font-medium mb-2">
               Request Delay (seconds)
             </Label>
@@ -366,25 +394,19 @@ const ApiSettings = () => {
                   const seconds = parseFloat(e.target.value || '0');
                   setLocalRequestDelay(seconds * 1000);
                 }}
-                className="w-24"
+                className="w-10"
               />
-              <span className="text-sm text-gray-500">
-                Wait {(localRequestDelay / 1000).toFixed(1)}s between AI requests
-              </span>
             </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Prevents rate limiting. Set to 0 for no delay.
-            </p>
           </div>
 
           {/* Processing Mode Toggle */}
           <div className="pt-2 border-t">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="processingMode" className="text-base font-medium">
                   Batch Processing Mode
                 </Label>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-gray-600 mt-1">
                   {localProcessingMode === 'sequential' 
                     ? 'Sequential: Process images one at a time (safe for free APIs)'
                     : 'Parallel: Process multiple images simultaneously (faster for paid APIs)'}
@@ -408,8 +430,8 @@ const ApiSettings = () => {
 
             {/* Parallel Workers Slider (only show in parallel mode) */}
             {localProcessingMode === 'parallel' && (
-              <div className="mt-3 pl-4 border-l-2 border-muted">
-                <Label htmlFor="parallelWorkers" className="text-sm font-medium mb-2">
+              <div className="mt-3 ">
+                <Label htmlFor="parallelWorkers" className="text-sm font-medium mt-2 mb-2">
                   Parallel Workers: {localParallelWorkers}
                 </Label>
                 <div className="flex items-center gap-3">
@@ -425,9 +447,6 @@ const ApiSettings = () => {
                   />
                   <span className="text-xs text-gray-400">5</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  Number of images to process simultaneously. Lower values are safer for API rate limits.
-                </p>
               </div>
             )}
           </div>
