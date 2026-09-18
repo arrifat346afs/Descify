@@ -1,10 +1,11 @@
 /**
  * OpenRouter Provider Module
- * Encapsulates OpenRouter-specific logic and configuration
- * Supports reasoning models like Polaris Alpha
+ * Single reusable source for OpenRouter-specific logic.
+ * Wraps the shared OpenAI-compatible call with OpenRouter baseUrl + headers.
+ * Supports reasoning models like Polaris Alpha.
  */
-
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { callOpenAICompatible } from "./openai";
+import type { AIResponse } from "../http";
 
 export type OpenRouterConfig = {
   apiKey?: string;
@@ -16,17 +17,7 @@ export type OpenRouterConfig = {
  */
 export const DEFAULT_OPENROUTER_MODEL = 'openrouter/polaris-alpha';
 
-/**
- * Creates and configures an OpenRouter model instance
- * @param config - Configuration for the OpenRouter provider
- * @returns The configured OpenRouter model instance
- */
-export const createOpenRouterModel = (config: OpenRouterConfig): any => {
-  const openrouter = createOpenRouter({
-    apiKey: config.apiKey,
-  });
-  return openrouter(config.model || DEFAULT_OPENROUTER_MODEL);
-};
+export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 /**
  * Checks if the provider string matches OpenRouter
@@ -37,3 +28,24 @@ export const isOpenRouterProvider = (provider?: string): boolean => {
   return provider === 'openrouter';
 };
 
+/**
+ * Handles OpenRouter API calls.
+ * Reusable: any caller can import this instead of going through api-client.
+ */
+export async function callOpenRouter(
+  apiKey: string,
+  model: string,
+  messages: any[],
+  maxTokens: number = 2048,
+  signal?: AbortSignal
+): Promise<AIResponse> {
+  return callOpenAICompatible(
+    OPENROUTER_BASE_URL,
+    apiKey,
+    model,
+    messages,
+    true,
+    maxTokens,
+    signal
+  );
+}

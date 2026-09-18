@@ -37,11 +37,17 @@ export const extractTextFromResponse = (response: any): string => {
  * or Qwen3 emit around (or instead of) their final answer.
  * Handles unclosed blocks too — a `<think>` run that consumed the whole token
  * budget leaves no closing tag behind.
+ * Covers tag variants seen across local servers (<think>, <thinking>,
+ * <reason>, <reasoning>).
  * @param text - The raw AI response text
  * @returns The text without think blocks
  */
-export const stripThinkBlocks = (text: string): string =>
-  text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<think>[\s\S]*$/i, '');
+export const stripThinkBlocks = (text: string): string => {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/<(think|thinking|reason|reasoning)>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<(think|thinking|reason|reasoning)>[\s\S]*$/i, '');
+};
 
 /**
  * Normalizes a raw AI response by stripping markdown code fences,
@@ -76,6 +82,47 @@ export const extractJsonFromText = (text: string): string | null => {
   }
 
   return null;
+};
+
+/**
+ * Normalizes a parsed JSON value into the expected metadata shape.
+ * Local/small models often return case variants (Title/Description/Keywords),
+ * keyword arrays instead of comma-separated strings, or extra fields.
+ */
+export const normalizeParsedMetadata = (parsed: any): { title: unknown; description: unknown; keywords: unknown } => {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return parsed;
+  const getKey = (obj: Record<string, any>, names: string[]) => {
+    for (const name of names) {
+      const hit = Object.keys(obj).find((k) => k.toLowerCase() === name);
+      if (hit !== undefined) return obj[hit];
+    }
+    return undefined;
+  };
+  const coerce = (value: unknown): string | unknown => {
+    if (Array.isArray(value)) {
+      return value.map((v) => String(v ?? '').trim()).filter(Boolean).join(', ');
+    }
+    return value;
+  };
+  return {
+    title: coerce(getKey(parsed, ['title'])),
+    description: coerce(getKey(parsed, ['description'])),
+    keywords: coerce(getKey(parsed, ['keywords', 'tags', 'keyword'])),
+  };
+};
+
+/**
+ * Attempts to repair common JSON mistakes from small local models
+ * (trailing commas, single-quoted strings) before giving up.
+ */
+export const repairJsonString = (jsonStr: string): string => {
+  let repaired = jsonStr.replace(/,\s*([}\]])/g, '$1');
+  // Only attempt single-quote repair when the string contains no double quotes
+  // (avoids corrupting valid JSON containing apostrophes).
+  if (!repaired.includes('"') && repaired.includes("'")) {
+    repaired = repaired.replace(/'/g, '"');
+  }
+  return repaired;
 };
 
 /**
@@ -208,13 +255,23 @@ export const parseMetadataResponse = (
     parsed = JSON.parse(jsonStr);
     console.log('Parsed JSON:', parsed);
   } catch (err) {
-    console.error('❌ Failed to parse JSON from AI response:', err);
-    console.error('📄 Raw response (first 500 chars):', text.substring(0, 500));
-    console.error('🔍 Extracted JSON string:', jsonStr);
-    throw new Error('AI returned malformed JSON');
+    // Retry once with repaired JSON (trailing commas etc. from small models)
+    try {
+      parsed = JSON.parse(repairJsonString(jsonStr));
+      console.warn('⚠️ Parsed local-model JSON after repair (trailing commas/quotes fixed)');
+      console.log('Parsed JSON:', parsed);
+    } catch {
+      console.error('❌ Failed to parse JSON from AI response:', err);
+      console.error('📄 Raw response (first 500 chars):', text.substring(0, 500));
+      console.error('🔍 Extracted JSON string:', jsonStr);
+      throw new Error('AI returned malformed JSON');
+    }
   }
 
-  // 5. Schema validation (separate from JSON parsing)
+  // 5. Normalize key variants / array keywords from local models, then validate
+  parsed = normalizeParsedMetadata(parsed);
+
+  // 6. Schema validation (separate from JSON parsing)
   validateMetadata(parsed);
 
   // 6. Apply limits and return

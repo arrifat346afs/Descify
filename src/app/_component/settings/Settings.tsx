@@ -14,12 +14,14 @@ import {
   Download,
   Palette,
   HardDrive,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TemplateManager } from "./_component/TemplateManager";
 import { ThemePicker } from "@/components/theme-picker";
 import { motion, AnimatePresence } from "motion/react";
 import CacheSettings from "./_component/CacheSettings";
+import AboutSettings from "./_component/AboutSettings";
 
 const Settings = () => {
   const defaultTab = useUiStore((state) => state.settingsDialog.defaultTab);
@@ -33,6 +35,7 @@ const Settings = () => {
     { id: "export", label: "Export", icon: Download },
     { id: "templates", label: "Templates", icon: FileType2 },
     { id: "cache", label: "Cache", icon: HardDrive },
+    { id: "about", label: "About", icon: Info },
   ];
 
   const tabContent: Record<string, React.ReactNode> = {
@@ -44,6 +47,7 @@ const Settings = () => {
     export: <ExportSettings />,
     templates: <TemplateManager />,
     cache: <CacheSettings />,
+    about: <AboutSettings />,
   };
 
   return (

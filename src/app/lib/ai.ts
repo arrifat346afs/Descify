@@ -8,9 +8,9 @@ import { parseMetadataResponse } from './ai/response-parser';
 import { ensureBase64, callAIApi, createVisionMessageContent, callLocalOpenAICompatible, createLocalMessageContent, type AIResponse, type AIUsage } from './ai/api-client';
 import { generateAIImage } from './thumbnailGenerator';
 import { apiCostTracker } from './cost/apiCostTracker';
-// Provider-specific configs can be kept if they have useful constants, but factory functions are no longer needed
 import { DEFAULT_OPENAI_MODEL } from './ai/providers/openai';
 import { DEFAULT_OPENROUTER_MODEL } from './ai/providers/openrouter';
+import { DEFAULT_GEMINI_MODEL, isGoogleProvider } from './ai/providers/google';
 
 export type GeneratedMetadata = {
   title: string;
@@ -155,7 +155,7 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
         if (!targetModel) {
           if (provider === 'openai') targetModel = DEFAULT_OPENAI_MODEL;
           else if (provider === 'openrouter') targetModel = DEFAULT_OPENROUTER_MODEL;
-          else if (provider === 'google') targetModel = 'gemini-1.5-flash';
+          else if (isGoogleProvider(provider)) targetModel = DEFAULT_GEMINI_MODEL;
         }
 
         console.log('🤖 Calling AI API...');

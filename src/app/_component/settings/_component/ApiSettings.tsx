@@ -336,11 +336,18 @@ const ApiSettings = () => {
                     min={1}
                     max={5}
                     value={localParallelWorkers}
-                    onChange={(e) => setLocalParallelWorkers(parseInt(e.target.value))}
+                    onChange={(e) => {
+                      const next = parseInt(e.target.value);
+                      setLocalParallelWorkers(next);
+                      setParallelWorkers(next);
+                    }}
                     className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer"
                   />
                   <span className="text-xs text-gray-400">5</span>
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Applies immediately. Note: LM Studio / Ollama still queue server-side unless parallel slots (n_parallel) ≥ workers.
+                </p>
               </div>
             )}
           </div>
@@ -446,7 +453,11 @@ const ApiSettings = () => {
                     min={1}
                     max={5}
                     value={localParallelWorkers}
-                    onChange={(e) => setLocalParallelWorkers(parseInt(e.target.value))}
+                    onChange={(e) => {
+                      const next = parseInt(e.target.value);
+                      setLocalParallelWorkers(next);
+                      setParallelWorkers(next);
+                    }}
                     className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer"
                   />
                   <span className="text-xs text-gray-400">5</span>

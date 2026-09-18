@@ -230,6 +230,9 @@ const GenerateButtonComponent = () => {
 
       // Don't store error messages as metadata - just log the error
       // The thumbnail will show a red border indicating generation was attempted but failed
+      if (useLocalModel) {
+        console.warn(`🏠 Local-model hint for ${item.file.name}: open DevTools console and look for the "Local AI response shape" line plus "AI Response text" — the raw JSON is logged there. Common causes: reasoning-only output (disable thinking mode), non-vision model, or short/invalid fields.`);
+      }
 
       // Auto-select this file even on error so user can see which file failed (debounced)
       if (metadataOptions.autoSelectGenerated) {
@@ -288,40 +291,54 @@ const GenerateButtonComponent = () => {
   // Process items in parallel (similar to batchFolder system)
   const processItemsParallel = async (items: any[], workers: number, provider: any, model: string | undefined, apiKey: string, useLocalModel: boolean, localModelName: string | undefined, localApiUrl: string | undefined, signal?: AbortSignal) => {
     let skippedCount = 0;
+    let firedCount = 0;
+    const effectiveWorkers = Math.max(1, Math.min(workers || 1, items.length));
 
     // Process items in batches starting from the beginning
-    for (let i = 0; i < items.length; i += workers) {
+    for (let i = 0; i < items.length; i += effectiveWorkers) {
       // Check if cancellation was requested
       if (signal?.aborted || cancelRequestedRef.current) {
         console.log('🛑 Parallel processing cancelled by user');
         break;
       }
 
-      const batch = items.slice(i, i + workers);
+      const batch = items.slice(i, i + effectiveWorkers);
+      const batchNumber = Math.floor(i / effectiveWorkers) + 1;
+      const batchStartedAt = Date.now();
+      console.log(`🚀 Starting batch ${batchNumber} with ${batch.length} concurrent request(s) (local=${useLocalModel})...`);
       
       // Process batch concurrently
-      const batchPromises = batch.map(async (item) => {
+      const batchPromises = batch.map(async (item, batchOffset) => {
         if (!signal?.aborted && !cancelRequestedRef.current) {
-          const itemIndex = i + items.indexOf(item);
+          const itemIndex = i + batchOffset;
           return processSingleItem(item, itemIndex, items.length, provider, model, apiKey, useLocalModel, localModelName, localApiUrl, signal);
         }
         return { success: false, error: 'Cancelled' };
       });
       
       const batchResults = await Promise.all(batchPromises);
-      skippedCount += batchResults.filter((r) => 'skipped' in r && r.skipped).length;
+      const batchSkipped = batchResults.filter((r) => 'skipped' in r && r.skipped).length;
+      const batchFired = batchResults.length - batchSkipped;
+      skippedCount += batchSkipped;
+      firedCount += batchFired;
+      console.log(`✅ Batch ${batchNumber} settled in ${Date.now() - batchStartedAt}ms (${batchFired} network request(s) fired, ${batchSkipped} skipped, batch size ${batchResults.length})`);
       
       // Update progress to show batch completion
       setGenerationProgress({
-        currentIndex: Math.min(i + workers, items.length),
-        currentFileName: `Batch ${Math.floor(i / workers) + 1} completed`,
+        currentIndex: Math.min(i + effectiveWorkers, items.length),
+        currentFileName: `Batch ${Math.floor(i / effectiveWorkers) + 1} completed`,
       });
       
       // Apply delay after each batch (except for last batch)
-      if (i + workers < items.length && api.requestDelay > 0) {
+      if (i + effectiveWorkers < items.length && api.requestDelay > 0) {
         console.log(`⏱️ Waiting ${api.requestDelay}ms before next batch...`);
         await delayWithSignal(api.requestDelay, signal);
       }
+    }
+
+    console.log(`📡 Parallel run finished: ${firedCount} network request(s) fired, ${skippedCount} skipped, ${items.length} total (workers=${effectiveWorkers})`);
+    if (useLocalModel) {
+      console.log('ℹ️ If only 1 local request processes at a time despite workers > 1, raise parallel slots (n_parallel) on your LM Studio / Ollama server — it queues excess requests server-side.');
     }
 
     if (skippedCount > 0) {
@@ -372,7 +389,7 @@ const GenerateButtonComponent = () => {
 
     console.log(`📋 Processing ${items.length} files in ${processingMode} mode`);
     if (processingMode === 'parallel') {
-      console.log(`🔧 Using ${parallelWorkers} parallel workers`);
+      console.log(`🔧 Using ${parallelWorkers} parallel workers (effective batch size: ${Math.min(parallelWorkers, items.length)})`);
     }
 
     const model = api.selectedModel || undefined;
@@ -416,7 +433,10 @@ const GenerateButtonComponent = () => {
     });
     console.log(`✓ Starting metadata generation for ${items.length} files...`);
     console.log(`⏱️ Request delay: ${api.requestDelay}ms`);
-    console.log(`🎯 Processing mode: ${processingMode}`);
+    console.log(`🎯 Processing mode: ${processingMode} | local=${api.useLocalModel} | workers=${parallelWorkers}`);
+    if (api.useLocalModel && processingMode === 'parallel') {
+      console.log('ℹ️ Local server note: LM Studio / Ollama queue requests server-side unless parallel slots (n_parallel) ≥ workers. Check Network tab for overlapping POSTs to confirm client parallelism.');
+    }
 
     // Enable mid-request cancellation via the Cancel button
     const signal = beginGeneration();
@@ -431,7 +451,7 @@ const GenerateButtonComponent = () => {
     } finally {
       endGeneration();
 
-      const wasCancelled = generationProgress.cancelRequested;
+      const wasCancelled = useUiStore.getState().generationProgress.cancelRequested;
       console.log(wasCancelled ? '🛑 Metadata generation cancelled!' : '✅ Metadata generation complete for all files!');
       setGenerationProgress({
         isGenerating: false,
