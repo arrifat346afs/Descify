@@ -33,6 +33,7 @@ export type ExportSettings = {
   shutterStock: boolean;
 };
 
+
 export type ProcessingMode = 'sequential' | 'parallel';
 
 interface ConfigState {
@@ -51,6 +52,7 @@ interface ConfigState {
   metadataOptions: MetadataOptions;
   embedSettings: EmbedSettings;
   exportSettings: ExportSettings;
+
 }
 
 const initialState: ConfigState = {
@@ -204,6 +206,7 @@ export function setExportSettings(settings: Partial<ExportSettings>) {
     state.exportSettings = { ...state.exportSettings, ...settings };
   });
 }
+
 
 // ===================== Non-reactive helpers =====================
 

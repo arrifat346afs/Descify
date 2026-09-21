@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from "motion/react";
 import CacheSettings from "./_component/CacheSettings";
 import AboutSettings from "./_component/AboutSettings";
 
+
 const Settings = () => {
   const defaultTab = useUiStore((state) => state.settingsDialog.defaultTab);
 

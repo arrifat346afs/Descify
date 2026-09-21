@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import TemplateEditor from './TemplateEditor';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useConfigStore } from '@/store/configStore';
@@ -327,11 +327,10 @@ export const TemplateManager = () => {
 
               <div>
                 <label className="block text-sm font-medium mb-2">Template Content</label>
-                <Textarea
+                <TemplateEditor
                   value={newTemplateContent}
-                  onChange={(e) => setNewTemplateContent(e.target.value)}
+                  onChange={setNewTemplateContent}
                   placeholder="Enter your template content..."
-                  className="min-h-[300px] font-mono text-sm"
                 />
                 <p className="text-xs text-muted-foreground mt-2">
                   Use variables like {'{{titleLimit}}'}, {'{{descriptionLimit}}'}, and {'{{keywordLimit}}'} in your template.
