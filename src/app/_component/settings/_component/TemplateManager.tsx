@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import TemplateEditor from './TemplateEditor';
+// import TemplateEditor from './TemplateEditor';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useConfigStore } from '@/store/configStore';
@@ -17,6 +17,7 @@ import {
 } from '@/store/templateStore';
 import { DEFAULT_TEMPLATES, validateTemplate, interpolateTemplate } from '@/app/lib/metadata/templateUtils';
 import { Trash2, Edit, Eye, Plus, Check, RotateCcw } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 
 export const TemplateManager = () => {
   const metadataLimits = useConfigStore((state) => state.metadataLimits);
@@ -327,9 +328,9 @@ export const TemplateManager = () => {
 
               <div>
                 <label className="block text-sm font-medium mb-2">Template Content</label>
-                <TemplateEditor
+                <Textarea
                   value={newTemplateContent}
-                  onChange={setNewTemplateContent}
+                  onChange={(e) => setNewTemplateContent(e.target.defaultValue)}
                   placeholder="Enter your template content..."
                 />
                 <p className="text-xs text-muted-foreground mt-2">
