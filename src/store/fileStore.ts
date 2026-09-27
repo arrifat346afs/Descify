@@ -11,6 +11,8 @@ interface FileState {
     files: File[];
     filePaths: Map<File, string>;
     thumbnails: ThumbnailData[];
+    /** file names whose thumbnail generation failed — shown as "unavailable" instead of an endless spinner */
+    failedThumbnails: string[];
     isGeneratingThumbnails: boolean;
     pendingThumbnailCount: number;
     selectedFile: File | null;
@@ -20,6 +22,7 @@ const initialState: FileState = {
     files: [],
     filePaths: new Map(),
     thumbnails: [],
+    failedThumbnails: [],
     isGeneratingThumbnails: false,
     pendingThumbnailCount: 0,
     selectedFile: null,
@@ -55,6 +58,7 @@ export function removeFile(file: File) {
     useFileStore.setState((state) => {
         state.files = state.files.filter((f) => f !== file);
         state.thumbnails = state.thumbnails.filter((t) => t.file !== file);
+        state.failedThumbnails = state.failedThumbnails.filter((n) => n !== file.name);
         state.filePaths.delete(file);
         if (state.selectedFile === file) {
             state.selectedFile = null;
@@ -89,6 +93,19 @@ export function addThumbnail(thumbnail: ThumbnailData) {
         } else {
             state.thumbnails.push(thumbnail);
         }
+        state.failedThumbnails = state.failedThumbnails.filter((n) => n !== thumbnail.file.name);
+    });
+}
+
+/**
+ * Record that thumbnail generation failed for `file` so the UI can render an
+ * explicit "unavailable" state instead of a spinner that never stops.
+ */
+export function markThumbnailFailed(file: File) {
+    useFileStore.setState((state) => {
+        if (!state.failedThumbnails.includes(file.name)) {
+            state.failedThumbnails.push(file.name);
+        }
     });
 }
 
@@ -113,6 +130,7 @@ export function setSelectedFile(file: File | null) {
 export function clearThumbnails() {
     useFileStore.setState((state) => {
         state.thumbnails = [];
+        state.failedThumbnails = [];
         state.pendingThumbnailCount = 0;
         state.isGeneratingThumbnails = false;
     });
@@ -136,6 +154,10 @@ export function upsertThumbnails(items: ThumbnailData[]) {
                 fileToIndex.set(item.file, state.thumbnails.length - 1);
             }
         });
+
+        // A generated thumbnail clears any earlier failure record for that file.
+        const succeeded = new Set(items.map((item) => item.file.name));
+        state.failedThumbnails = state.failedThumbnails.filter((n) => !succeeded.has(n));
     });
 }
 

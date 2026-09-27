@@ -4,7 +4,9 @@ import {
   addFiles,
   removeFile,
   setFilePath,
+  getFilePath,
   addThumbnail,
+  markThumbnailFailed,
 } from "@/store/fileStore";
 import { useUiStore, setHasAttemptedGeneration } from "@/store/uiStore";
 import { useConfigStore } from "@/store/configStore";
@@ -32,7 +34,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   // State (reactive zustand selectors)
   const files = useFileStore((state) => state.files);
   const thumbnails = useFileStore((state) => state.thumbnails);
-  const filePaths = useFileStore((state) => state.filePaths);
+  const failedThumbnails = useFileStore((state) => state.failedThumbnails);
   const selectedFile = useFileStore((state) => state.selectedFile);
   const isGeneratingThumbnails = useFileStore((state) => state.isGeneratingThumbnails);
   const hasAttemptedGeneration = useUiStore((state) => state.hasAttemptedGeneration);
@@ -63,17 +65,27 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     onFileAdded: useCallback((file: File) => {
       addFiles([file]);
       setHasAttemptedGeneration(false);
-      
-      // Generate instant thumbnail in background
-      const filePath = filePaths.get(file);
-      
+
+      // Read the path from the store AT CALL TIME. setFilePath() ran just
+      // before this callback inside the drop handler, so a Map captured in
+      // this closure would still be the pre-drop one — leaving vector files
+      // (.ai/.eps) with no path, which they need for Ghostscript rasterization.
+      const filePath = getFilePath(file);
+
       // Generate async without blocking
-      generateImageThumbnail(file, filePath).then((thumbnailUrl) => {
-        if (thumbnailUrl) {
-          addThumbnail({ file, thumbnailUrl, previewUrl: null });
-        }
-      }).catch(() => {});
-    }, [addFiles, setHasAttemptedGeneration, filePaths]),
+      generateImageThumbnail(file, filePath)
+        .then((thumbnailUrl) => {
+          if (thumbnailUrl) {
+            addThumbnail({ file, thumbnailUrl, previewUrl: null });
+          } else {
+            markThumbnailFailed(file);
+          }
+        })
+        .catch((error) => {
+          console.warn(`Thumbnail generation failed for ${file.name}:`, error);
+          markThumbnailFailed(file);
+        });
+    }, [addFiles, setHasAttemptedGeneration]),
     // Legacy batch fallback (used when onFileAdded is not provided)
     // Use addFiles (stable) instead of setFiles([...files, ...newFiles]) so that
     // this callback doesn't get a new reference every time `files` changes.
@@ -157,6 +169,9 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     return map;
   }, [thumbnails]);
 
+  // Files whose thumbnail generation already failed (rendered as "unavailable")
+  const failedThumbnailSet = useMemo(() => new Set(failedThumbnails), [failedThumbnails]);
+
   const metadataMap = useMemo(() => {
     const map = new Map<string, boolean>();
     if (generatedMetadata) {
@@ -217,7 +232,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
 
     setRegeneratingFile(file);
     try {
-      const filePath = filePaths.get(file);
+      const filePath = getFilePath(file);
       const result = await generateMetadata({
         file: file,
         filePath: filePath,
@@ -327,9 +342,10 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
             >
               {filesToRender.map(({ file, index }) => {
                 const thumbnail = thumbnailMap.get(file.name);
-                // Show loading spinner for any file that doesn't have a thumbnail yet.
-                // We only add valid media files to state, so no thumbnail = still generating.
-                const isGenerating = !thumbnail;
+                const hasFailed = failedThumbnailSet.has(file.name);
+                // No thumbnail yet = still generating — unless generation already
+                // failed, in which case the item shows an explicit failure state.
+                const isGenerating = !thumbnail && !hasFailed;
                 const hasMetadata = metadataMap.has(file.name);
                 const isSelected = selectedFile === file;
                 const hasCustomInstruction = customInstructionFiles.has(file);
@@ -341,6 +357,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                     file={file}
                     thumbnail={thumbnail}
                     isGenerating={isGenerating}
+                    hasFailed={hasFailed}
                     isSelected={isSelected}
                     hasMetadata={hasMetadata}
                     hasAttemptedGeneration={hasAttemptedGeneration}

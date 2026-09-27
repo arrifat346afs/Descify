@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { fileFromPath } from '../utils';
-import { isVectorFilename } from '@/app/lib/thumbnail/vectorSupport';
+import { isThumbnailableFile } from '@/app/lib/thumbnail/mediaTypes';
 
 interface UseDragAndDropOptions {
   onFilesAdded: (files: File[]) => void;
@@ -12,17 +12,16 @@ interface UseDragAndDropOptions {
   activeTab?: 'category' | 'log'; // Add active tab prop
 }
 
-/** Returns true when a file is a valid image or video that should be accepted */
+/** Returns true when a file is a valid image, video or vector file to accept */
 const isValidMediaFile = (file: File): boolean => {
-  const isImage = file.type.startsWith("image/");
-  const isVideo = file.type.startsWith("video/");
+  // Shared rule with useThumbnailAutoGeneration: images, videos and vector
+  // formats (.ai/.eps). The OS may report an arbitrary MIME type for vector
+  // files, so they are matched by extension inside isThumbnailableFile.
+  const isMedia = isThumbnailableFile(file);
   const isUnknownType = file.type === 'application/octet-stream';
   const hasVideoExtension = !!file.name.toLowerCase().match(/\.(mp4|mov|webm|avi|mkv|flv|wmv|m4v|3gp|ogv|mts|m2ts)$/);
-  // Vector formats (.ai/.eps) are accepted by extension — the OS may report an
-  // arbitrary MIME type (or none) for them, but they are rasterized backend-side.
-  const hasVectorExtension = isVectorFilename(file.name);
-  console.log(`   Checking ${file.name}: type=${file.type}, isImage=${isImage}, isVideo=${isVideo}, isUnknownType=${isUnknownType}, hasVideoExtension=${hasVideoExtension}, hasVectorExtension=${hasVectorExtension}`);
-  return isImage || isVideo || (isUnknownType && hasVideoExtension) || hasVectorExtension;
+  console.log(`   Checking ${file.name}: type=${file.type}, isMedia=${isMedia}, isUnknownType=${isUnknownType}, hasVideoExtension=${hasVideoExtension}`);
+  return isMedia || (isUnknownType && hasVideoExtension);
 };
 
 export const useDragAndDrop = ({ onFilesAdded, onFileAdded, onFilePathStored, onExifDataFound, activeTab }: UseDragAndDropOptions) => {

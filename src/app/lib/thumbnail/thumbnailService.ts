@@ -166,7 +166,8 @@ export async function generateThumbnailsBatch(
   onProgress: (completed: number, total: number, fileName: string) => void = () => {},
   onThumbnailReady: (file: File, thumbnailUrl: string) => void = () => {},
   _concurrency: number = BATCH_CONFIG.CONCURRENCY,
-  filePaths?: Map<File, string>
+  filePaths?: Map<File, string>,
+  onError: (file: File, error: unknown) => void = () => {}
 ): Promise<Map<File, string>> {
   const results = new Map<File, string>();
   const total = files.length;
@@ -208,9 +209,12 @@ export async function generateThumbnailsBatch(
         if (thumbnail) {
           results.set(file, thumbnail);
           onThumbnailReady(file, thumbnail);
+        } else {
+          onError(file, new Error(`No thumbnail produced for ${file.name}`));
         }
       } catch (error) {
         console.error(`Failed thumbnail for ${file.name}:`, error);
+        onError(file, error);
       }
 
       completed++;

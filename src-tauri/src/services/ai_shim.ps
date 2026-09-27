@@ -1,0 +1,116 @@
+% Adobe Illustrator compatibility shim for Ghostscript.
+%
+% Legacy Illustrator files (.ai before v9, and some .eps) are PostScript that
+% references Adobe's private procsets: Adobe_level2_AI5, Adobe_typography_AI5,
+% Adobe_Illustrator_AI5, Adobe_ColorImage_AI6, ... Ghostscript does not ship
+% those procsets, so it aborts with "/undefined in Adobe_level2_AI5" before a
+% single path is drawn and no thumbnail is produced.
+%
+% This shim supplies:
+%   * placeholder procsets whose initialize/terminate hooks are no-ops, and
+%   * the Illustrator private operator namespace used by those files
+%     (m/l/L/c/C path building, u/U gsave/grestore, Xa..Xf colour,
+%      Lb/Ln/M/LB layer framing, annotatepage printing hook).
+%
+% It is injected only for PostScript files whose header looks like an
+% Illustrator file; PDF-based .ai files never see it (their PDF interpreter
+% handles everything).
+%
+% Everything here tolerates unknown operand counts: the entry points pop the
+% stack back to the depth recorded before the file started, so an argument
+% count we did not anticipate cannot cause a stackunderflow.
+
+userdict begin
+
+/AI_SHIM_BASELINE count def
+
+% Pop everything pushed onto the operand stack since the shim started.
+/ai_restore_stack {
+  count AI_SHIM_BASELINE sub dup 0 gt { { pop } repeat } { pop } ifelse
+} bind def
+
+% Pop up to N leading numbers, stopping early when a non-number is on top.
+% Called as `11 ai_pop_numbers`.
+/ai_pop_numbers {
+  { count AI_SHIM_BASELINE sub 0 gt
+      { dup type /numtype eq { pop } { exit } ifelse }
+      { exit } ifelse
+    } repeat
+} bind def
+
+% --- Adobe procsets referenced by the file but not shipped by Ghostscript ---
+/Adobe_level2_AI5 16 dict def
+/Adobe_typography_AI5 16 dict def
+/Adobe_Illustrator_AI5 16 dict def
+/Adobe_Illustrator_AI5_vars 16 dict def
+/Adobe_Illustrator_AI6 16 dict def
+/Adobe_Illustrator_AI6_vars 16 dict def
+/Adobe_ColorImage_AI5 16 dict def
+/Adobe_ColorImage_AI6 16 dict def
+
+[ /Adobe_level2_AI5 /Adobe_typography_AI5 /Adobe_Illustrator_AI5
+  /Adobe_Illustrator_AI5_vars /Adobe_Illustrator_AI6
+  /Adobe_Illustrator_AI6_vars /Adobe_ColorImage_AI5 /Adobe_ColorImage_AI6 ] {
+    load /ai_procset exch def
+    % `procset /initialize get exec` may pass dependency dicts; drop them all.
+    ai_procset /initialize { ai_restore_stack } put
+    ai_procset /terminate { ai_restore_stack } put
+} forall
+
+% --- Illustrator private path operators ---
+/m { moveto } bind def
+/l { lineto } bind def
+/L { lineto } bind def
+/c { curveto } bind def
+/C { curveto } bind def
+% `v`: curve whose first control point is the current point (4 operands).
+/v { currentpoint 6 2 roll curveto } bind def
+% `y`: curve whose second control point is the endpoint (4 operands).
+/y { 2 copy curveto } bind def
+/N { newpath } bind def
+/Z { closepath } bind def
+
+% --- Painting ---
+/f { fill } bind def
+/S { stroke } bind def
+
+% --- Graphics state (Illustrator draws colour through Xa..Xf) ---
+% `Xa` is setrgbcolor: verified against a sample where `1 1 1 Xa` painted white.
+/Xa { setrgbcolor } bind def
+/Xb { setcmykcolor } bind def
+/Xc { setgray } bind def
+/w { setlinewidth } bind def
+/d { setdash } bind def
+% `u`/`U` group the file into balanced gsave/grestore pairs; `*u`/`*U` do the
+% same for layer groups.
+/u { gsave } bind def
+/U { grestore } bind def
+/*u { gsave } bind def
+/*U { grestore } bind def
+
+% --- Layer framing: consume the header operands, draw nothing ---
+% `1 1 1 1 0 0 0 79 128 255 Lb` (11 numbers) begins a layer.
+/Lb { 11 ai_pop_numbers } bind def
+% `(Layer 1) Ln` names a layer; only a string operand is consumed, so a
+% dialect that uses `Ln` as newpath is left alone.
+/Ln { count AI_SHIM_BASELINE sub 0 gt
+      { dup type /stringtype eq { pop } if }
+      if
+    } bind def
+% `10.43 M` in a layer header carries one number, but other dialects use `M`
+% as moveto: two or more operands -> moveto, otherwise drop the lone number.
+/M {
+  count AI_SHIM_BASELINE sub
+  dup 1 gt
+    { pop moveto }
+    { dup 0 gt { pop pop } { pop } ifelse }
+  ifelse
+} bind def
+% End-of-layer marker.
+/LB { } bind def
+
+% Display PostScript operator used by EPS trailers (`gsave annotatepage
+% grestore showpage`); Ghostscript does not implement it.
+/annotatepage { } bind def
+
+end
