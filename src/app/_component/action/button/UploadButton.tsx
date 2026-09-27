@@ -6,6 +6,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { readFile } from "@tauri-apps/plugin-fs";
 import { readExifMetadata } from "@/app/lib/tauri/tauri-commands";
 import { VECTOR_MIME_TYPE } from "@/app/lib/thumbnail/vectorSupport";
+import { shouldPrefillFromExif } from "@/app/lib/metadata/metadataStatus";
 import { setFiles, addFiles, setFilePath } from "@/store/fileStore";
 import { setHasAttemptedGeneration } from "@/store/uiStore";
 import { updateFileMetadata } from "@/store/metadataStore";
@@ -93,7 +94,9 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
       
       if (file.type !== 'image/svg+xml') {
         readExifMetadata(path).then(exifData => {
-          if (exifData.title || exifData.description || exifData.keywords) {
+          // Vectors (.ai/.eps) only carry an auto-generated Title, which
+          // shouldPrefillFromExif rejects in favour of real content.
+          if (shouldPrefillFromExif(file, exifData)) {
             updateFileMetadata(file, {
               title: exifData.title || '',
               description: exifData.description || '',
@@ -121,7 +124,7 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
       addFiles([file]);
       
       readExifMetadata(path).then(exifData => {
-        if (exifData.title || exifData.description || exifData.keywords) {
+        if (shouldPrefillFromExif(file, exifData)) {
           updateFileMetadata(file, {
             title: exifData.title || '',
             description: exifData.description || '',

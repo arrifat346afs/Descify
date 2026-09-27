@@ -23,6 +23,10 @@ import { CustomInstructionDialog } from "./CustomInstructionDialog";
 import { generateMetadata } from "@/app/lib/ai";
 import { generateImageThumbnail } from "@/app/lib/thumbnailGenerator";
 import { readExifMetadata } from "@/app/lib/tauri/tauri-commands";
+import {
+  hasCompleteMetadata,
+  shouldPrefillFromExif,
+} from "@/app/lib/metadata/metadataStatus";
 import { ThumbnailItem } from "./ThumbnailItem";
 import { useAutoScroll, useKeyboardAutoScroll, useDragAndDrop, useVirtualization, useKeyboardNavigation } from "./hooks";
 
@@ -105,7 +109,9 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         console.log(`📸 Reading EXIF metadata for dropped file: ${file.name}`);
         const exifData = await readExifMetadata(path);
 
-        if (exifData.title || exifData.description || exifData.keywords) {
+        // Vectors (.ai/.eps) only ever report an auto-generated Title, so
+        // shouldPrefillFromExif requires a description/keywords there.
+        if (shouldPrefillFromExif(file, exifData)) {
           console.log(`✅ Found embedded metadata for ${file.name} - Title: ${exifData.title ? 'yes' : 'no'}, Description: ${exifData.description ? 'yes' : 'no'}, Keywords: ${exifData.keywords ? 'yes' : 'no'}`);
 
           // Populate metadata fields with EXIF data
@@ -172,12 +178,13 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   // Files whose thumbnail generation already failed (rendered as "unavailable")
   const failedThumbnailSet = useMemo(() => new Set(failedThumbnails), [failedThumbnails]);
 
+  // Files that actually have metadata — all three fields required, so an
+  // auto-generated ExifTool Title alone (typical for .ai) does not count.
   const metadataMap = useMemo(() => {
     const map = new Map<string, boolean>();
     if (generatedMetadata) {
       generatedMetadata.forEach(item => {
-        const hasContent = item.metadata.title || item.metadata.description || item.metadata.keywords;
-        if (hasContent) {
+        if (hasCompleteMetadata(item.metadata)) {
           map.set(item.file.name, true);
         }
       });
