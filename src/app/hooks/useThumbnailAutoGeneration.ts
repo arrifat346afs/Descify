@@ -25,6 +25,7 @@ export function useThumbnailAutoGeneration() {
   const processingFilesRef = useRef<Set<File>>(new Set());
 
   const files = useFileStore((state) => state.files);
+  const failedThumbnails = useFileStore((state) => state.failedThumbnails);
 
   useEffect(() => {
     // Read thumbnails/filePaths from the store directly to avoid stale closures
@@ -39,8 +40,9 @@ export function useThumbnailAutoGeneration() {
       return;
     }
 
-    // Filter files that don't have thumbnails AND are not currently being processed
+    // Failed files remain excluded until their failure record is explicitly cleared.
     const existingThumbnailFiles = new Set(thumbnails.map((t) => t.file));
+    const failedThumbnailFiles = new Set(failedThumbnails);
 
     const filesToGenerate = files.filter((file) => {
       return (
@@ -49,6 +51,7 @@ export function useThumbnailAutoGeneration() {
         // .ai files in the list with no thumbnail forever.
         isThumbnailableFile(file) &&
         !existingThumbnailFiles.has(file) &&
+        !failedThumbnailFiles.has(file) &&
         !processingFilesRef.current.has(file)
       );
     });
@@ -114,5 +117,5 @@ export function useThumbnailAutoGeneration() {
         }
       }
     })();
-  }, [files]); // Only depend on files
+  }, [files, failedThumbnails]);
 }

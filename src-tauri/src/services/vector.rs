@@ -222,6 +222,8 @@ fn render_to_png(gs: &Path, file_path: &str, dpi: f64, spec: &RenderSpec) -> Opt
         None
     };
 
+    // End any `-c` program even when no shim was staged.
+    args.push("-f".to_string());
     args.push(file_path.to_string());
 
     // pngalpha renders with transparency; the result is flattened onto white
@@ -332,6 +334,13 @@ mod tests {
         0 0 0 setrgbcolor\n\
         10 60 moveto /Helvetica findfont 40 scalefont setfont (EPS Test) show\n\
         0 0 200 100 rectstroke\n\
+        %%EOF\n";
+
+    const SAMPLE_OFFSET_PS: &str = "%!PS-Adobe-3.0\n\
+        %%BoundingBox: 300 400 500 500\n\
+        1 0 0 setrgbcolor\n\
+        300 400 200 100 rectfill\n\
+        showpage\n\
         %%EOF\n";
 
     /// A legacy Illustrator PostScript file: no `EPSF-3.0` token in the header,
@@ -447,6 +456,33 @@ mod tests {
         );
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn rasterizes_plain_postscript_with_offset_origin() {
+        let Some(gs) = get_ghostscript_path() else {
+            eprintln!("Ghostscript not installed — skipping rasterization test");
+            return;
+        };
+
+        let dir = std::env::temp_dir()
+            .join(format!("descify_offset_ps_test_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("offset.ai");
+        std::fs::write(&path, SAMPLE_OFFSET_PS).unwrap();
+        let file_path = path.to_str().unwrap();
+        let spec = inspect_vector_file(file_path);
+        assert!(!spec.epsf_header);
+        assert!(!spec.needs_ai_shim);
+        assert_eq!(spec.bbox, Some((300.0, 400.0, 500.0, 500.0)));
+
+        let png = render_to_png(&gs, file_path, 72.0, &spec);
+        let _ = std::fs::remove_dir_all(&dir);
+        let img = decode_png(&png.expect("plain PostScript should render without a shim"))
+            .expect("Ghostscript should produce a valid PNG");
+        assert_eq!(img.dimensions(), (200, 100));
+        // The rectangle starts outside the output page unless translated.
+        assert_eq!(img.get_pixel(100, 50).0, [255, 0, 0, 255]);
     }
 
     #[test]

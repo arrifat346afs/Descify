@@ -349,7 +349,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
             >
               {filesToRender.map(({ file, index }) => {
                 const thumbnail = thumbnailMap.get(file.name);
-                const hasFailed = failedThumbnailSet.has(file.name);
+                const hasFailed = failedThumbnailSet.has(file);
                 // No thumbnail yet = still generating — unless generation already
                 // failed, in which case the item shows an explicit failure state.
                 const isGenerating = !thumbnail && !hasFailed;
