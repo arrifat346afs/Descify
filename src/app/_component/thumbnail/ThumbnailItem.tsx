@@ -13,6 +13,8 @@ interface ThumbnailItemProps {
   file: File;
   thumbnail: ThumbnailInfo | undefined;
   isGenerating: boolean;
+  /** Thumbnail generation already failed for this file — show an explicit state. */
+  hasFailed: boolean;
   isSelected: boolean;
   hasMetadata: boolean;
   hasAttemptedGeneration: boolean;
@@ -30,6 +32,7 @@ export const ThumbnailItem = memo(({
   file,
   thumbnail,
   isGenerating,
+  hasFailed,
   isSelected,
   hasMetadata,
   hasAttemptedGeneration,
@@ -77,6 +80,16 @@ export const ThumbnailItem = memo(({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <p className="text-xs text-muted-foreground">Generating...</p>
             </div>
+          </div>
+        ) : hasFailed ? (
+          // Generation failed (e.g. Ghostscript missing, unsupported vector
+          // file) — show an explicit state instead of an endless spinner.
+          <div
+            className="w-full h-full flex flex-col items-center justify-center gap-1 bg-muted"
+            title="Thumbnail unavailable — Ghostscript may not be installed, or this vector file could not be rasterized."
+          >
+            <MdOutlineImageNotSupported className="text-4xl text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">Thumbnail unavailable</p>
           </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-muted">
@@ -161,6 +174,7 @@ export const ThumbnailItem = memo(({
     prevProps.file === nextProps.file &&
     prevProps.thumbnail === nextProps.thumbnail &&
     prevProps.isGenerating === nextProps.isGenerating &&
+    prevProps.hasFailed === nextProps.hasFailed &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.hasMetadata === nextProps.hasMetadata &&
     prevProps.hasAttemptedGeneration === nextProps.hasAttemptedGeneration &&

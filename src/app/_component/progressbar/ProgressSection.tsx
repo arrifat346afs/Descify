@@ -1,6 +1,7 @@
 import { Progress } from "@/components/ui/progress"
 import { useFileStore } from "@/store/fileStore";
 import { useMetadataStore } from "@/store/metadataStore";
+import { hasCompleteMetadata } from "@/app/lib/metadata/metadataStatus";
 
 
 export const ProgressSection = () => {
@@ -10,11 +11,10 @@ export const ProgressSection = () => {
   // Calculate how many files have metadata generated
   const totalFiles = thumbnails.length;
 
-  // Only count files that have actual metadata content (not just custom instructions)
-  const completedFiles = generatedMetadata.filter(item => {
-    const hasContent = item.metadata.title || item.metadata.description || item.metadata.keywords;
-    return hasContent;
-  }).length;
+  // Only count files whose metadata is actually complete (title, description
+  // AND keywords) — a lone auto-generated Title (typical for .ai) is not
+  // generated metadata and must not be shown as progress.
+  const completedFiles = generatedMetadata.filter(item => hasCompleteMetadata(item.metadata)).length;
 
   const progressValue = totalFiles > 0 ? (completedFiles / totalFiles) * 100 : 0;
 

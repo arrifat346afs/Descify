@@ -3,8 +3,10 @@ import {
   useFileStore,
   setIsGeneratingThumbnails,
   upsertThumbnails,
+  markThumbnailFailed,
 } from '@/store/fileStore';
 import { BATCH_CONFIG } from '@/app/lib/thumbnailGenerator';
+import { isThumbnailableFile } from '@/app/lib/thumbnail/mediaTypes';
 
 /**
  * Automatically generates thumbnails for any loaded media files that don't
@@ -23,6 +25,7 @@ export function useThumbnailAutoGeneration() {
   const processingFilesRef = useRef<Set<File>>(new Set());
 
   const files = useFileStore((state) => state.files);
+  const failedThumbnails = useFileStore((state) => state.failedThumbnails);
 
   useEffect(() => {
     // Read thumbnails/filePaths from the store directly to avoid stale closures
@@ -37,15 +40,18 @@ export function useThumbnailAutoGeneration() {
       return;
     }
 
-    // Filter files that don't have thumbnails AND are not currently being processed
+    // Failed files remain excluded until their failure record is explicitly cleared.
     const existingThumbnailFiles = new Set(thumbnails.map((t) => t.file));
+    const failedThumbnailFiles = new Set(failedThumbnails);
 
     const filesToGenerate = files.filter((file) => {
-      const isMedia =
-        file.type.startsWith('image/') || file.type.startsWith('video/');
       return (
-        isMedia &&
+        // isThumbnailableFile covers images, videos AND vector formats
+        // (.ai / .eps) — a plain image/*||video/* check here would leave
+        // .ai files in the list with no thumbnail forever.
+        isThumbnailableFile(file) &&
         !existingThumbnailFiles.has(file) &&
+        !failedThumbnailFiles.has(file) &&
         !processingFilesRef.current.has(file)
       );
     });
@@ -77,7 +83,7 @@ export function useThumbnailAutoGeneration() {
           '@/app/lib/thumbnailGenerator'
         );
 
-        generateThumbnailsBatch(
+        await generateThumbnailsBatch(
           filesToGenerate,
           () => {}, // Progress callback
           (file, thumbnailUrl) => {
@@ -86,13 +92,22 @@ export function useThumbnailAutoGeneration() {
             processingFilesRef.current.delete(file);
           },
           BATCH_CONFIG.CONCURRENCY,
-          filePaths
+          filePaths,
+          // Per-file failure: release the file and record the failure so the
+          // UI shows "thumbnail unavailable" instead of spinning forever.
+          (file) => {
+            processingFilesRef.current.delete(file);
+            markThumbnailFailed(file);
+          }
         );
 
         console.log(`✅ Completed batch #${batchId}`);
       } catch (error) {
         console.error('❌ Batch thumbnail generation failed:', error);
-        filesToGenerate.forEach((f) => processingFilesRef.current.delete(f));
+        filesToGenerate.forEach((f) => {
+          processingFilesRef.current.delete(f);
+          markThumbnailFailed(f);
+        });
       } finally {
         // Decrement counter; only clear the loading flag when ALL batches are done
         activeGenerationsRef.current -= 1;
@@ -102,5 +117,5 @@ export function useThumbnailAutoGeneration() {
         }
       }
     })();
-  }, [files]); // Only depend on files
+  }, [files, failedThumbnails]);
 }

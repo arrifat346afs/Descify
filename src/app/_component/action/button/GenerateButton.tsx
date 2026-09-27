@@ -13,6 +13,7 @@ import {
   getCustomInstruction,
 } from '@/store/metadataStore';
 import { generateMetadata } from '@/app/lib/ai';
+import { hasCompleteMetadata } from '@/app/lib/metadata/metadataStatus';
 import { beginGeneration, endGeneration } from '@/app/lib/generation/generationControl';
 import { CANCELLED_MESSAGE } from '@/app/lib/ai/api-client';
 import { getActiveTemplate } from '@/app/lib/metadata/templateUtils';
@@ -49,17 +50,11 @@ const GenerateButtonComponent = () => {
   const selectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isGenerating = generationProgress.isGenerating;
   
-  // Helper to check if a file already has complete metadata (title, description AND keywords all non-empty)
-  // Files with partial metadata are NOT skipped — generation produces all three fields together
-  const hasCompleteMetadata = (file: File) => {
-    const metadata = getMetadata(file);
-    return (
-      !!metadata &&
-      !!metadata.title?.trim() &&
-      !!metadata.description?.trim() &&
-      !!metadata.keywords?.trim()
-    );
-  };
+  // Files with complete metadata (title, description AND keywords all non-empty)
+  // are skipped — partial metadata is NOT skipped, generation produces all
+  // three fields together. The predicate is shared with the "has metadata"
+  // border and the progress counter (metadataStatus.ts).
+  const isComplete = (file: File) => hasCompleteMetadata(getMetadata(file));
 
   // Helper function to debounce file selection to avoid blocking during metadata updates
   const scheduleFileSelection = (file: File) => {
@@ -112,7 +107,7 @@ const GenerateButtonComponent = () => {
 
     // Skip files that already have complete metadata (e.g. from a previous run or embedded EXIF)
     // No API call is made — processing moves straight to the next file
-    if (hasCompleteMetadata(item.file)) {
+    if (isComplete(item.file)) {
       console.log(`⏭️ Skipping ${item.file.name} (index ${index}) — complete metadata already exists`);
       return { success: true, skipped: true };
     }
