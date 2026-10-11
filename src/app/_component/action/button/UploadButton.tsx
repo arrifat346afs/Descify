@@ -3,7 +3,7 @@ import { useState } from "react";
 import React from "react";
 import { UploadIcon } from "@/components/ui/upload";
 import { open } from '@tauri-apps/plugin-dialog';
-import { readFile } from "@tauri-apps/plugin-fs";
+import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { readExifMetadata } from "@/app/lib/tauri/tauri-commands";
 import { VECTOR_MIME_TYPE } from "@/app/lib/thumbnail/vectorSupport";
 import { shouldPrefillFromExif } from "@/app/lib/metadata/metadataStatus";
@@ -19,11 +19,16 @@ import { updateFileMetadata } from "@/store/metadataStore";
 // relies on frame capture throws. Large videos cost memory, but correctness
 // comes first; the Rust/FFmpeg path (which streams from disk) remains the
 // primary thumbnail source via the stored file path.
+//
+// Stability guard: videos larger than LARGE_VIDEO_BYTES stay path-only
+// (empty placeholder). Loading e.g. a 1 GB video into the renderer heap can
+// OOM/crash the WebKit web process (full-app black screen); the FFmpeg
+// preview image (via the stored file path) covers display + AI for those.
+const LARGE_VIDEO_BYTES = 150 * 1024 * 1024;
 const fileFromPath = async (path: string): Promise<File> => {
   const name = path.split("/").pop() ?? "file";
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
 
-  const data = await readFile(path);
   const mimeTypes: Record<string, string> = {
     'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
     'gif': 'image/gif', 'webp': 'image/webp', 'svg': 'image/svg+xml',
@@ -36,7 +41,26 @@ const fileFromPath = async (path: string): Promise<File> => {
     ['avi', 'mkv', 'flv', 'wmv', 'm4v', '3gp', 'ogv', 'mts', 'm2ts'].includes(ext)
       ? `video/${ext}`
       : '';
-  return new File([data], name, { type: mimeTypes[ext] || fallbackVideoMime });
+  const mimeType = mimeTypes[ext] || fallbackVideoMime;
+  const isVideo = mimeType.startsWith('video/');
+
+  if (isVideo) {
+    try {
+      const meta = await stat(path);
+      if (meta.size > LARGE_VIDEO_BYTES) {
+        console.warn(
+          `⚠️ Large video "${name}" (${(meta.size / 1024 / 1024).toFixed(1)} MB) — ` +
+          `keeping path-only placeholder; preview uses the FFmpeg image.`
+        );
+        return new File([], name, { type: mimeType });
+      }
+    } catch {
+      // stat failed (e.g. scope) — fall through and try the full read.
+    }
+  }
+
+  const data = await readFile(path);
+  return new File([data], name, { type: mimeType });
 };
 
 type UploadButtonProps = {

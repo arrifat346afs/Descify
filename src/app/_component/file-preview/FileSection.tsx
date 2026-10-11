@@ -140,7 +140,7 @@ export default function FileSection({ file }: FileSectionProps) {
           {isVideo && objectUrl && !videoBlobFailed && (
             <video
               src={objectUrl}
-              autoPlay
+              preload="metadata"
               muted
               playsInline
               controls
