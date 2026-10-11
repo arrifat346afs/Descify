@@ -28,7 +28,32 @@ export function resizeViaCanvas(bitmap: ImageBitmap, quality: number): string {
  */
 export async function assetUrlToDataUrl(url: string): Promise<string> {
   if (url.startsWith('data:')) return url;
+  // `fetch(asset://...)` is blocked by WebKit same-origin checks when the
+  // webview origin is an http:// dev server ("Unsafe attempt to load URL").
+  // Decode the asset URL back to a filesystem path and read it via the fs
+  // plugin (IPC) instead — no custom-protocol load involved.
+  if (url.startsWith('asset://')) {
+    try {
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      // asset://localhost/<percent-encoded-absolute-path>
+      const encodedPath = url.replace(/^asset:\/\/[^/]*/, '');
+      const filePath = decodeURIComponent(encodedPath);
+      const data = await readFile(filePath);
+      const blob = new Blob([data as unknown as BlobPart], { type: 'image/jpeg' });
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('FileReader failed'));
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.warn('assetUrlToDataUrl: fs fallback failed, trying fetch:', error);
+    }
+  }
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image URL: ${response.status}`);
+  }
   const blob = await response.blob();
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

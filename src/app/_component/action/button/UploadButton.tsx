@@ -11,21 +11,18 @@ import { setFiles, addFiles, setFilePath } from "@/store/fileStore";
 import { setHasAttemptedGeneration } from "@/store/uiStore";
 import { updateFileMetadata } from "@/store/metadataStore";
 
-// Convert a file path to a File object with proper MIME type
-// For videos, we create a lightweight File without loading content (backend reads from path)
-const fileFromPath = async (path: string, loadContent: boolean = true): Promise<File> => {
+// Convert a file path to a File object with proper MIME type.
+// Video bytes ARE loaded (via readFile) so browser fallbacks that need real
+// content — <video> preview via blob URL, canvas frame capture — keep working.
+// An empty placeholder File (size 0) decodes to nothing: thumbnails fall back
+// to a failing path, the preview player shows black, and AI generation that
+// relies on frame capture throws. Large videos cost memory, but correctness
+// comes first; the Rust/FFmpeg path (which streams from disk) remains the
+// primary thumbnail source via the stored file path.
+const fileFromPath = async (path: string): Promise<File> => {
   const name = path.split("/").pop() ?? "file";
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  const isVideo = ['mp4', 'mov', 'webm'].includes(ext);
-  
-  if (isVideo && !loadContent) {
-    // For videos, create lightweight placeholder - content not needed, backend reads from path
-    const mimeType = isVideo 
-      ? (ext === 'mov' ? 'video/quicktime' : `video/${ext}`)
-      : '';
-    return new File([], name, { type: mimeType });
-  }
-  
+
   const data = await readFile(path);
   const mimeTypes: Record<string, string> = {
     'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
@@ -33,7 +30,13 @@ const fileFromPath = async (path: string, loadContent: boolean = true): Promise<
     'ai': VECTOR_MIME_TYPE, 'eps': VECTOR_MIME_TYPE,
     'mp4': 'video/mp4', 'mov': 'video/quicktime', 'webm': 'video/webm',
   };
-  return new File([data], name, { type: mimeTypes[ext] || '' });
+  // Fall back to extension-derived video MIME for formats not in the map
+  // (avi/mkv/flv/...) so isThumbnailableFile + <video> playback still match.
+  const fallbackVideoMime =
+    ['avi', 'mkv', 'flv', 'wmv', 'm4v', '3gp', 'ogv', 'mts', 'm2ts'].includes(ext)
+      ? `video/${ext}`
+      : '';
+  return new File([data], name, { type: mimeTypes[ext] || fallbackVideoMime });
 };
 
 type UploadButtonProps = {
@@ -42,6 +45,8 @@ type UploadButtonProps = {
 
 // How many files to read from disk in parallel
 const UPLOAD_CONCURRENCY = 5;
+
+const VIDEO_EXTS = ['mp4', 'mov', 'webm', 'avi', 'mkv', 'flv', 'wmv', 'm4v', '3gp', 'ogv', 'mts', 'm2ts'];
 
 const UploadButtonComponent = ({ }: UploadButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -53,7 +58,7 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
       filters: [
         {
           name: "Media",
-          extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "ai", "eps", "mp4", "mov", "webm"]
+          extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "ai", "eps", ...VIDEO_EXTS]
         }
       ]
     });
@@ -76,7 +81,7 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
     
     for (const path of paths) {
       const ext = path.split('.').pop()?.toLowerCase() ?? '';
-      if (['mp4', 'mov', 'webm'].includes(ext)) {
+      if (VIDEO_EXTS.includes(ext)) {
         videoPaths.push(path);
       } else {
         imagePaths.push(path);
@@ -116,10 +121,10 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
       })
     );
 
-    // Process videos one at a time to prevent UI freeze
-    // Use lightweight File objects - no content loaded, backend reads from path directly
+    // Process videos one at a time to prevent UI freeze.
+    // Full bytes are loaded so preview playback + canvas fallback work.
     for (const path of videoPaths) {
-      const file = await fileFromPath(path, false); // Don't load video content
+      const file = await fileFromPath(path);
       setFilePath(file, path);
       addFiles([file]);
       

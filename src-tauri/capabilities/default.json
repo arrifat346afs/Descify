@@ -38,10 +38,15 @@
       "identifier": "fs:scope",
       "allow": [
         { "path": "$APPDATA/*" },
+        { "path": "$CACHE/**/*" },
         { "path": "$DOWNLOAD/*" },
+        { "path": "$DOWNLOAD/**/*" },
         { "path": "$DOCUMENT/*" },
+        { "path": "$DOCUMENT/**/*" },
         { "path": "$DESKTOP/*" },
-        { "path": "$HOME/*" }
+        { "path": "$DESKTOP/**/*" },
+        { "path": "$HOME/*" },
+        { "path": "$HOME/**/*" }
       ]
     }
   ]

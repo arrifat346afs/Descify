@@ -1,9 +1,10 @@
 /**
  * Thumbnail Service — public API orchestrator.
  *
- * Coordinates the Rust-backed pipeline (preferred, asset:// URLs) and the
- * browser Canvas fallback (used when no file path is available or the Rust
- * path fails). The bounded LRU cache is shared by every path.
+ * Coordinates the Rust-backed pipeline (preferred, data-URL thumbnails read
+ * from the on-disk cache via the fs plugin) and the browser Canvas fallback
+ * (used when no file path is available or the Rust path fails). The bounded
+ * LRU cache is shared by every path.
  */
 
 import { invoke } from '@tauri-apps/api/core';
@@ -12,7 +13,7 @@ import type { GeneratedPreviewResult } from './types';
 import { BATCH_CONFIG, AI_IMAGE_CONFIG, PREVIEW_CONFIG, getCacheKey } from './config';
 import { thumbnailCache } from './lruCache';
 import { assetUrlToDataUrl, generateImageViaCanvas, resizeViaCanvas } from './imageCanvas';
-import { resolveImageUrl, generateThumbnailRust, generateVideoThumbnailRust, generateVideoPreviewRust } from './rustBridge';
+import { resolveImageUrlAsync, generateThumbnailRust, generateVideoThumbnailRust, generateVideoPreviewRust } from './rustBridge';
 import { generateVideoThumbnail } from './videoThumbnail';
 import { isVectorFile } from './vectorSupport';
 
@@ -26,7 +27,8 @@ import { isVectorFile } from './vectorSupport';
  * The result is always a base64 `data:image/jpeg;base64,...` string because
  * remote AI providers (OpenAI, Google Gemini, OpenRouter) require inline
  * image data.  For display purposes you should use `generateImageThumbnail` /
- * `generatePreviewImage` instead — those return lighter `asset://` URLs.
+ * `generatePreviewImage` instead — those return lightweight data-URLs read
+ * from the on-disk thumbnail cache.
  *
  * We obtain the thumbnail via the same Rust/LRU path (avoiding redundant
  * FFmpeg invocations) and then materialise the base64 data transiently via
@@ -36,14 +38,23 @@ export async function generateAIImage(file: File, filePath?: string): Promise<st
   if (file.type.startsWith('video/') && filePath) {
     const videoThumb = await generateVideoThumbnailRust(filePath, AI_IMAGE_CONFIG.MAX_SIZE);
     if (videoThumb) {
-      // The thumbnail is an asset:// URL — convert to base64 for the AI API.
+      // The thumbnail is already a data-URL (or asset:// on legacy cache
+      // entries) — convert to base64 for the AI API.
       // This is transient: the result is used immediately and not cached.
       return assetUrlToDataUrl(videoThumb);
+    }
+    // Fallback: browser frame capture. Requires real file bytes — an empty
+    // placeholder File (size 0) cannot be decoded and will throw.
+    if (file.size === 0) {
+      throw new Error(
+        `Cannot generate AI image for "${file.name}": video bytes are unavailable ` +
+        `(empty placeholder) and the Rust backend produced no thumbnail.`
+      );
     }
     return generateVideoThumbnail(file);
   }
   // Vector formats (.ai/.eps) cannot be decoded by the browser — rasterize
-  // through the Rust/Ghostscript backend and convert the asset:// URL to base64.
+  // through the Rust/Ghostscript backend and convert the thumbnail URL to base64.
   if (isVectorFile(file)) {
     if (filePath) {
       const vectorThumb = await generateThumbnailRust(filePath, AI_IMAGE_CONFIG.MAX_SIZE);
@@ -93,7 +104,7 @@ export async function generatePreviewImage(file: File, filePath?: string, signal
           throw new Error('Aborted');
         }
 
-        const preview = resolveImageUrl(result.preview_base64, result.cache_path);
+        const preview = await resolveImageUrlAsync(result.preview_base64, result.cache_path);
         if (preview) {
           thumbnailCache.set(cacheKey, preview);
           return preview;
@@ -198,7 +209,16 @@ export async function generateThumbnailsBatch(
           if (filePath) {
             try {
               thumbnail = await generateVideoThumbnailRust(filePath);
-            } catch {
+            } catch (rustError) {
+              // Rust/FFmpeg failed — try browser frame capture, but only when
+              // the File actually holds bytes. Empty placeholders (size 0)
+              // cannot be decoded; surface the original Rust error instead.
+              if (file.size === 0) throw rustError;
+              thumbnail = await generateVideoThumbnail(file);
+            }
+            // Rust returned null (e.g. unsupported codec) — try browser
+            // fallback when bytes are available.
+            if (!thumbnail && file.size > 0) {
               thumbnail = await generateVideoThumbnail(file);
             }
           } else {

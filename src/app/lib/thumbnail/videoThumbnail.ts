@@ -7,6 +7,13 @@ import { BATCH_CONFIG } from './config';
 
 export function generateVideoThumbnail(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
+    // An empty placeholder File (size 0, from the old lightweight upload path)
+    // contains no decodable bytes — fail fast with a clear message instead of
+    // hanging until the 4s timeout.
+    if (file.size === 0) {
+      reject(new Error(`Cannot decode video "${file.name}": file is empty (0 bytes). Re-import with full video bytes or a valid file path for the Rust/FFmpeg backend.`));
+      return;
+    }
     const video = document.createElement('video');
     video.muted = true;
     video.autoplay = false;

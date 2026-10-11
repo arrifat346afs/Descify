@@ -17,14 +17,19 @@ export default function FileSection({ file }: FileSectionProps) {
 
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [videoBlobFailed, setVideoBlobFailed] = useState(false);
   const isImage = file?.type.startsWith("image/") ?? false;
   const isVideo = file?.type.startsWith("video/") ?? false;
+  // An empty placeholder File (size 0) has no decodable bytes — skip the blob
+  // URL entirely and fall back to the Rust/FFmpeg preview image below.
+  const isEmptyVideo = isVideo && (file?.size ?? 0) === 0;
   // .ai/.eps cannot be decoded by the browser — the preview is rasterized by
-  // the Rust/Ghostscript backend and returned as an asset:// URL.
+  // the Rust/Ghostscript backend and returned as a data-URL.
   const isVector = file ? isVectorFile(file) : false;
 
   const [vectorPreviewUrl, setVectorPreviewUrl] = useState<string | null>(null);
   const [vectorPreviewFailed, setVectorPreviewFailed] = useState(false);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!file) {
@@ -33,16 +38,18 @@ export default function FileSection({ file }: FileSectionProps) {
       return;
     }
     setIsLoaded(false);
+    setVideoBlobFailed(false);
     // Vectors get no blob URL: the browser cannot render it, and creating one
-    // would just leak an unusable object URL.
-    if (isVector) {
+    // would just leak an unusable object URL. Empty videos also get no blob
+    // URL — a 0-byte blob can never decode, so go straight to the Rust preview.
+    if (isVector || isEmptyVideo) {
       setObjectUrl(null);
       return;
     }
     const url = URL.createObjectURL(file);
     setObjectUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [file, isVector]);
+  }, [file, isVector, isEmptyVideo]);
 
   // Fetch the rasterized preview for vector files.
   useEffect(() => {
@@ -73,6 +80,31 @@ export default function FileSection({ file }: FileSectionProps) {
 
     return () => controller.abort();
   }, [file, isVector]);
+
+  // Fetch the Rust/FFmpeg preview frame for videos whose blob cannot be
+  // played (empty placeholder File, or <video> decode error at runtime).
+  // The preview is a small JPEG data-URL, so it displays even when the
+  // original bytes are missing.
+  useEffect(() => {
+    if (!file || !isVideo || (!isEmptyVideo && !videoBlobFailed)) {
+      if (!isEmptyVideo && !videoBlobFailed) setVideoPreviewUrl(null);
+      return;
+    }
+    const controller = new AbortController();
+    setVideoPreviewUrl(lowResUrl ?? null);
+    generatePreviewImage(file, getFilePath(file), controller.signal)
+      .then((url) => {
+        if (controller.signal.aborted) return;
+        if (url) setVideoPreviewUrl(url);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.warn(`Video preview fallback failed for ${file.name}:`, error);
+      });
+    return () => controller.abort();
+    // lowResUrl is intentionally read once per fallback activation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file, isVideo, isEmptyVideo, videoBlobFailed]);
 
   if (!file) {
     return (
@@ -105,7 +137,7 @@ export default function FileSection({ file }: FileSectionProps) {
             />
           )}
 
-          {isVideo && objectUrl && (
+          {isVideo && objectUrl && !videoBlobFailed && (
             <video
               src={objectUrl}
               autoPlay
@@ -114,7 +146,27 @@ export default function FileSection({ file }: FileSectionProps) {
               controls
               className="w-full h-full object-contain rounded-2xl"
               onLoadedData={() => setIsLoaded(true)}
+              onError={() => setVideoBlobFailed(true)}
             />
+          )}
+
+          {isVideo && (isEmptyVideo || videoBlobFailed) && (videoPreviewUrl ?? lowResUrl) && (
+            <img
+              src={(videoPreviewUrl ?? lowResUrl) as string}
+              alt={file.name}
+              className="w-full h-full object-contain rounded-2xl"
+              onLoad={() => setIsLoaded(true)}
+            />
+          )}
+
+          {isVideo && (isEmptyVideo || videoBlobFailed) && !(videoPreviewUrl ?? lowResUrl) && (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <MdOutlineImageNotSupported className="text-6xl" />
+              <p className="text-sm">Video preview unavailable</p>
+              <p className="text-xs max-w-md text-center">
+                The video bytes could not be loaded and FFmpeg produced no preview frame.
+              </p>
+            </div>
           )}
 
           {isVector && vectorUrl && (

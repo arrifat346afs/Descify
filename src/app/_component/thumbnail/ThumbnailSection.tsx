@@ -76,19 +76,40 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       // (.ai/.eps) with no path, which they need for Ghostscript rasterization.
       const filePath = getFilePath(file);
 
-      // Generate async without blocking
-      generateImageThumbnail(file, filePath)
-        .then((thumbnailUrl) => {
+      // Generate async without blocking. Route by type: videos go through the
+      // Rust/FFmpeg backend (browser frame capture needs real bytes as
+      // fallback), vectors through Ghostscript, images through Canvas.
+      (async () => {
+        try {
+          let thumbnailUrl: string | null = null;
+          if (file.type.startsWith('video/')) {
+            const { generateVideoThumbnailRust } = await import('@/app/lib/thumbnail/rustBridge');
+            const { generateVideoThumbnail } = await import('@/app/lib/thumbnailGenerator');
+            if (filePath) {
+              try {
+                thumbnailUrl = await generateVideoThumbnailRust(filePath);
+              } catch {
+                thumbnailUrl = file.size > 0 ? await generateVideoThumbnail(file) : null;
+              }
+              if (!thumbnailUrl && file.size > 0) {
+                thumbnailUrl = await generateVideoThumbnail(file);
+              }
+            } else {
+              thumbnailUrl = await generateVideoThumbnail(file);
+            }
+          } else {
+            thumbnailUrl = await generateImageThumbnail(file, filePath);
+          }
           if (thumbnailUrl) {
             addThumbnail({ file, thumbnailUrl, previewUrl: null });
           } else {
             markThumbnailFailed(file);
           }
-        })
-        .catch((error) => {
+        } catch (error) {
           console.warn(`Thumbnail generation failed for ${file.name}:`, error);
           markThumbnailFailed(file);
-        });
+        }
+      })();
     }, [addFiles, setHasAttemptedGeneration]),
     // Legacy batch fallback (used when onFileAdded is not provided)
     // Use addFiles (stable) instead of setFiles([...files, ...newFiles]) so that
