@@ -33,12 +33,23 @@ export const getMimeType = (filename: string): string => {
   return mimeTypes[ext] || 'application/octet-stream';
 };
 
-// Convert a file path to a File object with proper MIME type
+// Convert a file path to a File object with proper MIME type.
+// Videos are kept path-only (empty placeholder): the renderer never loads
+// video bytes — <video> crashes WebKit on this machine and big files OOM.
+// Display, thumbnails, and AI all come from the Rust FFmpeg backend via the
+// stored file path.
 export const fileFromPath = async (path: string): Promise<File> => {
-  const data = await readFile(path);
   // Handle both forward and backward slashes for cross-platform compatibility
   const name = path.split(/[/\\]/).pop() ?? "file";
   const mimeType = getMimeType(name);
+  const isVideo = mimeType.startsWith('video/');
+
+  if (isVideo) {
+    console.log(`🔍 fileFromPath: ${name} -> video placeholder (path-only, no bytes)`);
+    return new File([], name, { type: mimeType });
+  }
+
+  const data = await readFile(path);
   console.log(`🔍 fileFromPath: ${name} -> MIME type: ${mimeType}`);
   return new File([data], name, { type: mimeType });
 };

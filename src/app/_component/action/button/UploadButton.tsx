@@ -3,7 +3,7 @@ import { useState } from "react";
 import React from "react";
 import { UploadIcon } from "@/components/ui/upload";
 import { open } from '@tauri-apps/plugin-dialog';
-import { readFile, stat } from "@tauri-apps/plugin-fs";
+import { readFile } from "@tauri-apps/plugin-fs";
 import { readExifMetadata } from "@/app/lib/tauri/tauri-commands";
 import { VECTOR_MIME_TYPE } from "@/app/lib/thumbnail/vectorSupport";
 import { shouldPrefillFromExif } from "@/app/lib/metadata/metadataStatus";
@@ -12,19 +12,12 @@ import { setHasAttemptedGeneration } from "@/store/uiStore";
 import { updateFileMetadata } from "@/store/metadataStore";
 
 // Convert a file path to a File object with proper MIME type.
-// Video bytes ARE loaded (via readFile) so browser fallbacks that need real
-// content — <video> preview via blob URL, canvas frame capture — keep working.
-// An empty placeholder File (size 0) decodes to nothing: thumbnails fall back
-// to a failing path, the preview player shows black, and AI generation that
-// relies on frame capture throws. Large videos cost memory, but correctness
-// comes first; the Rust/FFmpeg path (which streams from disk) remains the
-// primary thumbnail source via the stored file path.
-//
-// Stability guard: videos larger than LARGE_VIDEO_BYTES stay path-only
-// (empty placeholder). Loading e.g. a 1 GB video into the renderer heap can
-// OOM/crash the WebKit web process (full-app black screen); the FFmpeg
-// preview image (via the stored file path) covers display + AI for those.
-const LARGE_VIDEO_BYTES = 150 * 1024 * 1024;
+// Video bytes are NOT loaded here — a video File is kept path-only (empty
+// placeholder) because the renderer can't play full video bytes anyway:
+// <video> builds a GStreamer pipeline that crashes WebKit when a required
+// element (e.g. autoaudiosink) is missing, and loading a large video into the
+// heap freezes the app. Display, thumbnails, and AI all come from the Rust
+// FFmpeg backend via the stored file path.
 const fileFromPath = async (path: string): Promise<File> => {
   const name = path.split("/").pop() ?? "file";
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
@@ -45,18 +38,7 @@ const fileFromPath = async (path: string): Promise<File> => {
   const isVideo = mimeType.startsWith('video/');
 
   if (isVideo) {
-    try {
-      const meta = await stat(path);
-      if (meta.size > LARGE_VIDEO_BYTES) {
-        console.warn(
-          `⚠️ Large video "${name}" (${(meta.size / 1024 / 1024).toFixed(1)} MB) — ` +
-          `keeping path-only placeholder; preview uses the FFmpeg image.`
-        );
-        return new File([], name, { type: mimeType });
-      }
-    } catch {
-      // stat failed (e.g. scope) — fall through and try the full read.
-    }
+    return new File([], name, { type: mimeType });
   }
 
   const data = await readFile(path);
