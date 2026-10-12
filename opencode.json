@@ -1,0 +1,95 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permissions": [
+    {
+      "action": "edit",
+      "resource": "src/app/lib/thumbnail/rustBridge.ts",
+      "effect": "ask"
+    },
+    {
+      "action": "edit",
+      "resource": "src/app/lib/thumbnail/imageCanvas.ts",
+      "effect": "ask"
+    },
+    {
+      "action": "edit",
+      "resource": "src/app/lib/thumbnail/thumbnailService.ts",
+      "effect": "ask"
+    },
+    {
+      "action": "edit",
+      "resource": "src/app/lib/thumbnail/videoThumbnail.ts",
+      "effect": "ask"
+    },
+    {
+      "action": "edit",
+      "resource": "src/app/_component/action/button/UploadButton.tsx",
+      "effect": "ask"
+    },
+    {
+      "action": "edit",
+      "resource": "src/app/_component/file-preview/FileSection.tsx",
+      "effect": "ask"
+    },
+    {
+      "action": "edit",
+      "resource": "src/app/_component/thumbnail/ThumbnailSection.tsx",
+      "effect": "ask"
+    },
+    {
+      "action": "edit",
+      "resource": "src-tauri/tauri.conf.json",
+      "effect": "ask"
+    },
+    {
+      "action": "edit",
+      "resource": "src-tauri/capabilities/default.json",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "*rustBridge.ts*",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "*imageCanvas.ts*",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "*thumbnailService.ts*",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "*videoThumbnail.ts*",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "*UploadButton.tsx*",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "*FileSection.tsx*",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "*ThumbnailSection.tsx*",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "*tauri.conf.json*",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "*capabilities/default.json*",
+      "effect": "ask"
+    }
+  ]
+}
