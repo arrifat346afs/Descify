@@ -12,11 +12,6 @@ import {
   type AIUsage,
 } from "../http";
 
-export type GoogleConfig = {
-  apiKey?: string;
-  model?: string;
-};
-
 /**
  * Default model to use for Google Gemini if none is specified
  */
@@ -151,8 +146,7 @@ export async function callGoogleGemini(
       errorBody.includes('model does not support') ||
       errorBody.includes('vision') ||
       errorBody.includes('image modality') ||
-      errorBody.includes('media type') ||
-      response.status === 400;
+      errorBody.includes('media type');
 
     if (isModelCapabilityError) {
       const errorMessage = "The selected model does not support image input. Please select a vision-capable model from Settings.";

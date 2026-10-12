@@ -5,21 +5,20 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use base64::Engine;
 use blake3::Hasher;
 use image::imageops::FilterType;
 use image::GenericImageView;
 use image::{DynamicImage, ImageReader};
-use lazy_static::lazy_static;
 
 use crate::services::gpu_thumbnail;
 use crate::services::vector;
 
-lazy_static! {
-    static ref VIDEO_GEN_LOCK: Mutex<()> = Mutex::new(());
-}
+/// Sequence for unique ffmpeg temp file names (see
+/// generate_video_thumbnail_ffmpeg).
+static TEMP_SEQ: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ThumbnailResult {
@@ -167,7 +166,37 @@ fn save_thumbnail_to_cache(
     let thumb_path = cache_dir.join(format!("{}.jpg", cache_key));
     let mut file = File::create(&thumb_path).ok()?;
     file.write_all(jpeg_data).ok()?;
+    evict_oldest(cache_dir);
     Some(thumb_path)
+}
+
+/// Thumbnails are never deleted anywhere else, so the on-disk
+/// cache would grow for the life of the install. Keep the newest
+/// MAX_CACHE_FILES entries and remove the rest by modification time.
+const MAX_CACHE_FILES: usize = 5000;
+
+fn evict_oldest(cache_dir: &PathBuf) {
+    let Ok(entries) = fs::read_dir(cache_dir) else {
+        return;
+    };
+    let mut files: Vec<(std::time::SystemTime, PathBuf)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            entry
+                .metadata()
+                .ok()
+                .and_then(|meta| meta.modified().ok())
+                .map(|modified| (modified, entry.path()))
+        })
+        .collect();
+    if files.len() <= MAX_CACHE_FILES {
+        return;
+    }
+    files.sort_by_key(|(modified, _)| *modified);
+    let excess = files.len() - MAX_CACHE_FILES;
+    for (_, path) in files.into_iter().take(excess) {
+        let _ = fs::remove_file(path);
+    }
 }
 
 pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult {
@@ -398,51 +427,27 @@ fn get_ffmpeg_path() -> Option<PathBuf> {
     which::which("ffmpeg").ok()
 }
 
-fn detect_video_dimensions(file_path: &str) -> Option<(u32, u32)> {
-    let ffmpeg = get_ffmpeg_path()?;
-    let output = Command::new(&ffmpeg)
-        .args(["-i", file_path, "-hide_banner"])
-        .output()
-        .ok()?;
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    for line in stderr.lines() {
-        if line.contains("Video:") || line.contains("Stream #") {
-            if let Some(res) = line.split("x").last() {
-                let dims: Vec<u32> = res
-                    .split_whitespace()
-                    .next()?
-                    .split(',')
-                    .next()?
-                    .split('x')
-                    .filter_map(|s| s.trim().parse().ok())
-                    .collect();
-                if dims.len() >= 2 {
-                    return Some((dims[0], dims[1]));
-                }
-            }
-        }
-    }
-    None
-}
-
 fn generate_video_thumbnail_ffmpeg(
     file_path: &str,
     target_size: u32,
 ) -> Option<(Vec<u8>, u32, u32)> {
     let ffmpeg = get_ffmpeg_path()?;
 
-    let (orig_w, orig_h) = detect_video_dimensions(file_path).unwrap_or((1920, 1080));
-    let scale = if orig_w > orig_h {
-        (target_size as f32 / orig_w as f32).min(1.0)
-    } else {
-        (target_size as f32 / orig_h as f32).min(1.0)
-    };
+    // The resolution is assumed landscape-HD: the scale/pad filter
+    // keeps the real aspect ratio anyway (force_original_aspect_ratio
+    // + pad), so only the pad canvas size matters here. The old
+    // detect_video_dimensions() helper parsed ffmpeg's stderr and
+    // never matched a real line, so it always fell back to this.
+    let (orig_w, orig_h) = (1920, 1080);
+    let scale = (target_size as f32 / orig_w as f32).min(1.0);
     let new_w = (orig_w as f32 * scale) as u32;
     let new_h = (orig_h as f32 * scale) as u32;
 
     let temp_dir = std::env::temp_dir();
-    let output_path = temp_dir.join(format!("thumb_{}.jpg", std::process::id()));
+    // Unique per call: concurrent runs in this process would
+    // otherwise write the same temp file and corrupt each other.
+    let seq = TEMP_SEQ.fetch_add(1, Ordering::Relaxed);
+    let output_path = temp_dir.join(format!("thumb_{}_{}.jpg", std::process::id(), seq));
 
     let use_gpu = gpu_thumbnail::is_gpu_available();
     let hwaccel_args = gpu_thumbnail::get_ffmpeg_hwaccel_args();
@@ -473,7 +478,7 @@ fn generate_video_thumbnail_ffmpeg(
     let output = Command::new(&ffmpeg).args(&args).output().ok()?;
 
     if !output.status.success() {
-        let fallback_output = temp_dir.join(format!("thumb_fallback_{}.jpg", std::process::id()));
+        let fallback_output = temp_dir.join(format!("thumb_fallback_{}_{}.jpg", std::process::id(), seq));
         let fallback_filter = format!("scale={}:{}", new_w, new_h);
         let output = Command::new(&ffmpeg)
             .args([
@@ -516,8 +521,6 @@ fn generate_video_thumbnail_ffmpeg(
 }
 
 pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult {
-    let _guard = VIDEO_GEN_LOCK.lock().unwrap();
-
     let path = PathBuf::from(file_path);
     if !path.exists() || !path.is_file() {
         return ThumbnailResult {
@@ -640,8 +643,6 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
 }
 
 pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResult {
-    let _guard = VIDEO_GEN_LOCK.lock().unwrap();
-
     let path = PathBuf::from(file_path);
     if !path.exists() || !path.is_file() {
         return PreviewResult {

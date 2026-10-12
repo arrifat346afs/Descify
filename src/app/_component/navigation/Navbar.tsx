@@ -1,14 +1,8 @@
 import { Button } from "@/components/ui/button";
 import Settings from "../settings/Settings";
 import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
-import { SettingsIcon } from "lucide-react";
+import { SettingsIcon, X, Minus, Maximize, Minimize } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import {
-  VscChromeClose,
-  VscChromeMaximize,
-  VscChromeMinimize,
-  VscChromeRestore,
-} from "react-icons/vsc";
 import { ItemMedia } from "@/components/ui/item";
 import logo from "../../../assets/descify.svg";
 import { useEffect, useState } from "react";
@@ -84,21 +78,21 @@ const Navbar = () => {
           onClick={() => appWindow.minimize()}
           className="h-[35px] w-10 rounded-none  hover:bg-zinc-500/30"
         >
-          <VscChromeMinimize />
+          <Minus />
         </Button>
         <Button
           variant={"ghost"}
           onClick={() => appWindow.toggleMaximize()}
           className="h-[35px] w-10 rounded-none hover:bg-zinc-500/30"
         >
-          {isMaximized ? <VscChromeRestore /> : <VscChromeMaximize />}
+          {isMaximized ? <Minimize /> : <Maximize />}
         </Button>
         <Button
           variant={"ghost"}
           onClick={() => appWindow.close()}
           className="h-[35px] w-10 rounded-none hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white"
         >
-          <VscChromeClose />
+          <X />
         </Button>
       </div>
     </div>

@@ -1,7 +1,6 @@
 import { useState, memo } from "react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { MdOutlineImageNotSupported } from "react-icons/md";
-import { Trash2, FileEdit, RefreshCw } from "lucide-react";
+import { Trash2, FileEdit, RefreshCw, ImageOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -88,12 +87,12 @@ export const ThumbnailItem = memo(({
             className="w-full h-full flex flex-col items-center justify-center gap-1 bg-muted"
             title="Thumbnail unavailable — Ghostscript may not be installed, or this vector file could not be rasterized."
           >
-            <MdOutlineImageNotSupported className="text-4xl text-muted-foreground" />
+            <ImageOff className="text-4xl text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Thumbnail unavailable</p>
           </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-muted">
-            <MdOutlineImageNotSupported className="text-4xl text-muted-foreground" />
+            <ImageOff className="text-4xl text-muted-foreground" />
           </div>
         )}
         <p className="absolute bottom-0 left-0 right-0 p-1 text-sm truncate text-center bg-black/50 text-foreground">

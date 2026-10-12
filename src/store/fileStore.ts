@@ -72,18 +72,6 @@ export function setFilePath(file: File, path: string) {
     });
 }
 
-export function setFilePaths(paths: Map<File, string>) {
-    useFileStore.setState((state) => {
-        state.filePaths = paths;
-    });
-}
-
-export function setThumbnails(thumbnails: ThumbnailData[]) {
-    useFileStore.setState((state) => {
-        state.thumbnails = thumbnails;
-    });
-}
-
 export function addThumbnail(thumbnail: ThumbnailData) {
     useFileStore.setState((state) => {
         // Check if exists
@@ -109,37 +97,15 @@ export function markThumbnailFailed(file: File) {
     });
 }
 
-/** Clear one file's failure record to allow an explicit thumbnail retry. */
-export function clearThumbnailFailure(file: File) {
-    useFileStore.setState((state) => {
-        state.failedThumbnails = state.failedThumbnails.filter((f) => f !== file);
-    });
-}
-
 export function setIsGeneratingThumbnails(generating: boolean) {
     useFileStore.setState((state) => {
         state.isGeneratingThumbnails = generating;
     });
 }
 
-export function setPendingThumbnailCount(count: number) {
-    useFileStore.setState((state) => {
-        state.pendingThumbnailCount = count;
-    });
-}
-
 export function setSelectedFile(file: File | null) {
     useFileStore.setState((state) => {
         state.selectedFile = file;
-    });
-}
-
-export function clearThumbnails() {
-    useFileStore.setState((state) => {
-        state.thumbnails = [];
-        state.failedThumbnails = [];
-        state.pendingThumbnailCount = 0;
-        state.isGeneratingThumbnails = false;
     });
 }
 

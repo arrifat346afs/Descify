@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
+import { invoke } from '@tauri-apps/api/core';
 
-export type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
+export type Provider = 'gemini' | 'openrouter';
 
 export type MetadataLimits = {
   titleLimit: number;
@@ -60,10 +61,7 @@ const initialState: ConfigState = {
     selectedProvider: '',
     selectedModel: '',
     apiKeys: {
-      openai: '',
       gemini: '',
-      mistral: '',
-      groq: '',
       openrouter: '',
     },
     requestDelay: 0,
@@ -107,10 +105,19 @@ const initialState: ConfigState = {
  * Only the data fields are persisted — JSON.stringify drops the action
  * functions automatically, and rehydration shallow-merges onto the
  * initial state.
+ *
+ * API keys are NOT persisted here: they live in the OS keychain
+ * (see commands/secrets.rs) and are loaded into memory at startup
+ * by loadApiKeys(). `partialize` blanks them out before anything
+ * is written to localStorage.
  */
 export const useConfigStore = create<ConfigState>()(
   persist(immer(() => initialState), {
     name: 'descify-config',
+    partialize: (state) => ({
+      ...state,
+      api: { ...state.api, apiKeys: { gemini: '', openrouter: '' } },
+    }),
   })
 );
 
@@ -215,6 +222,25 @@ export function hasApiKey(): boolean {
   return Object.values(useConfigStore.getState().api.apiKeys).some(
     (key) => key && key.trim() !== ''
   );
+}
+
+/**
+ * Loads the saved API keys from the OS keychain into the store.
+ * Called once at startup (see store/init.ts). A missing or
+ * unavailable keychain is not fatal — the keys then simply stay
+ * empty and the user is asked for them in Settings.
+ */
+export async function loadApiKeys(): Promise<void> {
+  const loaded: Record<Provider, string> = { gemini: '', openrouter: '' };
+  for (const provider of ['gemini', 'openrouter'] as const) {
+    try {
+      const key = await invoke<string | null>('read_api_key', { provider });
+      loaded[provider] = key ?? '';
+    } catch (error) {
+      console.warn(`Could not read the ${provider} key from the OS keychain:`, error);
+    }
+  }
+  setApiKeys(loaded);
 }
 
 /**

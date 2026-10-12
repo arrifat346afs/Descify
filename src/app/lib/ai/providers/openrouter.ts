@@ -7,11 +7,6 @@
 import { callOpenAICompatible } from "./openai";
 import type { AIResponse } from "../http";
 
-export type OpenRouterConfig = {
-  apiKey?: string;
-  model?: string;
-};
-
 /**
  * Default model to use for OpenRouter if none is specified
  */

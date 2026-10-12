@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { fileFromPath } from '../utils';
-import { isThumbnailableFile } from '@/app/lib/thumbnail/mediaTypes';
+import { isThumbnailableFile, VIDEO_EXTENSIONS } from '@/app/lib/thumbnail/mediaTypes';
 
 interface UseDragAndDropOptions {
   onFilesAdded: (files: File[]) => void;
@@ -19,7 +19,8 @@ const isValidMediaFile = (file: File): boolean => {
   // files, so they are matched by extension inside isThumbnailableFile.
   const isMedia = isThumbnailableFile(file);
   const isUnknownType = file.type === 'application/octet-stream';
-  const hasVideoExtension = !!file.name.toLowerCase().match(/\.(mp4|mov|webm|avi|mkv|flv|wmv|m4v|3gp|ogv|mts|m2ts)$/);
+  const ext = file.name.toLowerCase().split('.').pop();
+  const hasVideoExtension = !!ext && (VIDEO_EXTENSIONS as readonly string[]).includes(ext);
   console.log(`   Checking ${file.name}: type=${file.type}, isMedia=${isMedia}, isUnknownType=${isUnknownType}, hasVideoExtension=${hasVideoExtension}`);
   return isMedia || (isUnknownType && hasVideoExtension);
 };

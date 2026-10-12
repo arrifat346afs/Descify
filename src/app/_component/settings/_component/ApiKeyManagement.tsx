@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useConfigStore, setApiKey } from '@/store/configStore';
+import { storeApiKey } from '@/app/lib/tauri/tauri-commands';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -70,13 +71,22 @@ const ApiKeyManagement = ({ compact = false, showTitle = true }: ApiKeyManagemen
     setShowKeys(prev => ({ ...prev, [provider]: !prev[provider] }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Save API keys only if changed
-    Object.entries(localApiKeys).forEach(([provider, key]) => {
+    for (const [provider, key] of Object.entries(localApiKeys)) {
       if (key !== api.apiKeys[provider as Provider]) {
         setApiKey(provider as Provider, key);
+        try {
+          await storeApiKey(provider, key);
+        } catch (error) {
+          // The key works for this session either way; the
+          // keychain (e.g. D-Bus Secret Service) may be
+          // unavailable, so warn instead of failing the save.
+          console.warn(`Could not persist the ${provider} key to the OS keychain:`, error);
+          toast.error(`Saved the ${provider} key for this session only — the OS keychain is unavailable.`);
+        }
       }
-    });
+    }
 
     toast.success('API keys saved successfully!');
     
@@ -214,7 +224,7 @@ const ApiKeyManagement = ({ compact = false, showTitle = true }: ApiKeyManagemen
         <CardHeader>
           <CardTitle>API Key Management</CardTitle>
           <CardDescription>
-            Configure your API keys for different AI providers. Keys are stored securely in your browser's local storage.
+            Configure your API keys for different AI providers. Keys are stored in your operating system's keychain.
           </CardDescription>
         </CardHeader>
       )}

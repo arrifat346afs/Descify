@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { fetchOpenRouterModels, fetchGeminiModels, fetchLocalModels, checkLocalModelConnection, type ModelInfo } from '@/app/lib/models/modelFetcher';
 import { ModelSelector } from './ModelSelector';
 
-type Provider = 'openai' | 'gemini' | 'mistral' | 'groq' | 'openrouter';
+type Provider = 'gemini' | 'openrouter';
 
 const ApiSettings = () => {
   const api = useConfigStore((state) => state.api);
@@ -119,9 +119,6 @@ const ApiSettings = () => {
         let fetchedModels: ModelInfo[] = [];
 
         switch (localProvider) {
-          // case 'openai':
-          //   fetchedModels = await fetchOpenAIModels(localApiKeys.openai);
-          //   break;
           case 'gemini':
             fetchedModels = await fetchGeminiModels(localApiKeys.gemini);
             break;

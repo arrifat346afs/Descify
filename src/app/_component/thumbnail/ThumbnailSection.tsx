@@ -16,13 +16,13 @@ import {
   updateFileMetadata as setMetadata,
   getCustomInstruction,
 } from "@/store/metadataStore";
-import { MdOutlineImageNotSupported } from "react-icons/md";
-import { Upload } from "lucide-react";
+import { Upload, ImageOff } from "lucide-react";
+import { toast } from "sonner";
 import { ThumbnailScrollContainer } from "./ThumbnailScrollContainer";
 import { CustomInstructionDialog } from "./CustomInstructionDialog";
 import { generateMetadata } from "@/app/lib/ai";
 import { generateImageThumbnail } from "@/app/lib/thumbnailGenerator";
-import { readExifMetadata } from "@/app/lib/tauri/tauri-commands";
+import { readExifMetadata, embedMetadata } from "@/app/lib/tauri/tauri-commands";
 import {
   hasCompleteMetadata,
   shouldPrefillFromExif,
@@ -46,6 +46,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   const api = useConfigStore((state) => state.api);
   const metadataLimits = useConfigStore((state) => state.metadataLimits);
   const metadataOptions = useConfigStore((state) => state.metadataOptions);
+  const embedSettings = useConfigStore((state) => state.embedSettings);
   const activeTemplateId = useTemplateStore((state) => state.activeTemplateId);
   const userTemplates = useTemplateStore((state) => state.userTemplates);
   const editedDefaultTemplates = useTemplateStore((state) => state.editedDefaultTemplates);
@@ -279,6 +280,11 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         includePlaceName: metadataOptions.includePlaceName,
         customTemplate: customTemplate,
         customInstruction: customInstruction,
+        avoidWords: {
+          titleAvoidWords: metadataOptions.titleAvoidWords,
+          keywordsAvoidWords: metadataOptions.keywordsAvoidWords,
+          descriptionAvoidWords: metadataOptions.descriptionAvoidWords,
+        },
       });
 
       setMetadata(file, {
@@ -286,13 +292,40 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
         description: result.description,
         keywords: result.keywords,
       });
+
+      // Mirror GenerateButton: embed into the file when enabled
+      // (skip SVG & vector formats — those go through CSV export).
+      // Without this, regenerating updated the UI but left the
+      // file on disk with the old metadata.
+      const isVectorFile = file.type === 'application/postscript' || /\.(ai|eps)$/i.test(file.name);
+      if (!isVectorFile && file.type !== 'image/svg+xml' && embedSettings.enabled) {
+        const filePath = getFilePath(file);
+        if (filePath) {
+          try {
+            const embedResult = await embedMetadata({
+              file_path: filePath,
+              title: embedSettings.fields.title ? result.title : undefined,
+              description: embedSettings.fields.description ? result.description : undefined,
+              keywords: embedSettings.fields.keywords ? result.keywords : undefined,
+            });
+            if (embedResult.success) {
+              console.log(`✅ Successfully embedded metadata for ${file.name}: ${embedResult.message}`);
+            } else {
+              console.warn(`⚠️ Failed to embed metadata for ${file.name}: ${embedResult.message}`);
+              toast.error(`Failed to embed metadata for ${file.name}`);
+            }
+          } catch (error) {
+            console.error(`❌ Error embedding metadata for ${file.name}:`, error);
+          }
+        }
+      }
     } catch (error) {
       console.error("Failed to generate metadata:", error);
       alert("Failed to generate metadata. Check console for details.");
     } finally {
       setRegeneratingFile(null);
     }
-  }, [thumbnails, api, metadataLimits, metadataOptions, activeTemplateId, userTemplates, editedDefaultTemplates]);
+  }, [thumbnails, api, metadataLimits, metadataOptions, embedSettings, activeTemplateId, userTemplates, editedDefaultTemplates]);
 
   // Memoize callback handlers
   const handleSelectFile = useCallback((file: File) => {
@@ -337,7 +370,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               ? "border-primary bg-primary/10 scale-105"
               : "border-muted-foreground/25"
           }`}>
-            <MdOutlineImageNotSupported />
+            <ImageOff />
           </div>
           {isDragActive && (
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">

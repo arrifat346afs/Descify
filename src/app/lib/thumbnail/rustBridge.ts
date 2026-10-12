@@ -38,37 +38,6 @@ export async function cachePathToDataUrl(cachePath: string): Promise<string | nu
 }
 
 /**
- * Resolve a Rust IPC result to a displayable URL.
- *
- * Priority:
- *  1. `cache_path`  → convert to an `asset://` URL via `convertFileSrc`.
- *     WebKit loads the file directly from disk; the image data never enters
- *     the JS heap.
- *  2. `base64`      → construct a data-URL as a last resort (disk write
- *     failed on the Rust side).
- *  3. `null`        → generation failed entirely.
- *
- * NOTE: `asset://` URLs are blocked by WebKit when the webview origin is an
- * `http://` dev server ("Unsafe attempt to load URL asset://... Domains,
- * protocols and ports must match"). Prefer {@link resolveImageUrlAsync} for
- * thumbnails — it reads the cached JPEG via the fs plugin and returns a
- * data-URL that works on every origin.
- */
-export function resolveImageUrl(
-  base64: string | null | undefined,
-  cachePath: string | null | undefined,
-  mimePrefix = 'data:image/jpeg;base64,',
-): string | null {
-  if (cachePath) {
-    return convertFileSrc(cachePath);
-  }
-  if (base64) {
-    return `${mimePrefix}${base64}`;
-  }
-  return null;
-}
-
-/**
  * Async resolver that prefers data-URLs (via fs `readFile`) over `asset://`.
  *
  * Thumbnails are tiny (a few KB), so materialising them as data-URLs is

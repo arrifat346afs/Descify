@@ -1,5 +1,4 @@
-import { CiImageOn } from "react-icons/ci";
-import { MdOutlineImageNotSupported } from "react-icons/md";
+import { Image, ImageOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { getFilePath, useFileStore } from "@/store/fileStore";
 import { isVectorFile } from "@/app/lib/thumbnail/vectorSupport";
@@ -115,7 +114,7 @@ export default function FileSection({ file }: FileSectionProps) {
   if (!file) {
     return (
       <div className="w-full h-full flex items-center justify-center text-6xl text-accent">
-        <CiImageOn />
+        <Image />
       </div>
     );
   }
@@ -161,7 +160,7 @@ export default function FileSection({ file }: FileSectionProps) {
 
           {isVideo && !videoPreviewUrl && videoPreviewFailed && (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
-              <MdOutlineImageNotSupported className="text-6xl" />
+              <ImageOff className="text-6xl" />
               <p className="text-sm">Video preview unavailable</p>
               <p className="text-xs max-w-md text-center">
                 The FFmpeg preview frame could not be produced for this video.
@@ -180,7 +179,7 @@ export default function FileSection({ file }: FileSectionProps) {
 
           {isVector && !vectorUrl && (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
-              <MdOutlineImageNotSupported className="text-6xl" />
+              <ImageOff className="text-6xl" />
               <p className="text-sm">
                 {vectorPreviewFailed ? "Preview unavailable" : "Rasterizing preview…"}
               </p>

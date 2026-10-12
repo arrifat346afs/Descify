@@ -105,9 +105,3 @@ export function resetAllDefaultTemplates() {
     });
 }
 
-// ===================== Non-reactive helpers =====================
-
-/** True when a default template has been customized by the user. */
-export function isDefaultTemplateEdited(id: string): boolean {
-    return useTemplateStore.getState().editedDefaultTemplates.some((t) => t.id === id);
-}

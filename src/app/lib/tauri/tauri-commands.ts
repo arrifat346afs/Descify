@@ -49,3 +49,13 @@ export async function getCacheInfo(): Promise<CacheDirectory[]> {
 export async function clearCacheDirectory(path: string): Promise<string> {
   return await invoke('clear_cache_directory', { path });
 }
+
+/** Persists an API key in the OS keychain. */
+export async function storeApiKey(provider: string, key: string): Promise<void> {
+  return await invoke('store_api_key', { provider, key });
+}
+
+/** Reads an API key from the OS keychain (null when unset). */
+export async function readApiKey(provider: string): Promise<string | null> {
+  return await invoke<string | null>('read_api_key', { provider });
+}

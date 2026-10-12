@@ -21,6 +21,7 @@ import { embedMetadata } from '@/app/lib/tauri/tauri-commands';
 import { matchCategories } from '@/app/lib/metadata/categoryMatcher';
 import { TextShimmer } from '@/components/motion-primitives/text-shimmer';
 import { Sparkle } from 'lucide-react';
+import { toast } from "sonner";
 
 const GenerateButtonComponent = () => {
   // State (reactive zustand selectors)
@@ -194,6 +195,9 @@ const GenerateButtonComponent = () => {
               console.log(`✅ Successfully embedded metadata for ${item.file.name}: ${embedResult.message}`);
             } else {
               console.warn(`⚠️ Failed to embed metadata for ${item.file.name}: ${embedResult.message}`);
+              // A failed embed (e.g. ExifTool missing) was previously
+              // console-only — the user never saw it.
+              toast.error(`Failed to embed metadata for ${item.file.name}`);
             }
           } catch (error) {
             console.error(`❌ Error embedding metadata for ${item.file.name}:`, error);

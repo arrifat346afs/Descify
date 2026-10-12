@@ -186,51 +186,6 @@ export async function fetchOpenRouterModels(apiKey?: string): Promise<ModelInfo[
   }
 }
 
-
-/**
- * Fetches available models from OpenAI API
- */
-export async function fetchOpenAIModels(apiKey?: string): Promise<ModelInfo[]> {
-  if (!apiKey) {
-    return getFallbackOpenAIModels();
-  }
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/models', {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const models = data.data || [];
-
-    // Filter for vision-capable models
-    const visionModels = models
-      .filter((model: any) =>
-        model.id.includes('gpt-4') && model.id.includes('vision') ||
-        model.id.includes('gpt-4o') ||
-        model.id.includes('gpt-4-turbo')
-      )
-      .map((model: any) => ({
-        value: model.id,
-        label: model.id.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-        supportsVision: true,
-        provider: 'OpenAI',
-      }))
-      .sort((a: ModelInfo, b: ModelInfo) => a.label.localeCompare(b.label));
-
-    return visionModels.length > 0 ? visionModels : getFallbackOpenAIModels();
-  } catch (error) {
-    console.error('Error fetching OpenAI models:', error);
-    return getFallbackOpenAIModels();
-  }
-}
-
 type GeminiModel = {
   name: string;
   displayName?: string;
@@ -326,24 +281,13 @@ function getFallbackOpenRouterModels(): ModelInfo[] {
 }
 
 /**
- * Fallback models for OpenAI
- */
-function getFallbackOpenAIModels(): ModelInfo[] {
-  return [
-    { value: 'gpt-4o', label: 'GPT-4o', supportsVision: true, provider: 'OpenAI', contextWindow: 128_000, inputTypes: ['text', 'image'] },
-    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo', supportsVision: true, provider: 'OpenAI', contextWindow: 128_000, inputTypes: ['text', 'image'] },
-    { value: 'gpt-4-vision-preview', label: 'GPT-4 Vision Preview', supportsVision: true, provider: 'OpenAI', contextWindow: 128_000, inputTypes: ['text', 'image'] },
-  ];
-}
-
-/**
  * Fallback models for Google Gemini
  */
 function getFallbackGeminiModels(): ModelInfo[] {
   return [
     { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite', supportsVision: true, provider: 'Google', contextWindow: 1_048_576, inputTypes: ['text', 'image'] },
     { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro', supportsVision: true, provider: 'Google', contextWindow: 2_097_152, inputTypes: ['text', 'image'] },
-    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash nai', supportsVision: true, provider: 'Google', contextWindow: 1_048_576, inputTypes: ['text', 'image'] },
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', supportsVision: true, provider: 'Google', contextWindow: 1_048_576, inputTypes: ['text', 'image'] },
   ];
 }
 

@@ -3,47 +3,13 @@ import { useState } from "react";
 import React from "react";
 import { UploadIcon } from "@/components/ui/upload";
 import { open } from '@tauri-apps/plugin-dialog';
-import { readFile } from "@tauri-apps/plugin-fs";
 import { readExifMetadata } from "@/app/lib/tauri/tauri-commands";
-import { VECTOR_MIME_TYPE } from "@/app/lib/thumbnail/vectorSupport";
 import { shouldPrefillFromExif } from "@/app/lib/metadata/metadataStatus";
 import { setFiles, addFiles, setFilePath } from "@/store/fileStore";
 import { setHasAttemptedGeneration } from "@/store/uiStore";
 import { updateFileMetadata } from "@/store/metadataStore";
-
-// Convert a file path to a File object with proper MIME type.
-// Video bytes are NOT loaded here — a video File is kept path-only (empty
-// placeholder) because the renderer can't play full video bytes anyway:
-// <video> builds a GStreamer pipeline that crashes WebKit when a required
-// element (e.g. autoaudiosink) is missing, and loading a large video into the
-// heap freezes the app. Display, thumbnails, and AI all come from the Rust
-// FFmpeg backend via the stored file path.
-const fileFromPath = async (path: string): Promise<File> => {
-  const name = path.split("/").pop() ?? "file";
-  const ext = name.split('.').pop()?.toLowerCase() ?? '';
-
-  const mimeTypes: Record<string, string> = {
-    'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
-    'gif': 'image/gif', 'webp': 'image/webp', 'svg': 'image/svg+xml',
-    'ai': VECTOR_MIME_TYPE, 'eps': VECTOR_MIME_TYPE,
-    'mp4': 'video/mp4', 'mov': 'video/quicktime', 'webm': 'video/webm',
-  };
-  // Fall back to extension-derived video MIME for formats not in the map
-  // (avi/mkv/flv/...) so isThumbnailableFile + <video> playback still match.
-  const fallbackVideoMime =
-    ['avi', 'mkv', 'flv', 'wmv', 'm4v', '3gp', 'ogv', 'mts', 'm2ts'].includes(ext)
-      ? `video/${ext}`
-      : '';
-  const mimeType = mimeTypes[ext] || fallbackVideoMime;
-  const isVideo = mimeType.startsWith('video/');
-
-  if (isVideo) {
-    return new File([], name, { type: mimeType });
-  }
-
-  const data = await readFile(path);
-  return new File([data], name, { type: mimeType });
-};
+import { fileFromPath } from "../../thumbnail/utils";
+import { VIDEO_EXTENSIONS } from "@/app/lib/thumbnail/mediaTypes";
 
 type UploadButtonProps = {
   onFilesSelected: (files: File[]) => void;
@@ -51,8 +17,6 @@ type UploadButtonProps = {
 
 // How many files to read from disk in parallel
 const UPLOAD_CONCURRENCY = 5;
-
-const VIDEO_EXTS = ['mp4', 'mov', 'webm', 'avi', 'mkv', 'flv', 'wmv', 'm4v', '3gp', 'ogv', 'mts', 'm2ts'];
 
 const UploadButtonComponent = ({ }: UploadButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -64,7 +28,7 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
       filters: [
         {
           name: "Media",
-          extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "ai", "eps", ...VIDEO_EXTS]
+          extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "ai", "eps", ...VIDEO_EXTENSIONS]
         }
       ]
     });
@@ -87,7 +51,7 @@ const UploadButtonComponent = ({ }: UploadButtonProps) => {
     
     for (const path of paths) {
       const ext = path.split('.').pop()?.toLowerCase() ?? '';
-      if (VIDEO_EXTS.includes(ext)) {
+      if ((VIDEO_EXTENSIONS as readonly string[]).includes(ext)) {
         videoPaths.push(path);
       } else {
         imagePaths.push(path);

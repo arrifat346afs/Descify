@@ -69,9 +69,3 @@ export function setHasAttemptedGeneration(attempted: boolean) {
         state.hasAttemptedGeneration = attempted;
     });
 }
-
-export function setActiveLeftTab(tab: 'category' | 'log') {
-    useUiStore.setState((state) => {
-        state.activeLeftTab = tab;
-    });
-}

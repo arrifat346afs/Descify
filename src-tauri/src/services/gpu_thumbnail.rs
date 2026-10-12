@@ -1,7 +1,9 @@
 use std::process::Command;
+use std::sync::OnceLock;
 
 pub fn is_gpu_available() -> bool {
-    check_nvidia() || check_amd()
+    static AVAILABLE: OnceLock<bool> = OnceLock::new();
+    *AVAILABLE.get_or_init(|| check_nvidia() || check_amd())
 }
 
 fn check_nvidia() -> bool {
@@ -26,61 +28,22 @@ fn check_amd() -> bool {
 }
 
 pub fn get_ffmpeg_hwaccel_args() -> Vec<&'static str> {
-    let mut args = Vec::new();
+    static ARGS: OnceLock<Vec<&'static str>> = OnceLock::new();
+    ARGS.get_or_init(|| {
+        let mut args = Vec::new();
 
-    if check_nvidia() {
-        args.push("-hwaccel");
-        args.push("cuda");
-    } else if cfg!(target_os = "macos") {
-        args.push("-hwaccel");
-        args.push("auto");
-    } else if cfg!(target_os = "linux") && check_amd() {
-        args.push("-hwaccel");
-        args.push("vaapi");
-    }
-
-    args
-}
-
-#[allow(dead_code)]
-pub fn get_preferred_hardware_encoder() -> &'static str {
-    if check_nvidia() {
-        return "h264_nvenc";
-    }
-    if cfg!(target_os = "macos") {
-        return "h264_videotoolbox";
-    }
-    if cfg!(target_os = "linux") && check_amd() {
-        return "h264_vaapi";
-    }
-    "libx264"
-}
-
-#[allow(dead_code)]
-pub fn get_video_encoder_args() -> Vec<&'static str> {
-    let encoder = get_preferred_hardware_encoder();
-    let mut args = Vec::new();
-
-    args.push("-c:v");
-
-    match encoder {
-        "h264_videotoolbox" => {
-            args.push("h264_videotoolbox");
+        if check_nvidia() {
+            args.push("-hwaccel");
+            args.push("cuda");
+        } else if cfg!(target_os = "macos") {
+            args.push("-hwaccel");
+            args.push("auto");
+        } else if cfg!(target_os = "linux") && check_amd() {
+            args.push("-hwaccel");
+            args.push("vaapi");
         }
-        "h264_nvenc" => {
-            args.push("h264_nvenc");
-            args.push("-preset");
-            args.push("fast");
-        }
-        "h264_vaapi" => {
-            args.push("h264_vaapi");
-        }
-        _ => {
-            args.push("libx264");
-            args.push("-preset");
-            args.push("fast");
-        }
-    }
 
-    args
+        args
+    })
+    .clone()
 }

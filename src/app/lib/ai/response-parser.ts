@@ -18,21 +18,6 @@ export type MetadataLimits = {
 };
 
 /**
- * Extracts text content from various AI response formats
- * @param response - The raw response from the AI API
- * @returns The extracted text string
- */
-export const extractTextFromResponse = (response: any): string => {
-  if (typeof response === 'string') {
-    return response;
-  } else if (response?.text) {
-    return response.text;
-  } else {
-    return JSON.stringify(response);
-  }
-};
-
-/**
  * Removes reasoning ("thinking") blocks that local models such as DeepSeek-R1
  * or Qwen3 emit around (or instead of) their final answer.
  * Handles unclosed blocks too — a `<think>` run that consumed the whole token
@@ -277,30 +262,4 @@ export const parseMetadataResponse = (
   // 6. Apply limits and return
   return applyLimits(parsed, limits);
 };
-
-// /**
-//  * Creates fallback metadata when AI generation fails
-//  * @param fileNames - The file names to use for fallback
-//  * @param limits - Optional limits to apply
-//  * @returns Fallback metadata based on file names
-//  */
-// export const createFallbackMetadata = (
-//   fileNames: string[],
-//   limits?: MetadataLimits
-// ): ParsedMetadata => {
-//   const descriptionLimit = limits?.descriptionLimit ?? 300;
-//   const keywordLimit = limits?.keywordLimit ?? 5;
-
-//   return {
-//     title: fileNames[0] || 'Untitled',
-//     description: `Auto-generated description for ${fileNames.join(', ')}`.slice(
-//       0,
-//       descriptionLimit
-//     ),
-//     keywords: fileNames
-//       .slice(0, keywordLimit)
-//       .map((f) => f.replace(/\.[^.]+$/, ''))
-//       .join(', '),
-//   };
-// };
 

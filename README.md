@@ -45,7 +45,7 @@ It works with **cloud AI providers** (Gemini, OpenRouter) **and with fully local
 - **Vector file support** — `.ai` (Adobe Illustrator) and `.eps` files are accepted and rasterized via Ghostscript for thumbnails and AI analysis (metadata embedding is skipped for these formats — use CSV export instead)
 
 ### Management
-- Secure API key storage (Gemini & OpenRouter)
+- API key storage in the OS keychain (Gemini & OpenRouter)
 - Category tagging and organization
 - Metadata export and embedding
 
@@ -111,7 +111,7 @@ pnpm run tauri build
 | Frontend | [React](https://react.dev/) 18 + [TypeScript](https://www.typescriptlang.org/) 5.6 |
 | Bundler | [Vite](https://vitejs.dev/) |
 | Styling | [Tailwind CSS](https://tailwindcss.com/) 4 + [Radix UI](https://www.radix-ui.com/) |
-| AI SDK | [Vercel AI SDK](https://sdk.vercel.ai/) (Google & OpenRouter providers, plus any OpenAI-compatible local server) |
+| AI | Direct fetch (no SDK) — Google & OpenRouter providers, plus any OpenAI-compatible local server |
 | State | [Redux Toolkit](https://redux-toolkit.js.org/) |
 | Backend (Rust) | Tauri commands for file I/O, ExifTool, and OS integration |
 

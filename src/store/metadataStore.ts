@@ -44,12 +44,6 @@ export const useMetadataStore = create<MetadataState>()(immer(() => initialState
 // Each action is a standalone function that explicitly updates the store,
 // so components can import them directly (stable references, no hooks).
 
-export function setGeneratedMetadata(metadata: FileMetadata[]) {
-    useMetadataStore.setState((state) => {
-        state.generatedMetadata = metadata;
-    });
-}
-
 export function updateFileMetadata(file: File, metadata: Partial<GeneratedMetadata>) {
     useMetadataStore.setState((state) => {
         const index = state.generatedMetadata.findIndex((m) => m.file === file);
@@ -112,22 +106,11 @@ export function setDefaultCategories(categories: Partial<CategorySelection>) {
     });
 }
 
-export function clearGeneratedMetadata() {
-    useMetadataStore.setState((state) => {
-        state.generatedMetadata = [];
-    });
-}
-
 // ===================== Non-reactive helpers =====================
 
 /** Get the generated metadata for a file without subscribing to the store. */
 export function getMetadata(file: File): GeneratedMetadata | undefined {
     return useMetadataStore.getState().generatedMetadata.find((m) => m.file === file)?.metadata;
-}
-
-/** Get the category selection for a file without subscribing to the store. */
-export function getCategories(file: File): CategorySelection | undefined {
-    return useMetadataStore.getState().generatedMetadata.find((m) => m.file === file)?.categories;
 }
 
 /** Get the custom instruction for a file without subscribing to the store. */

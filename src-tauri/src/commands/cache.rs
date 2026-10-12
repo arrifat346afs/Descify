@@ -43,27 +43,11 @@ fn get_dir_size(path: &PathBuf) -> u64 {
 }
 
 fn get_app_cache_path() -> Option<PathBuf> {
-    let home = dirs::home_dir()?;
-
-    #[cfg(target_os = "windows")]
-    {
-        std::env::var("LOCALAPPDATA").ok().map(|p| {
-            PathBuf::from(p)
-                .join("Descify")
-                .join("Cache")
-                .join("thumbnails")
-        })
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        Some(home.join("Library/Caches/descify/thumbnails"))
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        Some(home.join(".cache/descify/thumbnails"))
-    }
+    // Must match services::thumbnail::get_app_thumbnail_cache_dir() so the
+    // cache-info/clear UI and the thumbnail writer agree on every OS.
+    // On Windows `dirs::cache_dir()` is %LOCALAPPDATA% (no app name),
+    // so the full path is %LOCALAPPDATA%\descify\thumbnails.
+    dirs::cache_dir().map(|d| d.join("descify").join("thumbnails"))
 }
 
 #[tauri::command]
@@ -106,6 +90,14 @@ pub fn clear_cache_directory(path: String) -> Result<String, String> {
 
     if !path_buf.is_dir() {
         return Err("Path is not a directory".to_string());
+    }
+
+    // The command is reachable from the webview, so never delete
+    // anything outside the app's own cache directory.
+    let app_cache = get_app_cache_path()
+        .ok_or_else(|| "Cannot resolve the app cache directory".to_string())?;
+    if !path_buf.starts_with(&app_cache) {
+        return Err("Path is outside the Descify cache directory".to_string());
     }
 
     let mut cleared_size: u64 = 0;

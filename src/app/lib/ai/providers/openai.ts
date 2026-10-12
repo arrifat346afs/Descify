@@ -12,24 +12,10 @@ import {
   type AIUsage,
 } from "../http";
 
-export type OpenAIConfig = {
-  apiKey?: string;
-  model?: string;
-};
-
 /**
  * Default model to use for OpenAI if none is specified
  */
 export const DEFAULT_OPENAI_MODEL = 'gpt-4-vision-preview';
-
-/**
- * Checks if the provider string matches OpenAI
- * @param provider - The provider string to check
- * @returns True if the provider is OpenAI
- */
-export const isOpenAIProvider = (provider?: string): boolean => {
-  return provider === 'openai';
-};
 
 /**
  * Extracts token usage from an OpenAI/OpenRouter-compatible response or error body.
@@ -163,8 +149,7 @@ export async function callOpenAICompatible(
       errorBody.includes('model does not support') ||
       errorBody.includes('vision') ||
       errorBody.includes('image modality') ||
-      errorBody.includes('media type') ||
-      response.status === 400;
+      errorBody.includes('media type');
 
     if (isModelCapabilityError) {
       const errorMessage = "The selected model does not support image input. Please select a vision-capable model from Settings.";

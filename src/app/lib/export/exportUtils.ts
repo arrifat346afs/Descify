@@ -24,9 +24,10 @@ export type FileMetadata = {
 };
 
 /**
- * Escapes CSV field values to handle commas, quotes, and newlines
+ * Escapes CSV field values to handle commas, quotes, and newlines.
+ * Exported for tests.
  */
-function escapeCSVField(field: string): string {
+export function escapeCSVField(field: string): string {
   if (!field) return '';
   
   // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes

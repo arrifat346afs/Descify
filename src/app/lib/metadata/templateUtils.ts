@@ -141,16 +141,6 @@ export const validateTemplate = (template: string): {
   };
 };
 
-export const getTemplateVariables = (): string[] => {
-  return [
-    '${titleLimit}',
-    '${descriptionLimit}', 
-    '${keywordLimit}',
-    '${fileName} (optional)',
-    '${currentDate} (optional)',
-  ];
-};
-
 export const getActiveTemplate = (
   activeTemplateId: string | null,
   userTemplates: Array<{ id: string; name: string; template: string }>,
@@ -182,44 +172,4 @@ export const getActiveTemplate = (
   }
   
   return null;
-};
-
-export const getTemplateById = (
-  templateId: string, 
-  editedDefaultTemplates?: Array<{ id: string; template: string }>
-): { id: string; name: string; template: string } | null => {
-  // Check for edited default template first
-  if (editedDefaultTemplates) {
-    const editedDefault = editedDefaultTemplates.find(t => t.id === templateId);
-    if (editedDefault) {
-      const originalTemplate = DEFAULT_TEMPLATES.find(t => t.id === templateId);
-      if (originalTemplate) {
-        return {
-          ...originalTemplate,
-          template: editedDefault.template,
-        };
-      }
-    }
-  }
-  
-  // Check preset templates
-  const presetTemplate = DEFAULT_TEMPLATES.find(t => t.id === templateId);
-  if (presetTemplate) {
-    return presetTemplate;
-  }
-  
-  // Return null if not found - user templates are handled separately
-  return null;
-};
-
-export const getEditedDefaultTemplates = (): typeof DEFAULT_TEMPLATES => {
-  return DEFAULT_TEMPLATES;
-};
-
-export const isDefaultTemplateEdited = (
-  templateId: string,
-  editedDefaultTemplates: Array<{ id: string }>
-): boolean => {
-  const isDefault = DEFAULT_TEMPLATES.some(t => t.id === templateId);
-  return isDefault && editedDefaultTemplates.some(t => t.id === templateId);
 };

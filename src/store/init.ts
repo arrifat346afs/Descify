@@ -8,6 +8,7 @@
  *    preferences and templates across the migration.
  */
 import { enableMapSet } from 'immer';
+import { loadApiKeys } from './configStore';
 
 enableMapSet();
 
@@ -43,3 +44,7 @@ export function migrateLegacyStorage(): void {
 }
 
 migrateLegacyStorage();
+
+// API keys live in the OS keychain, not localStorage — bring them
+// into the (in-memory) store once at startup.
+loadApiKeys();

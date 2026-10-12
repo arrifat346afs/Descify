@@ -10,7 +10,7 @@
 import { invoke } from '@tauri-apps/api/core';
 
 import type { GeneratedPreviewResult } from './types';
-import { BATCH_CONFIG, AI_IMAGE_CONFIG, PREVIEW_CONFIG, getCacheKey } from './config';
+import { BATCH_CONFIG, AI_IMAGE_CONFIG, PREVIEW_CONFIG } from './config';
 import { thumbnailCache } from './lruCache';
 import { assetUrlToDataUrl, generateImageViaCanvas, resizeViaCanvas } from './imageCanvas';
 import { resolveImageUrlAsync, generateThumbnailRust, generateVideoThumbnailRust, generateVideoPreviewRust } from './rustBridge';
@@ -249,26 +249,3 @@ export async function generateThumbnailsBatch(
   return results;
 }
 
-// ---------------------------------------------------------------------------
-// Cache accessors / preloading
-// ---------------------------------------------------------------------------
-
-export function getCachedThumbnail(filePath: string, size: number = BATCH_CONFIG.MAX_THUMBNAIL_SIZE): string | null {
-  const cacheKey = getCacheKey(filePath, size);
-  return thumbnailCache.get(cacheKey) ?? null;
-}
-
-export function hasCachedThumbnail(filePath: string, size: number = BATCH_CONFIG.MAX_THUMBNAIL_SIZE): boolean {
-  const cacheKey = getCacheKey(filePath, size);
-  const cached = thumbnailCache.get(cacheKey);
-  return cached !== undefined && cached !== null;
-}
-
-export function preloadThumbnails(filePaths: string[]): void {
-  for (const filePath of filePaths) {
-    const cacheKey = getCacheKey(filePath, BATCH_CONFIG.MAX_THUMBNAIL_SIZE);
-    if (!thumbnailCache.has(cacheKey)) {
-      generateThumbnailRust(filePath, BATCH_CONFIG.MAX_THUMBNAIL_SIZE);
-    }
-  }
-}

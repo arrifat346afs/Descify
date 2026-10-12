@@ -40,25 +40,36 @@ pub fn get_exiftool_path() -> PathBuf {
     PathBuf::from("exiftool")
 }
 
-/// Build exiftool command with metadata arguments
-pub fn build_exiftool_command(exiftool_path: &PathBuf, request: &EmbedMetadataRequest) -> Command {
-    let mut cmd = Command::new(exiftool_path);
+/// Build the exiftool argument list for a request.
+/// Extracted so the exact tag mapping is testable.
+pub fn exiftool_args(request: &EmbedMetadataRequest) -> Vec<String> {
+    let mut args: Vec<String> = Vec::new();
 
     // Add title tags if provided
     if let Some(ref title) = request.title {
         if !title.trim().is_empty() {
-            cmd.arg(format!("-XMP:Title={}", title));
-            cmd.arg(format!("-IPTC:ObjectName={}", title));
-            cmd.arg(format!("-EXIF:ImageDescription={}", title));
+            args.push(format!("-XMP:Title={}", title));
+            args.push(format!("-IPTC:ObjectName={}", title));
+            // EXIF:ImageDescription is shared with the description and
+            // exiftool applies arguments in order (last one wins), so
+            // the title is only written here when no description follows.
+            let description_blank = request
+                .description
+                .as_deref()
+                .map(|d| d.trim().is_empty())
+                .unwrap_or(true);
+            if description_blank {
+                args.push(format!("-EXIF:ImageDescription={}", title));
+            }
         }
     }
 
     // Add description tags if provided
     if let Some(ref description) = request.description {
         if !description.trim().is_empty() {
-            cmd.arg(format!("-XMP:Description={}", description));
-            cmd.arg(format!("-EXIF:ImageDescription={}", description));
-            cmd.arg(format!("-IPTC:Caption-Abstract={}", description));
+            args.push(format!("-XMP:Description={}", description));
+            args.push(format!("-EXIF:ImageDescription={}", description));
+            args.push(format!("-IPTC:Caption-Abstract={}", description));
         }
     }
 
@@ -75,21 +86,30 @@ pub fn build_exiftool_command(exiftool_path: &PathBuf, request: &EmbedMetadataRe
             if !keyword_list.is_empty() {
                 // Add each keyword individually for XMP:Subject
                 for keyword in &keyword_list {
-                    cmd.arg(format!("-XMP:Subject={}", keyword));
+                    args.push(format!("-XMP:Subject={}", keyword));
                 }
 
                 // Add keywords as a single string for IPTC:Keywords
-                cmd.arg(format!("-IPTC:Keywords={}", keywords));
+                args.push(format!("-IPTC:Keywords={}", keywords));
             }
         }
     }
 
     // Set the output file (overwrite the original file)
-    cmd.arg("-overwrite_original");
+    args.push("-overwrite_original".to_string());
 
     // Add the file path as the last argument
-    cmd.arg(&request.file_path);
+    args.push(request.file_path.clone());
 
+    args
+}
+
+/// Build exiftool command with metadata arguments
+pub fn build_exiftool_command(exiftool_path: &PathBuf, request: &EmbedMetadataRequest) -> Command {
+    let mut cmd = Command::new(exiftool_path);
+    for arg in exiftool_args(request) {
+        cmd.arg(arg);
+    }
     cmd
 }
 
@@ -210,9 +230,6 @@ pub fn read_exif_metadata(file_path: &str) -> Result<ExifData, String> {
 
             let stdout = String::from_utf8_lossy(&output.stdout);
 
-            // Debug: log the full JSON output
-            eprintln!("[DEBUG] ExifTool JSON output for {}: {}", file_path, stdout);
-
             // Parse JSON output
             let json_data: Value = match serde_json::from_str(&stdout) {
                 Ok(data) => data,
@@ -296,12 +313,6 @@ pub fn read_exif_metadata(file_path: &str) -> Result<ExifData, String> {
                     None
                 });
 
-            // Debug: log what we found
-            eprintln!(
-                "[DEBUG] Parsed metadata - Title: {:?}, Description: {:?}, Keywords: {:?}",
-                title, description, keywords
-            );
-
             Ok(ExifData {
                 file_path: file_path.to_string(),
                 title,
@@ -319,5 +330,60 @@ pub fn read_exif_metadata(file_path: &str) -> Result<ExifData, String> {
                 Err(format!("Failed to execute ExifTool: {}", e))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn request(title: Option<&str>, description: Option<&str>, keywords: Option<&str>) -> EmbedMetadataRequest {
+        EmbedMetadataRequest {
+            file_path: "photo.jpg".to_string(),
+            title: title.map(String::from),
+            description: description.map(String::from),
+            keywords: keywords.map(String::from),
+        }
+    }
+
+    #[test]
+    fn description_does_not_overwrite_title_in_exif() {
+        // When both are set, EXIF:ImageDescription must be written
+        // exactly once and carry the description (exiftool applies
+        // arguments in order, so a second write would clobber the
+        // title and the file would read back with the description
+        // as its title).
+        let args = exiftool_args(&request(Some("Sunset"), Some("A sunset over the ocean"), Some("sky, sea")));
+        let image_descriptions: Vec<&String> = args
+            .iter()
+            .filter(|a| a.starts_with("-EXIF:ImageDescription="))
+            .collect();
+        assert_eq!(image_descriptions.len(), 1, "EXIF:ImageDescription written once");
+        assert_eq!(image_descriptions[0], "-EXIF:ImageDescription=A sunset over the ocean");
+        // Title still lands in its own tags
+        assert!(args.contains(&"-XMP:Title=Sunset".to_string()));
+        assert!(args.contains(&"-IPTC:ObjectName=Sunset".to_string()));
+    }
+
+    #[test]
+    fn title_alone_writes_exif_image_description() {
+        let args = exiftool_args(&request(Some("Sunset"), None, None));
+        assert!(args.contains(&"-EXIF:ImageDescription=Sunset".to_string()));
+    }
+
+    #[test]
+    fn blank_description_lets_title_write_exif() {
+        let args = exiftool_args(&request(Some("Sunset"), Some("   "), None));
+        assert!(args.contains(&"-EXIF:ImageDescription=Sunset".to_string()));
+    }
+
+    #[test]
+    fn keywords_are_split_for_xmp() {
+        let args = exiftool_args(&request(None, None, Some("sky, sea , , land")));
+        assert!(args.contains(&"-XMP:Subject=sky".to_string()));
+        assert!(args.contains(&"-XMP:Subject=sea".to_string()));
+        assert!(args.contains(&"-XMP:Subject=land".to_string()));
+        assert!(!args.iter().any(|a| a.contains("XMP:Subject=  ")));
+        assert!(args.contains(&"-IPTC:Keywords=sky, sea , , land".to_string()));
     }
 }

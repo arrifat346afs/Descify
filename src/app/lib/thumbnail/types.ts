@@ -9,7 +9,7 @@ export interface GeneratedThumbnailResult {
   cache_path: string | null;
   width: number | null;
   height: number | null;
-  file_size: string | null;
+  file_size: number | null;
   from_cache: boolean;
 }
 

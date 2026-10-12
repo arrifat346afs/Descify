@@ -22,7 +22,4 @@ export {
   generateImageThumbnail,
   generatePreviewImage,
   generateThumbnailsBatch,
-  getCachedThumbnail,
-  hasCachedThumbnail,
-  preloadThumbnails,
 } from './thumbnail/thumbnailService';
