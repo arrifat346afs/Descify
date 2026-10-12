@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-// import TemplateEditor from './TemplateEditor';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useConfigStore } from '@/store/configStore';
@@ -330,7 +329,7 @@ export const TemplateManager = () => {
                 <label className="block text-sm font-medium mb-2">Template Content</label>
                 <Textarea
                   value={newTemplateContent}
-                  onChange={(e) => setNewTemplateContent(e.target.defaultValue)}
+                  onChange={(e) => setNewTemplateContent(e.target.value)}
                   placeholder="Enter your template content..."
                 />
                 <p className="text-xs text-muted-foreground mt-2">
