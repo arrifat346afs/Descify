@@ -29,6 +29,9 @@ export default function FileSection({ file }: FileSectionProps) {
   const [vectorPreviewUrl, setVectorPreviewUrl] = useState<string | null>(null);
   const [vectorPreviewFailed, setVectorPreviewFailed] = useState(false);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  // Track real failures separately from "still loading" — otherwise a video
+  // whose FFmpeg preview is still being generated flashes the error state.
+  const [videoPreviewFailed, setVideoPreviewFailed] = useState(false);
 
   useEffect(() => {
     if (!file) {
@@ -84,21 +87,26 @@ export default function FileSection({ file }: FileSectionProps) {
   useEffect(() => {
     if (!file || !isVideo) {
       setVideoPreviewUrl(null);
+      setVideoPreviewFailed(false);
       return;
     }
 
     const controller = new AbortController();
     setVideoPreviewUrl(lowResUrl ?? null);
+    setVideoPreviewFailed(false);
     generatePreviewImage(file, getFilePath(file), controller.signal)
       .then((url) => {
         if (controller.signal.aborted) return;
         if (url) {
           setVideoPreviewUrl(url);
+        } else {
+          setVideoPreviewFailed(true);
         }
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
         console.warn(`Video preview failed for ${file.name}:`, error);
+        setVideoPreviewFailed(true);
       });
 
     return () => controller.abort();
@@ -144,7 +152,14 @@ export default function FileSection({ file }: FileSectionProps) {
             />
           )}
 
-          {isVideo && !videoPreviewUrl && (
+          {isVideo && !videoPreviewUrl && !videoPreviewFailed && (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm">Generating preview…</p>
+            </div>
+          )}
+
+          {isVideo && !videoPreviewUrl && videoPreviewFailed && (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
               <MdOutlineImageNotSupported className="text-6xl" />
               <p className="text-sm">Video preview unavailable</p>
