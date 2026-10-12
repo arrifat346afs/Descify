@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { open } from '@tauri-apps/plugin-dialog';
+
+/** Renders controls for selecting CSV export formats and an output directory. */
 const ExportSettings = () => {
   const exportSettings = useConfigStore((state) => state.exportSettings);
   const [selectedDirectory, setSelectedDirectory] = useState<string | undefined>(undefined);
@@ -23,6 +25,8 @@ const ExportSettings = () => {
   function savePath(path: string) {
     localStorage.setItem("exportPath", path);
   }
+
+  /** Opens the directory picker and persists a non-empty selection. */
   const handleFileSelect = async () => {
     try {
       const selectedDir = await open({ directory: true, multiple: false });
