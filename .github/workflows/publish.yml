@@ -2,6 +2,17 @@ name: 'publish'
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - macos-latest
+          - ubuntu-22.04
+          - windows-latest
 
 # 1. ADD THIS SECTION (Environment variables for Arch)
 env:
@@ -10,6 +21,7 @@ env:
 
 jobs:
   publish-tauri:
+    if: ${{ inputs.platform == 'all' || inputs.platform == matrix.platform }}
     permissions:
       contents: write
     strategy:
