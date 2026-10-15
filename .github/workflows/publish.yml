@@ -20,20 +20,38 @@ env:
   DEPENDENCIES_ARCH: "'libappindicator-gtk3' 'webkit2gtk-4.1' 'gtk3' 'xdotool'"
 
 jobs:
+  resolve-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Resolve matrix
+        id: set-matrix
+        run: |
+          PLATFORM="${{ inputs.platform }}"
+          case "$PLATFORM" in
+            macos-latest)
+              JSON='{"include":[{"platform":"macos-latest","args":"--target aarch64-apple-darwin"}]}'
+              ;;
+            ubuntu-22.04)
+              JSON='{"include":[{"platform":"ubuntu-22.04","args":""}]}'
+              ;;
+            windows-latest)
+              JSON='{"include":[{"platform":"windows-latest","args":""}]}'
+              ;;
+            *)
+              JSON='{"include":[{"platform":"macos-latest","args":"--target aarch64-apple-darwin"},{"platform":"ubuntu-22.04","args":""},{"platform":"windows-latest","args":""}]}'
+              ;;
+          esac
+          echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+
   publish-tauri:
-    if: ${{ inputs.platform == 'all' || inputs.platform == matrix.platform }}
+    needs: resolve-matrix
     permissions:
       contents: write
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-          - platform: 'ubuntu-22.04'
-            args: ''
-          - platform: 'windows-latest'
-            args: ''
+      matrix: ${{ fromJson(needs.resolve-matrix.outputs.matrix) }}
 
     runs-on: ${{ matrix.platform }}
     steps:
