@@ -6,10 +6,24 @@ use keyring::Entry;
 
 /// Writes an API key into the OS keychain under the "descify"
 /// application name, keyed by provider ("gemini" / "openrouter").
+///
+/// After writing, the value is read back to verify the OS backend
+/// actually persisted it.  If the read-back is missing or differs
+/// (e.g. the mock in-memory backend is silently active), an error
+/// is returned so the caller can warn the user instead of hiding it.
 #[tauri::command]
 pub async fn store_api_key(provider: String, key: String) -> Result<(), String> {
     let entry = Entry::new("descify", &provider).map_err(|e| e.to_string())?;
-    entry.set_password(&key).map_err(|e| e.to_string())
+    entry.set_password(&key).map_err(|e| e.to_string())?;
+
+    // Verify the write actually reached a persistent backend.
+    match entry.get_password() {
+        Ok(stored) if stored == key => Ok(()),
+        Ok(_) => Err("Keychain write verification failed: stored value does not match".to_string()),
+        Err(e) => Err(format!(
+            "Keychain unavailable — key saved for this session only: {e}"
+        )),
+    }
 }
 
 /// Reads an API key from the OS keychain; `None` when the

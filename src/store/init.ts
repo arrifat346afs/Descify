@@ -47,4 +47,7 @@ migrateLegacyStorage();
 
 // API keys live in the OS keychain, not localStorage — bring them
 // into the (in-memory) store once at startup.
-loadApiKeys();
+// Export the promise so App.tsx can await it before checking hasApiKey(),
+// preventing the settings dialog from popping up when keys are already saved.
+export const apiKeysReady: Promise<void> = loadApiKeys();
+

@@ -72,7 +72,8 @@ const ApiKeyManagement = ({ compact = false, showTitle = true }: ApiKeyManagemen
   };
 
   const handleSave = async () => {
-    // Save API keys only if changed
+    // Save API keys only if changed; track whether every keychain write succeeded.
+    let allPersisted = true;
     for (const [provider, key] of Object.entries(localApiKeys)) {
       if (key !== api.apiKeys[provider as Provider]) {
         setApiKey(provider as Provider, key);
@@ -82,17 +83,19 @@ const ApiKeyManagement = ({ compact = false, showTitle = true }: ApiKeyManagemen
           // The key works for this session either way; the
           // keychain (e.g. D-Bus Secret Service) may be
           // unavailable, so warn instead of failing the save.
+          allPersisted = false;
           console.warn(`Could not persist the ${provider} key to the OS keychain:`, error);
           toast.error(`Saved the ${provider} key for this session only — the OS keychain is unavailable.`);
         }
       }
     }
 
-    toast.success('API keys saved successfully!');
-    
-    // Show success indicator
-    setShowSavedIndicator(true);
-    setTimeout(() => setShowSavedIndicator(false), 2000);
+    if (allPersisted) {
+      toast.success('API keys saved successfully!');
+      // Show success indicator
+      setShowSavedIndicator(true);
+      setTimeout(() => setShowSavedIndicator(false), 2000);
+    }
   };
 
   const handleCancel = () => {
