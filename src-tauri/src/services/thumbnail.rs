@@ -3,9 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::Write;
-use std::path::PathBuf;
-use std::process::Command;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::path::{Path, PathBuf};
 
 use base64::Engine;
 use blake3::Hasher;
@@ -16,9 +14,17 @@ use image::{DynamicImage, ImageReader};
 use crate::services::gpu_thumbnail;
 use crate::services::vector;
 
-/// Sequence for unique ffmpeg temp file names (see
-/// generate_video_thumbnail_ffmpeg).
-static TEMP_SEQ: AtomicU64 = AtomicU64::new(0);
+fn max_ffmpeg_jobs() -> usize {
+    let cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
+    (cores / 2).clamp(2, 4)
+}
+
+static FFMPEG_SEMAPHORE: std::sync::LazyLock<tokio::sync::Semaphore> =
+    std::sync::LazyLock::new(|| tokio::sync::Semaphore::new(max_ffmpeg_jobs()));
+
+const FFMPEG_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(12);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ThumbnailResult {
@@ -143,7 +149,7 @@ fn encode_jpeg_fast(img: &DynamicImage) -> Vec<u8> {
 
 /// Returns the path to a cached thumbnail file if it already exists on disk,
 /// without reading or decoding the file contents (avoids unnecessary I/O).
-fn get_cached_thumbnail_path(cache_dir: &PathBuf, cache_key: &str) -> Option<PathBuf> {
+fn get_cached_thumbnail_path(cache_dir: &Path, cache_key: &str) -> Option<PathBuf> {
     let thumb_path = cache_dir.join(format!("{}.jpg", cache_key));
     if thumb_path.exists() {
         Some(thumb_path)
@@ -427,100 +433,108 @@ fn get_ffmpeg_path() -> Option<PathBuf> {
     which::which("ffmpeg").ok()
 }
 
-fn generate_video_thumbnail_ffmpeg(
+async fn run_ffmpeg_thumbnail_attempt(
+    ffmpeg: &Path,
+    file_path: &str,
+    target_size: u32,
+    seek_time: &str,
+    skip_key: bool,
+    use_gpu: bool,
+) -> Option<Vec<u8>> {
+    let mut cmd = tokio::process::Command::new(ffmpeg);
+    cmd.kill_on_drop(true);
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::null());
+    cmd.stdin(std::process::Stdio::null());
+
+    cmd.arg("-ss").arg(seek_time);
+    cmd.arg("-noaccurate_seek");
+    if skip_key {
+        cmd.arg("-skip_frame").arg("nokey");
+    }
+    cmd.arg("-probesize").arg("32768");
+    cmd.arg("-analyzeduration").arg("0");
+
+    if use_gpu {
+        for arg in gpu_thumbnail::get_ffmpeg_hwaccel_args() {
+            cmd.arg(arg);
+        }
+    }
+
+    cmd.arg("-i").arg(file_path);
+    cmd.arg("-an").arg("-sn").arg("-dn");
+    cmd.arg("-frames:v").arg("1");
+    cmd.arg("-threads").arg("1");
+    cmd.arg("-vf").arg(format!("scale={target_size}:{target_size}:force_original_aspect_ratio=decrease"));
+    cmd.arg("-sws_flags").arg("fast_bilinear");
+    cmd.arg("-q:v").arg("2");
+    cmd.arg("-f").arg("image2pipe");
+    cmd.arg("-c:v").arg("mjpeg");
+    cmd.arg("pipe:1");
+
+    let child = cmd.spawn().ok()?;
+    let output = match tokio::time::timeout(FFMPEG_TIMEOUT, child.wait_with_output()).await {
+        Ok(Ok(out)) => out,
+        _ => return None,
+    };
+
+    if output.status.success()
+        && output.stdout.len() >= 2
+        && output.stdout[0] == 0xFF
+        && output.stdout[1] == 0xD8
+    {
+        Some(output.stdout)
+    } else {
+        None
+    }
+}
+
+async fn generate_video_thumbnail_ffmpeg_async(
     file_path: &str,
     target_size: u32,
 ) -> Option<(Vec<u8>, u32, u32)> {
     let ffmpeg = get_ffmpeg_path()?;
+    let _permit = FFMPEG_SEMAPHORE.acquire().await.ok()?;
 
-    // The resolution is assumed landscape-HD: the scale/pad filter
-    // keeps the real aspect ratio anyway (force_original_aspect_ratio
-    // + pad), so only the pad canvas size matters here. The old
-    // detect_video_dimensions() helper parsed ffmpeg's stderr and
-    // never matched a real line, so it always fell back to this.
-    let (orig_w, orig_h) = (1920, 1080);
-    let scale = (target_size as f32 / orig_w as f32).min(1.0);
-    let new_w = (orig_w as f32 * scale) as u32;
-    let new_h = (orig_h as f32 * scale) as u32;
+    let use_gpu = gpu_thumbnail::is_gpu_faster();
 
-    let temp_dir = std::env::temp_dir();
-    // Unique per call: concurrent runs in this process would
-    // otherwise write the same temp file and corrupt each other.
-    let seq = TEMP_SEQ.fetch_add(1, Ordering::Relaxed);
-    let output_path = temp_dir.join(format!("thumb_{}_{}.jpg", std::process::id(), seq));
+    // 1. Fast attempt: seek to 1 second with skip_frame nokey
+    let maybe_data =
+        run_ffmpeg_thumbnail_attempt(&ffmpeg, file_path, target_size, "00:00:01", true, use_gpu)
+            .await;
 
-    let use_gpu = gpu_thumbnail::is_gpu_available();
-    let hwaccel_args = gpu_thumbnail::get_ffmpeg_hwaccel_args();
-
-    let filter_str = if use_gpu {
-        format!("scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black,hwupload_cuda", new_w, new_h, new_w, new_h)
-    } else {
-        format!(
-            "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
-            new_w, new_h, new_w, new_h
-        )
+    // 2. Fallback to 0s with skip_frame nokey (for videos < 1s or where no keyframe follows 1s)
+    let maybe_data = match maybe_data {
+        Some(d) => Some(d),
+        None => {
+            run_ffmpeg_thumbnail_attempt(&ffmpeg, file_path, target_size, "00:00:00", true, use_gpu)
+                .await
+        }
     };
 
-    let mut args = vec!["-y".to_string(), "-ss".to_string(), "00:00:01".to_string()];
-    for arg in hwaccel_args.iter() {
-        args.push(arg.to_string());
-    }
-    args.push("-i".to_string());
-    args.push(file_path.to_string());
-    args.push("-vframes".to_string());
-    args.push("1".to_string());
-    args.push("-vf".to_string());
-    args.push(filter_str);
-    args.push("-q:v".to_string());
-    args.push("2".to_string());
-    args.push(output_path.to_str()?.to_string());
-
-    let output = Command::new(&ffmpeg).args(&args).output().ok()?;
-
-    if !output.status.success() {
-        let fallback_output = temp_dir.join(format!("thumb_fallback_{}_{}.jpg", std::process::id(), seq));
-        let fallback_filter = format!("scale={}:{}", new_w, new_h);
-        let output = Command::new(&ffmpeg)
-            .args([
-                "-y", "-ss", "00:00:01", "-i", file_path, "-vframes", "1", "-vf",
-            ])
-            .arg(&fallback_filter)
-            .args(["-q:v", "2"])
-            .arg(fallback_output.to_str()?)
-            .output()
-            .ok()?;
-
-        if !output.status.success() {
-            return None;
+    // 3. Fallback to 0s without skip_frame nokey (for formats where nokey decode is unsupported)
+    let data = match maybe_data {
+        Some(d) => d,
+        None => {
+            run_ffmpeg_thumbnail_attempt(&ffmpeg, file_path, target_size, "00:00:00", false, false)
+                .await?
         }
+    };
 
-        let data = fs::read(&fallback_output).ok()?;
-        let _ = fs::remove_file(&fallback_output);
-
-        let img = ImageReader::new(std::io::Cursor::new(&data))
-            .with_guessed_format()
-            .ok()?
-            .decode()
-            .ok()?;
-
-        let (w, h) = img.dimensions();
-        return Some((data, w, h));
-    }
-
-    let data = fs::read(&output_path).ok()?;
-    let _ = fs::remove_file(&output_path);
-
-    let img = ImageReader::new(std::io::Cursor::new(&data))
+    // Extract dimensions from JPEG header without decoding pixel data
+    let (width, height) = match ImageReader::new(std::io::Cursor::new(&data))
         .with_guessed_format()
-        .ok()?
-        .decode()
-        .ok()?;
+        .ok()
+        .and_then(|r| r.into_dimensions().ok())
+    {
+        Some((w, h)) => (w, h),
+        None => (target_size, target_size),
+    };
 
-    let (w, h) = img.dimensions();
-    Some((data, w, h))
+    Some((data, width, height))
 }
 
-pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult {
+pub async fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult {
     let path = PathBuf::from(file_path);
     if !path.exists() || !path.is_file() {
         return ThumbnailResult {
@@ -609,19 +623,20 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
         };
     }
 
-    let (jpeg_data, width, height) = match generate_video_thumbnail_ffmpeg(file_path, target_size) {
-        Some(result) => result,
-        None => {
-            return ThumbnailResult {
-                thumbnail_base64: None,
-                cache_path: None,
-                width: None,
-                height: None,
-                file_size: Some(file_size),
-                from_cache: false,
+    let (jpeg_data, width, height) =
+        match generate_video_thumbnail_ffmpeg_async(file_path, target_size).await {
+            Some(result) => result,
+            None => {
+                return ThumbnailResult {
+                    thumbnail_base64: None,
+                    cache_path: None,
+                    width: None,
+                    height: None,
+                    file_size: Some(file_size),
+                    from_cache: false,
+                }
             }
-        }
-    };
+        };
 
     let (cache_path, thumbnail_base64) =
         match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
@@ -642,7 +657,7 @@ pub fn generate_video_thumbnail(file_path: &str, target_size: u32) -> ThumbnailR
     }
 }
 
-pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResult {
+pub async fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResult {
     let path = PathBuf::from(file_path);
     if !path.exists() || !path.is_file() {
         return PreviewResult {
@@ -726,18 +741,19 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
         };
     }
 
-    let (jpeg_data, width, height) = match generate_video_thumbnail_ffmpeg(file_path, target_size) {
-        Some(result) => result,
-        None => {
-            return PreviewResult {
-                preview_base64: None,
-                cache_path: None,
-                width: None,
-                height: None,
-                from_cache: false,
+    let (jpeg_data, width, height) =
+        match generate_video_thumbnail_ffmpeg_async(file_path, target_size).await {
+            Some(result) => result,
+            None => {
+                return PreviewResult {
+                    preview_base64: None,
+                    cache_path: None,
+                    width: None,
+                    height: None,
+                    from_cache: false,
+                }
             }
-        }
-    };
+        };
 
     let (cache_path, preview_base64) =
         match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
@@ -756,3 +772,261 @@ pub fn generate_video_preview(file_path: &str, target_size: u32) -> PreviewResul
         from_cache: false,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_batch_50_videos() {
+        let bench_dir = std::path::PathBuf::from("/tmp/descify_bench_50");
+        if !bench_dir.exists() {
+            return;
+        }
+
+        let mut entries: Vec<PathBuf> = std::fs::read_dir(&bench_dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().map_or(false, |ext| ext == "mp4"))
+            .collect();
+        entries.sort();
+
+        if entries.len() != 50 {
+            return;
+        }
+
+        // Clean out cache directory for these benchmark files so repeat test runs are cold
+        if let Some(cache_dir) = get_app_thumbnail_cache_dir() {
+            let _ = std::fs::remove_dir_all(&cache_dir);
+        }
+
+        let start = std::time::Instant::now();
+        let mut first_thumb_time = None;
+
+        let mut handles = Vec::new();
+        for path in entries {
+            let p = path.to_string_lossy().to_string();
+            handles.push(tokio::spawn(async move {
+                let t0 = std::time::Instant::now();
+                let res = generate_video_thumbnail(&p, 720).await;
+                (p, res, t0.elapsed())
+            }));
+        }
+
+        let mut success_count = 0;
+        let mut fail_count = 0;
+        let mut corrupt_failed = false;
+        let mut sub1s_succeeded = false;
+        let mut portrait_succeeded = false;
+        let mut k4_succeeded = false;
+
+        for h in handles {
+            let (path, res, _elapsed) = h.await.unwrap();
+            if first_thumb_time.is_none() && (res.cache_path.is_some() || res.thumbnail_base64.is_some()) {
+                first_thumb_time = Some(start.elapsed());
+            }
+
+            if path.contains("video_corrupt") {
+                if res.cache_path.is_none() && res.thumbnail_base64.is_none() {
+                    corrupt_failed = true;
+                }
+                fail_count += 1;
+            } else {
+                assert!(
+                    res.cache_path.is_some() || res.thumbnail_base64.is_some(),
+                    "Thumbnail should succeed for {}",
+                    path
+                );
+                success_count += 1;
+                if path.contains("video_sub1s") {
+                    sub1s_succeeded = true;
+                }
+                if path.contains("video_portrait") {
+                    portrait_succeeded = true;
+                    assert!(
+                        res.height.unwrap_or(0) > res.width.unwrap_or(0),
+                        "Portrait height ({:?}) should be > width ({:?})",
+                        res.height,
+                        res.width
+                    );
+                }
+                if path.contains("video_4k") {
+                    k4_succeeded = true;
+                }
+            }
+        }
+
+        let total_time = start.elapsed();
+        println!("\n=== 50 Videos Benchmark Results ===");
+        println!("Total time: {:?}", total_time);
+        println!("First thumbnail ready in: {:?}", first_thumb_time.unwrap_or_default());
+        println!("Success: {} / 50, Failed (corrupt): {} / 50", success_count, fail_count);
+        println!("Average time per video: {:?}", total_time / 50);
+
+        assert!(corrupt_failed, "Corrupt video should be explicitly marked failed");
+        assert!(sub1s_succeeded, "Sub-1s video should succeed");
+        assert!(portrait_succeeded, "Portrait video should succeed with correct aspect ratio");
+        assert!(k4_succeeded, "4K video should succeed");
+        assert_eq!(success_count, 49);
+        assert_eq!(fail_count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_process_limit_and_back_to_back_batches() {
+        let bench_dir = std::path::PathBuf::from("/tmp/descify_bench_50");
+        if !bench_dir.exists() {
+            return;
+        }
+
+        let mut entries: Vec<PathBuf> = std::fs::read_dir(&bench_dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().map_or(false, |ext| ext == "mp4"))
+            .collect();
+        entries.sort();
+
+        if entries.len() != 50 {
+            return;
+        }
+
+        // Clean cache so all 50 run through ffmpeg
+        if let Some(cache_dir) = get_app_thumbnail_cache_dir() {
+            let _ = std::fs::remove_dir_all(&cache_dir);
+        }
+
+        // Monitor max ffmpeg processes running concurrently
+        let max_procs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let max_procs_clone = max_procs.clone();
+        let stop_monitoring = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let stop_clone = stop_monitoring.clone();
+
+        let monitor_handle = tokio::spawn(async move {
+            while !stop_clone.load(std::sync::atomic::Ordering::Relaxed) {
+                // Count ffmpeg processes
+                if let Ok(out) = std::process::Command::new("pgrep").arg("-x").arg("ffmpeg").output() {
+                    if out.status.success() {
+                        let lines = String::from_utf8_lossy(&out.stdout)
+                            .lines()
+                            .filter(|l| !l.trim().is_empty())
+                            .count();
+                        max_procs_clone.fetch_max(lines, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(15)).await;
+            }
+        });
+
+        // Launch first batch of 50
+        let mut handles = Vec::new();
+        for path in &entries {
+            let p = path.to_string_lossy().to_string();
+            handles.push(tokio::spawn(async move {
+                generate_video_thumbnail(&p, 720).await
+            }));
+        }
+
+        // Mid-way through (after 50ms), launch second batch of 50 (back-to-back drop)
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        for path in &entries {
+            let p = path.to_string_lossy().to_string();
+            handles.push(tokio::spawn(async move {
+                generate_video_thumbnail(&p, 720).await
+            }));
+        }
+
+        // Await all 100 tasks
+        for h in handles {
+            let _ = h.await;
+        }
+
+        stop_monitoring.store(true, std::sync::atomic::Ordering::Relaxed);
+        let _ = monitor_handle.await;
+
+        let peak_procs = max_procs.load(std::sync::atomic::Ordering::Relaxed);
+        println!("\n=== Concurrency Monitor Results ===");
+        println!("Peak concurrent ffmpeg processes observed: {}", peak_procs);
+
+        // Check running ffmpeg processes after finish
+        let final_procs = if let Ok(out) = std::process::Command::new("pgrep").arg("-x").arg("ffmpeg").output() {
+            String::from_utf8_lossy(&out.stdout).lines().filter(|l| !l.trim().is_empty()).count()
+        } else {
+            0
+        };
+        println!("Final ffmpeg processes remaining: {}", final_procs);
+
+        assert!(peak_procs <= 4, "Observed {} ffmpeg processes, expected <= 4", peak_procs);
+        assert_eq!(final_procs, 0, "No ffmpeg processes should remain running");
+    }
+
+    #[tokio::test]
+    async fn test_exif_concurrency_and_cleanup() {
+        let bench_dir = std::path::PathBuf::from("/tmp/descify_bench_50");
+        if !bench_dir.exists() {
+            return;
+        }
+
+        let entries: Vec<PathBuf> = std::fs::read_dir(&bench_dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().map_or(false, |ext| ext == "mp4"))
+            .collect();
+
+        if entries.len() != 50 {
+            return;
+        }
+
+        let max_procs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let max_procs_clone = max_procs.clone();
+        let stop_monitoring = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let stop_clone = stop_monitoring.clone();
+
+        let monitor_handle = tokio::spawn(async move {
+            while !stop_clone.load(std::sync::atomic::Ordering::Relaxed) {
+                if let Ok(out) = std::process::Command::new("pgrep").arg("-x").arg("exiftool").output() {
+                    if out.status.success() {
+                        let lines = String::from_utf8_lossy(&out.stdout)
+                            .lines()
+                            .filter(|l| !l.trim().is_empty())
+                            .count();
+                        max_procs_clone.fetch_max(lines, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(15)).await;
+            }
+        });
+
+        let mut handles = Vec::new();
+        for path in &entries {
+            let p = path.to_string_lossy().to_string();
+            handles.push(tokio::spawn(async move {
+                crate::services::exiftool::read_exif_metadata_async(&p).await
+            }));
+        }
+
+        for h in handles {
+            let _ = h.await;
+        }
+
+        stop_monitoring.store(true, std::sync::atomic::Ordering::Relaxed);
+        let _ = monitor_handle.await;
+
+        let peak_procs = max_procs.load(std::sync::atomic::Ordering::Relaxed);
+        println!("\n=== EXIF Concurrency Monitor Results ===");
+        println!("Peak concurrent exiftool processes observed: {}", peak_procs);
+
+        let final_procs = if let Ok(out) = std::process::Command::new("pgrep").arg("-x").arg("exiftool").output() {
+            String::from_utf8_lossy(&out.stdout).lines().filter(|l| !l.trim().is_empty()).count()
+        } else {
+            0
+        };
+        println!("Final exiftool processes remaining: {}", final_procs);
+
+        assert!(peak_procs <= 4, "Observed {} exiftool processes, expected <= 4", peak_procs);
+        assert_eq!(final_procs, 0, "No exiftool processes should remain running");
+    }
+}
+
+

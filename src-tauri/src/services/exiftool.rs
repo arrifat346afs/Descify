@@ -199,7 +199,148 @@ pub fn has_metadata(request: &EmbedMetadataRequest) -> bool {
     request.title.is_some() || request.description.is_some() || request.keywords.is_some()
 }
 
+static EXIF_SEMAPHORE: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(4);
+const EXIF_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
+fn parse_exif_metadata(metadata: &Value, file_path: &str) -> ExifData {
+    // Extract title from various possible fields (checking multiple naming conventions)
+    let title = metadata
+        // XMP fields
+        .get("XMP:Title")
+        .or_else(|| metadata.get("Title"))
+        // IPTC fields
+        .or_else(|| metadata.get("IPTC:ObjectName"))
+        .or_else(|| metadata.get("ObjectName"))
+        // EXIF fields
+        .or_else(|| metadata.get("EXIF:ImageDescription"))
+        .or_else(|| metadata.get("ImageDescription"))
+        // Other common fields
+        .or_else(|| metadata.get("PNG:Title"))
+        .or_else(|| metadata.get("MWG:Title"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    // Extract description from various possible fields
+    let description = metadata
+        // XMP fields
+        .get("XMP:Description")
+        .or_else(|| metadata.get("Description"))
+        // IPTC fields
+        .or_else(|| metadata.get("IPTC:Caption-Abstract"))
+        .or_else(|| metadata.get("Caption-Abstract"))
+        .or_else(|| metadata.get("CaptionAbstract"))
+        // EXIF fields
+        .or_else(|| metadata.get("EXIF:ImageDescription"))
+        .or_else(|| metadata.get("ImageDescription"))
+        // Other common fields
+        .or_else(|| metadata.get("PNG:Description"))
+        .or_else(|| metadata.get("MWG:Description"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    // Extract keywords from various possible fields
+    let keywords = metadata
+        // XMP fields
+        .get("XMP:Subject")
+        .or_else(|| metadata.get("Subject"))
+        // IPTC fields
+        .or_else(|| metadata.get("IPTC:Keywords"))
+        .or_else(|| metadata.get("Keywords"))
+        // DC fields
+        .or_else(|| metadata.get("XMP-dc:Subject"))
+        .or_else(|| metadata.get("dc:Subject"))
+        .and_then(|v| {
+            if let Some(arr) = v.as_array() {
+                // If it's an array, join with commas
+                let kw_list: Vec<String> = arr
+                    .iter()
+                    .filter_map(|item| item.as_str())
+                    .map(|s| s.to_string())
+                    .collect();
+                if !kw_list.is_empty() {
+                    return Some(kw_list.join(", "));
+                }
+            } else if let Some(s) = v.as_str() {
+                // If it's a string, use it directly
+                return Some(s.to_string());
+            }
+            None
+        });
+
+    ExifData {
+        file_path: file_path.to_string(),
+        title,
+        description,
+        keywords,
+    }
+}
+
+/// Asynchronously read EXIF metadata from an image/video file using exiftool with semaphore and timeout
+pub async fn read_exif_metadata_async(file_path: &str) -> Result<ExifData, String> {
+    let path = Path::new(file_path);
+    if !path.exists() {
+        return Err(format!("File does not exist: {}", file_path));
+    }
+    if !path.is_file() {
+        return Err(format!("Path is not a file: {}", file_path));
+    }
+
+    let _permit = EXIF_SEMAPHORE
+        .acquire()
+        .await
+        .map_err(|e| format!("Exif semaphore error: {}", e))?;
+
+    let exiftool_path = get_exiftool_path();
+
+    let mut cmd = tokio::process::Command::new(&exiftool_path);
+    cmd.arg("-json");
+    cmd.arg("-n");
+    cmd.arg(file_path);
+    cmd.kill_on_drop(true);
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
+    cmd.stdin(std::process::Stdio::null());
+
+    let child = cmd.spawn().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            format!("ExifTool not found. Tried path: {:?}", exiftool_path)
+        } else {
+            format!("Failed to execute ExifTool: {}", e)
+        }
+    })?;
+
+    let output = match tokio::time::timeout(EXIF_TIMEOUT, child.wait_with_output()).await {
+        Ok(Ok(out)) => out,
+        Ok(Err(e)) => return Err(format!("Failed to execute ExifTool: {}", e)),
+        Err(_) => return Err("ExifTool execution timed out".to_string()),
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("ExifTool failed: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json_data: Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse ExifTool output: {}", e))?;
+
+    let metadata = match json_data.as_array().and_then(|arr| arr.first()) {
+        Some(item) => item,
+        None => {
+            return Ok(ExifData {
+                file_path: file_path.to_string(),
+                title: None,
+                description: None,
+                keywords: None,
+            })
+        }
+    };
+
+    Ok(parse_exif_metadata(metadata, file_path))
+}
+
 /// Read EXIF metadata from an image/video file using exiftool
+#[allow(dead_code)]
 pub fn read_exif_metadata(file_path: &str) -> Result<ExifData, String> {
     // Validate file exists
     let path = Path::new(file_path);
@@ -249,76 +390,7 @@ pub fn read_exif_metadata(file_path: &str) -> Result<ExifData, String> {
                 }
             };
 
-            // Extract title from various possible fields (checking multiple naming conventions)
-            let title = metadata
-                // XMP fields
-                .get("XMP:Title")
-                .or_else(|| metadata.get("Title"))
-                // IPTC fields
-                .or_else(|| metadata.get("IPTC:ObjectName"))
-                .or_else(|| metadata.get("ObjectName"))
-                // EXIF fields
-                .or_else(|| metadata.get("EXIF:ImageDescription"))
-                .or_else(|| metadata.get("ImageDescription"))
-                // Other common fields
-                .or_else(|| metadata.get("PNG:Title"))
-                .or_else(|| metadata.get("MWG:Title"))
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-
-            // Extract description from various possible fields
-            let description = metadata
-                // XMP fields
-                .get("XMP:Description")
-                .or_else(|| metadata.get("Description"))
-                // IPTC fields
-                .or_else(|| metadata.get("IPTC:Caption-Abstract"))
-                .or_else(|| metadata.get("Caption-Abstract"))
-                .or_else(|| metadata.get("CaptionAbstract"))
-                // EXIF fields
-                .or_else(|| metadata.get("EXIF:ImageDescription"))
-                .or_else(|| metadata.get("ImageDescription"))
-                // Other common fields
-                .or_else(|| metadata.get("PNG:Description"))
-                .or_else(|| metadata.get("MWG:Description"))
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-
-            // Extract keywords from various possible fields
-            let keywords = metadata
-                // XMP fields
-                .get("XMP:Subject")
-                .or_else(|| metadata.get("Subject"))
-                // IPTC fields
-                .or_else(|| metadata.get("IPTC:Keywords"))
-                .or_else(|| metadata.get("Keywords"))
-                // DC fields
-                .or_else(|| metadata.get("XMP-dc:Subject"))
-                .or_else(|| metadata.get("dc:Subject"))
-                .and_then(|v| {
-                    if let Some(arr) = v.as_array() {
-                        // If it's an array, join with commas
-                        let kw_list: Vec<String> = arr
-                            .iter()
-                            .filter_map(|item| item.as_str())
-                            .map(|s| s.to_string())
-                            .collect();
-                        if !kw_list.is_empty() {
-                            return Some(kw_list.join(", "));
-                        }
-                    } else if let Some(s) = v.as_str() {
-                        // If it's a string, use it directly
-                        return Some(s.to_string());
-                    }
-                    None
-                });
-
-            Ok(ExifData {
-                file_path: file_path.to_string(),
-                title,
-                description,
-                keywords,
-            })
+            Ok(parse_exif_metadata(metadata, file_path))
         }
         Err(e) => {
             if e.kind() == std::io::ErrorKind::NotFound {

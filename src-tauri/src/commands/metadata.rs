@@ -1,7 +1,7 @@
 // Tauri command handlers for metadata operations
 use crate::models::metadata::{EmbedMetadataRequest, EmbedMetadataResult, ExifData};
 use crate::services::exiftool::{
-    build_exiftool_command, execute_exiftool, get_exiftool_path, has_metadata, read_exif_metadata,
+    build_exiftool_command, execute_exiftool, get_exiftool_path, has_metadata, read_exif_metadata_async,
     validate_file,
 };
 
@@ -33,5 +33,6 @@ pub async fn embed_metadata(request: EmbedMetadataRequest) -> Result<EmbedMetada
 /// Read EXIF metadata from an image/video file
 #[tauri::command]
 pub async fn read_exif_metadata_command(file_path: String) -> Result<ExifData, String> {
-    read_exif_metadata(&file_path)
+    read_exif_metadata_async(&file_path).await
 }
+

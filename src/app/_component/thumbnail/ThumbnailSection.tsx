@@ -29,6 +29,7 @@ import {
 } from "@/app/lib/metadata/metadataStatus";
 import { ThumbnailItem } from "./ThumbnailItem";
 import { useAutoScroll, useKeyboardAutoScroll, useDragAndDrop, useVirtualization, useKeyboardNavigation } from "./hooks";
+import { PriorityTaskQueue } from "@/app/lib/thumbnail/thumbnailQueue";
 
 type ThumbnailSectionProps = {
   onSelectFile: (file: File) => void;
@@ -62,59 +63,66 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   // Regenerating state - track which file is being regenerated
   const [regeneratingFile, setRegeneratingFile] = useState<File | null>(null);
 
+  // Dedicated shared queues for thumbnails and EXIF (bounded to 4 concurrent workers)
+  const thumbnailQueue = useMemo(() => new PriorityTaskQueue<File>(4), []);
+  const exifQueue = useMemo(() => new PriorityTaskQueue<File>(4), []);
+  const [generatingFileNames, setGeneratingFileNames] = useState<Set<string>>(new Set());
+  const visibleFilesRef = useRef<Set<File>>(new Set());
+
   // Setup drag and drop
   const { isDragActive } = useDragAndDrop({
     activeTab,
-    // Per-file callback: fires as soon as each individual file is read from disk,
-    // so the loading thumbnail appears instantly without waiting for the whole batch.
+    // Per-file callback: enqueues the dropped file into the bounded thumbnail queue.
     onFileAdded: useCallback((file: File) => {
       addFiles([file]);
       setHasAttemptedGeneration(false);
 
-      // Read the path from the store AT CALL TIME. setFilePath() ran just
-      // before this callback inside the drop handler, so a Map captured in
-      // this closure would still be the pre-drop one — leaving vector files
-      // (.ai/.eps) with no path, which they need for Ghostscript rasterization.
       const filePath = getFilePath(file);
 
-      // Generate async without blocking. Route by type: videos go through the
-      // Rust/FFmpeg backend (browser frame capture needs real bytes as
-      // fallback), vectors through Ghostscript, images through Canvas.
-      (async () => {
-        try {
-          let thumbnailUrl: string | null = null;
-          if (file.type.startsWith('video/')) {
-            const { generateVideoThumbnailRust } = await import('@/app/lib/thumbnail/rustBridge');
-            const { generateVideoThumbnail } = await import('@/app/lib/thumbnailGenerator');
-            if (filePath) {
-              try {
-                thumbnailUrl = await generateVideoThumbnailRust(filePath);
-              } catch {
-                thumbnailUrl = file.size > 0 ? await generateVideoThumbnail(file) : null;
-              }
-              if (!thumbnailUrl && file.size > 0) {
+      thumbnailQueue.add({
+        item: file,
+        getPriority: () => (visibleFilesRef.current.has(file) ? 1000 : 0),
+        run: async () => {
+          setGeneratingFileNames((prev) => new Set(prev).add(file.name));
+          try {
+            let thumbnailUrl: string | null = null;
+            if (file.type.startsWith('video/')) {
+              const { generateVideoThumbnailRust } = await import('@/app/lib/thumbnail/rustBridge');
+              const { generateVideoThumbnail } = await import('@/app/lib/thumbnailGenerator');
+              if (filePath) {
+                try {
+                  thumbnailUrl = await generateVideoThumbnailRust(filePath);
+                } catch {
+                  thumbnailUrl = file.size > 0 ? await generateVideoThumbnail(file) : null;
+                }
+                if (!thumbnailUrl && file.size > 0) {
+                  thumbnailUrl = await generateVideoThumbnail(file);
+                }
+              } else {
                 thumbnailUrl = await generateVideoThumbnail(file);
               }
             } else {
-              thumbnailUrl = await generateVideoThumbnail(file);
+              thumbnailUrl = await generateImageThumbnail(file, filePath);
             }
-          } else {
-            thumbnailUrl = await generateImageThumbnail(file, filePath);
-          }
-          if (thumbnailUrl) {
-            addThumbnail({ file, thumbnailUrl, previewUrl: null });
-          } else {
+            if (thumbnailUrl) {
+              addThumbnail({ file, thumbnailUrl, previewUrl: null });
+            } else {
+              markThumbnailFailed(file);
+            }
+          } catch (error) {
+            console.warn(`Thumbnail generation failed for ${file.name}:`, error);
             markThumbnailFailed(file);
+          } finally {
+            setGeneratingFileNames((prev) => {
+              const next = new Set(prev);
+              next.delete(file.name);
+              return next;
+            });
           }
-        } catch (error) {
-          console.warn(`Thumbnail generation failed for ${file.name}:`, error);
-          markThumbnailFailed(file);
-        }
-      })();
-    }, [addFiles, setHasAttemptedGeneration]),
+        },
+      });
+    }, [addFiles, setHasAttemptedGeneration, thumbnailQueue]),
     // Legacy batch fallback (used when onFileAdded is not provided)
-    // Use addFiles (stable) instead of setFiles([...files, ...newFiles]) so that
-    // this callback doesn't get a new reference every time `files` changes.
     onFilesAdded: useCallback((newFiles: File[]) => {
       if (newFiles.length > 0) {
         addFiles(newFiles);
@@ -122,35 +130,36 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
       }
     }, [addFiles, setHasAttemptedGeneration]),
     onFilePathStored: setFilePath,
-    onExifDataFound: useCallback(async (file: File, path: string) => {
+    onExifDataFound: useCallback((file: File, path: string) => {
       if (file.type === 'image/svg+xml') {
         console.log(`ℹ️ Skipping EXIF read for SVG file: ${file.name}`);
         return;
       }
-      try {
-        console.log(`📸 Reading EXIF metadata for dropped file: ${file.name}`);
-        const exifData = await readExifMetadata(path);
 
-        // Vectors (.ai/.eps) only ever report an auto-generated Title, so
-        // shouldPrefillFromExif requires a description/keywords there.
-        if (shouldPrefillFromExif(file, exifData)) {
-          console.log(`✅ Found embedded metadata for ${file.name} - Title: ${exifData.title ? 'yes' : 'no'}, Description: ${exifData.description ? 'yes' : 'no'}, Keywords: ${exifData.keywords ? 'yes' : 'no'}`);
+      exifQueue.add({
+        item: file,
+        getPriority: () => (visibleFilesRef.current.has(file) ? 1000 : 0),
+        run: async () => {
+          try {
+            console.log(`📸 Reading EXIF metadata for dropped file: ${file.name}`);
+            const exifData = await readExifMetadata(path);
 
-          // Populate metadata fields with EXIF data
-          setMetadata(file, {
-            title: exifData.title || '',
-            description: exifData.description || '',
-            keywords: exifData.keywords || ''
-          });
-        } else {
-          console.log(`ℹ️ No embedded metadata found for ${file.name}`);
-        }
-      } catch (error) {
-        console.warn(`⚠️ Failed to read EXIF metadata for ${file.name}:`, error);
-        // Continue without EXIF data - not a fatal error
-      }
-    // Use setMetadata (stable) instead of generated (object ref changes on every metadata update)
-    }, [setMetadata]),
+            if (shouldPrefillFromExif(file, exifData)) {
+              console.log(`✅ Found embedded metadata for ${file.name} - Title: ${exifData.title ? 'yes' : 'no'}, Description: ${exifData.description ? 'yes' : 'no'}, Keywords: ${exifData.keywords ? 'yes' : 'no'}`);
+              setMetadata(file, {
+                title: exifData.title || '',
+                description: exifData.description || '',
+                keywords: exifData.keywords || ''
+              });
+            } else {
+              console.log(`ℹ️ No embedded metadata found for ${file.name}`);
+            }
+          } catch (error) {
+            console.warn(`⚠️ Failed to read EXIF metadata for ${file.name}:`, error);
+          }
+        },
+      });
+    }, [exifQueue, setMetadata]),
   });
 
   // Setup virtualization
@@ -162,6 +171,11 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     updateVisibleRangeForSelection,
     shouldVirtualize 
   } = useVirtualization({ files: files || [], selectedFile });
+
+  // Keep visible files updated for queue priority
+  useEffect(() => {
+    visibleFilesRef.current = new Set(filesToRender.map((f) => f.file));
+  }, [filesToRender]);
 
   // Setup keyboard navigation (always enabled, with circular wrap)
   useKeyboardNavigation({
@@ -333,6 +347,11 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
   }, [onSelectFile]);
 
   const handleDeleteFile = useCallback((file: File) => {
+    setGeneratingFileNames((prev) => {
+      const next = new Set(prev);
+      next.delete(file.name);
+      return next;
+    });
     removeFile(file);
   }, [removeFile]);
 
@@ -404,9 +423,8 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               {filesToRender.map(({ file, index }) => {
                 const thumbnail = thumbnailMap.get(file.name);
                 const hasFailed = failedThumbnailSet.has(file);
-                // No thumbnail yet = still generating — unless generation already
-                // failed, in which case the item shows an explicit failure state.
-                const isGenerating = !thumbnail && !hasFailed;
+                const isGenerating = generatingFileNames.has(file.name);
+                const isQueued = !thumbnail && !hasFailed && !isGenerating;
                 const hasMetadata = metadataMap.has(file.name);
                 const isSelected = selectedFile === file;
                 const hasCustomInstruction = customInstructionFiles.has(file);
@@ -418,6 +436,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
                     file={file}
                     thumbnail={thumbnail}
                     isGenerating={isGenerating}
+                    isQueued={isQueued}
                     hasFailed={hasFailed}
                     isSelected={isSelected}
                     hasMetadata={hasMetadata}

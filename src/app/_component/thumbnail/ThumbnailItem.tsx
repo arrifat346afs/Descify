@@ -12,6 +12,7 @@ interface ThumbnailItemProps {
   file: File;
   thumbnail: ThumbnailInfo | undefined;
   isGenerating: boolean;
+  isQueued?: boolean;
   /** Thumbnail generation already failed for this file — show an explicit state. */
   hasFailed: boolean;
   isSelected: boolean;
@@ -31,6 +32,7 @@ export const ThumbnailItem = memo(({
   file,
   thumbnail,
   isGenerating,
+  isQueued,
   hasFailed,
   isSelected,
   hasMetadata,
@@ -78,6 +80,13 @@ export const ThumbnailItem = memo(({
             <div className="flex flex-col items-center gap-2">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <p className="text-xs text-muted-foreground">Generating...</p>
+            </div>
+          </div>
+        ) : isQueued ? (
+          <div className="w-full h-full flex items-center justify-center bg-muted">
+            <div className="flex flex-col items-center gap-2">
+              <div className="rounded-full h-8 w-8 border-2 border-dashed border-muted-foreground/40 animate-pulse"></div>
+              <p className="text-xs text-muted-foreground">Queued...</p>
             </div>
           </div>
         ) : hasFailed ? (
@@ -173,6 +182,7 @@ export const ThumbnailItem = memo(({
     prevProps.file === nextProps.file &&
     prevProps.thumbnail === nextProps.thumbnail &&
     prevProps.isGenerating === nextProps.isGenerating &&
+    prevProps.isQueued === nextProps.isQueued &&
     prevProps.hasFailed === nextProps.hasFailed &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.hasMetadata === nextProps.hasMetadata &&
