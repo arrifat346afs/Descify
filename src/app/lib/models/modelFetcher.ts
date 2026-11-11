@@ -1,4 +1,5 @@
 import { fetch } from "@tauri-apps/plugin-http";
+import { codexModels } from "@/app/lib/tauri/tauri-commands";
 
 /**
  * Model Fetcher Module
@@ -80,6 +81,18 @@ export async function refreshModelPricing(
     }
     if (provider === 'gemini') {
       const models = await fetchGeminiModels(apiKey);
+      registerModelMetadata(models);
+      return models;
+    }
+    if (provider === 'codex') {
+      const models = (await codexModels()).map(({ slug, display_name }) => ({
+        value: slug,
+        label: display_name,
+        supportsVision: true,
+        provider: 'OpenAI Codex',
+        inputTypes: ['text', 'image'],
+        supportsReasoning: true,
+      }));
       registerModelMetadata(models);
       return models;
     }

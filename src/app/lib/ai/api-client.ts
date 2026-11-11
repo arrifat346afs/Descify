@@ -9,6 +9,7 @@ import { stripThinkBlocks } from "./response-parser";
 import { callGoogleGemini, isGoogleProvider } from "./providers/google";
 import { callOpenAICompatible, parseOpenAIUsage } from "./providers/openai";
 import { callOpenRouter, isOpenRouterProvider } from "./providers/openrouter";
+import { codexGenerate } from "../tauri/tauri-commands";
 import {
   postJsonWithTimeout,
   attachUsageToError,
@@ -41,6 +42,14 @@ export const callAIApi = async (options: GenerateTextOptions): Promise<AIRespons
   console.log('🚀 Sending to AI (Direct Fetch)...', { provider, model });
 
   try {
+    if (provider === 'codex') {
+      const prompt = messages.flatMap((message) => Array.isArray(message.content) ? message.content : [{ type: 'text', text: String(message.content ?? '') }]);
+      const textPart = prompt.find((part: any) => part.type === 'text')?.text ?? '';
+      const imagePart = prompt.find((part: any) => part.type === 'image_url')?.image_url?.url;
+      if (!imagePart) throw new Error('Codex requires an image input for metadata generation.');
+      const text = await codexGenerate({ model, prompt: textPart, image_data_url: imagePart });
+      return { text, finishReason: 'stop' };
+    }
     if (isGoogleProvider(provider)) {
       return await callGoogleGemini(apiKey, model, messages, maxTokens, signal);
     } else if (isOpenRouterProvider(provider)) {

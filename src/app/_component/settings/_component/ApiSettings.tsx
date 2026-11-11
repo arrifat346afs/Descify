@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { fetchOpenRouterModels, fetchGeminiModels, fetchLocalModels, checkLocalModelConnection, type ModelInfo } from '@/app/lib/models/modelFetcher';
+import { codexLogout, codexSignIn, codexStatus, type CodexStatus } from '@/app/lib/tauri/tauri-commands';
+import { fetchOpenRouterModels, fetchGeminiModels, fetchLocalModels, checkLocalModelConnection, refreshModelPricing, type ModelInfo } from '@/app/lib/models/modelFetcher';
 import { ModelSelector } from './ModelSelector';
 
-type Provider = 'gemini' | 'openrouter';
+type Provider = 'gemini' | 'openrouter' | 'codex';
 
 const ApiSettings = () => {
   const api = useConfigStore((state) => state.api);
@@ -33,12 +34,38 @@ const ApiSettings = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showSavedIndicator, setShowSavedIndicator] = useState(false);
   const [localModelConnected, setLocalModelConnected] = useState(false);
+  const [codex, setCodex] = useState<CodexStatus>({ connected: false, plan_usage_enabled: false });
+  const [codexBusy, setCodexBusy] = useState(false);
 
   const providers = [
     // { value: 'openai', label: 'OpenAI' },
     { value: 'gemini', label: 'Google' },
     { value: 'openrouter', label: 'OpenRouter' },
+    { value: 'codex', label: 'OpenAI Codex (ChatGPT plan)' },
   ];
+
+  useEffect(() => {
+    codexStatus().then(setCodex).catch(() => undefined);
+  }, []);
+
+  const handleCodexSignIn = async () => {
+    setCodexBusy(true);
+    try {
+      setCodex(await codexSignIn());
+      toast.success('Connected to ChatGPT for Codex usage.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setCodexBusy(false);
+    }
+  };
+
+  const handleCodexLogout = async () => {
+    await codexLogout();
+    setCodex({ connected: false, plan_usage_enabled: false });
+    if (localProvider === 'codex') setLocalProvider('');
+    toast.success('Disconnected from ChatGPT.');
+  };
 
   // Sync local state when context changes (e.g., on mount or external updates)
   useEffect(() => {
@@ -125,6 +152,9 @@ const ApiSettings = () => {
           case 'openrouter':
             fetchedModels = await fetchOpenRouterModels(localApiKeys.openrouter);
             break;
+          case 'codex':
+            fetchedModels = await refreshModelPricing('codex');
+            break;
           default:
             fetchedModels = [];
         }
@@ -140,7 +170,7 @@ const ApiSettings = () => {
     };
 
     loadModels();
-  }, [localProvider, localApiKeys]);
+  }, [localProvider, localApiKeys, codex.connected]);
 
   const handleSave = () => {
     // Save all changes to store (except processing mode which is applied immediately)
@@ -352,6 +382,30 @@ const ApiSettings = () => {
       ) : (
         // API Model UI
         <div className="space-y-4">
+          {localProvider === 'codex' && (
+            <div className="rounded-md border p-4 space-y-3">
+              <div>
+                <Label className="text-base font-medium">ChatGPT connection</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Uses the eligible ChatGPT plan allowance. Descify never falls back to API-key billing.
+                </p>
+              </div>
+              {codex.connected ? (
+                <div className="flex items-center justify-between gap-3">
+                  <Badge variant="outline" className="text-green-600">Connected{codex.email ? ` · ${codex.email}` : ''}</Badge>
+                  <Button variant="outline" size="sm" onClick={handleCodexLogout}>Log out</Button>
+                </div>
+              ) : (
+                <Button onClick={handleCodexSignIn} disabled={codexBusy}>
+                  {codexBusy ? 'Waiting for browser…' : 'Continue with ChatGPT'}
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">
+                You will authenticate in your browser. Plan eligibility and remaining allowance are controlled by OpenAI; this app does not estimate or bypass limits.
+              </p>
+            </div>
+          )}
+
           <div>
             <Label htmlFor="provider" className="text-base font-medium mb-2">Provider</Label>
             <Select onValueChange={(val) => setLocalProvider(val as Provider)} value={localProvider || undefined}>

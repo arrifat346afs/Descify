@@ -29,7 +29,7 @@ It works with **cloud AI providers** (Gemini, OpenRouter) **and with fully local
 ## Features
 
 ### AI Integration
-- **Gemini** (free tier available) and **OpenRouter** (paid) support
+- **Gemini**, **OpenRouter**, and **OpenAI Codex via ChatGPT plan authentication**
 - 🏠 **Local model support** — run vision models entirely on your own machine via LM Studio (or any OpenAI-compatible server). No API key, no cost, no data leaving your device — see [Local Models](#local-models-lm-studio) below
 - Configurable AI prompt templates with variables (`${titleLimit}`, `${descriptionLimit}`, `${keywordLimit}`, `${fileName}`, `${currentDate}`)
 - Built-in preset templates for **Stock Photo**, **Product Catalog**, and **Social Media**
@@ -46,6 +46,7 @@ It works with **cloud AI providers** (Gemini, OpenRouter) **and with fully local
 
 ### Management
 - API key storage in the OS keychain (Gemini & OpenRouter)
+- ChatGPT OAuth credentials stored in the OS keychain for Codex plan usage
 - Category tagging and organization
 - Metadata export and embedding
 
@@ -65,6 +66,22 @@ Notes:
 - Locally hosted models are well suited to **parallel processing** — tune the number of parallel workers and request delay in Settings to match your hardware
 
 ## Getting Started
+
+## OpenAI Codex with ChatGPT
+
+Descify supports OpenAI's documented **Sign in with ChatGPT** flow for eligible open-source clients. It uses the user's authorized ChatGPT plan allowance through the public Responses API; it does not use ChatGPT cookies, private `backend-api` endpoints, or a separately billed API key.
+
+1. Open Settings and choose **OpenAI Codex (ChatGPT plan)**.
+2. Click **Continue with ChatGPT** and complete authentication in the system browser.
+3. Select an account-provided model and save Settings.
+4. Generate metadata as usual.
+
+Credentials are exchanged through a PKCE loopback callback, validated against OpenAI's JWKS, refreshed when needed, and stored in the operating system keychain. Sign out from the same settings panel to remove the local credential.
+
+Important limitations:
+- ChatGPT plan usage is currently an OpenAI preview for eligible open-source clients. A Plus/Pro subscription does not automatically grant general OpenAI API access.
+- OpenAI controls model availability, rate limits, and remaining allowance. Descify displays connection state but cannot read or estimate remaining quota, and never falls back to API billing.
+- If an allowance is exhausted, the request fails with an explicit plan/rate-limit message.
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (v18+) and [Bun](https://bun.sh/)
@@ -131,8 +148,8 @@ Descify/
 
 ## API Keys
 
-> [!WARNING]
-> OpenAI is not supported because it's closeAI. The project uses Gemini (free) and OpenRouter (paid). Alternatively, run **local models** via [LM Studio](#local-models-lm-studio) — no API key required at all.
+> [!NOTE]
+> Codex uses the separate ChatGPT sign-in flow above. Do not enter an OpenAI API key for Codex; API keys and ChatGPT plan usage are separate products.
 
 | Service | Get Key |
 |---------|---------|

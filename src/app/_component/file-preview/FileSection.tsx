@@ -1,6 +1,6 @@
 import { Image, ImageOff } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getFilePath, useFileStore } from "@/store/fileStore";
+import { useFileStore } from "@/store/fileStore";
 import { isVectorFile } from "@/app/lib/thumbnail/vectorSupport";
 import { generatePreviewImage } from "@/app/lib/thumbnailGenerator";
 import { ApiCostBadge } from "./ApiCostBadge";
@@ -11,10 +11,11 @@ type FileSectionProps = {
 
 export default function FileSection({ file }: FileSectionProps) {
   const thumbnails = useFileStore((state) => state.thumbnails);
+  const filePath = useFileStore((state) => file ? state.filePaths.get(file) : undefined);
   const thumbnailItem = thumbnails.find((t) => t.file === file);
   const lowResUrl = thumbnailItem?.thumbnailUrl;
+  const cachedPreviewUrl = thumbnailItem?.previewUrl ?? null;
 
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const isImage = file?.type.startsWith("image/") ?? false;
   const isVideo = file?.type.startsWith("video/") ?? false;
@@ -23,50 +24,76 @@ export default function FileSection({ file }: FileSectionProps) {
   // like autoaudiosink), and loading video bytes into the heap freezes/ooms.
   // Both use the Rust/FFmpeg preview image instead.
   const isVector = file ? isVectorFile(file) : false;
-  const unsupportedMedia = isVector || isVideo;
 
-  const [vectorPreviewUrl, setVectorPreviewUrl] = useState<string | null>(null);
+  const [vectorPreview, setVectorPreview] = useState<{ file: File; url: string } | null>(null);
   const [vectorPreviewFailed, setVectorPreviewFailed] = useState(false);
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [videoPreview, setVideoPreview] = useState<{ file: File; url: string } | null>(null);
   // Track real failures separately from "still loading" — otherwise a video
   // whose FFmpeg preview is still being generated flashes the error state.
   const [videoPreviewFailed, setVideoPreviewFailed] = useState(false);
+  const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
+  const [imagePreviewFailed, setImagePreviewFailed] = useState(false);
 
   useEffect(() => {
-    if (!file) {
-      setObjectUrl(null);
-      setIsLoaded(false);
-      return;
-    }
     setIsLoaded(false);
-    // Vectors and videos never get a blob URL — the browser can't show them
-    // and the <video> pipeline crashes WebKit.
-    if (unsupportedMedia) {
-      setObjectUrl(null);
+    if (!file) {
       return;
     }
-    const url = URL.createObjectURL(file);
-    setObjectUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file, unsupportedMedia]);
+  }, [file]);
+
+  // Generate a bounded display preview for regular images instead of asking
+  // the webview to decode the original full-resolution file. The thumbnail
+  // remains visible while this larger preview is being prepared.
+  useEffect(() => {
+    if (!file || !isImage) {
+      setImagePreview(null);
+      setImagePreviewFailed(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setImagePreview(cachedPreviewUrl ? { file, url: cachedPreviewUrl } : null);
+    setImagePreviewFailed(false);
+
+    if (cachedPreviewUrl) return () => controller.abort();
+
+    generatePreviewImage(file, filePath, controller.signal)
+      .then((url) => {
+        if (controller.signal.aborted) return;
+        if (url) {
+          setImagePreview({ file, url });
+        } else {
+          setImagePreviewFailed(true);
+        }
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.warn(`Image preview failed for ${file.name}:`, error);
+        setImagePreviewFailed(true);
+      });
+
+    return () => controller.abort();
+  }, [file, filePath, isImage, cachedPreviewUrl]);
 
   // Fetch the rasterized preview for vector files.
   useEffect(() => {
     if (!file || !isVector) {
-      setVectorPreviewUrl(null);
+      setVectorPreview(null);
       setVectorPreviewFailed(false);
       return;
     }
 
     const controller = new AbortController();
-    setVectorPreviewUrl(null);
+    setVectorPreview(cachedPreviewUrl ? { file, url: cachedPreviewUrl } : null);
     setVectorPreviewFailed(false);
 
-    generatePreviewImage(file, getFilePath(file), controller.signal)
+    if (cachedPreviewUrl) return () => controller.abort();
+
+    generatePreviewImage(file, filePath, controller.signal)
       .then((url) => {
         if (controller.signal.aborted) return;
         if (url) {
-          setVectorPreviewUrl(url);
+          setVectorPreview({ file, url });
         } else {
           setVectorPreviewFailed(true);
         }
@@ -78,26 +105,27 @@ export default function FileSection({ file }: FileSectionProps) {
       });
 
     return () => controller.abort();
-  }, [file, isVector]);
+  }, [file, filePath, isVector, cachedPreviewUrl]);
 
   // Fetch the Rust/FFmpeg preview frame for videos. Videos are empty placeholders
   // (no bytes in the renderer), so a blob URL can never decode — always show the
   // FFmpeg preview image for videos, exactly like vector files.
   useEffect(() => {
     if (!file || !isVideo) {
-      setVideoPreviewUrl(null);
+      setVideoPreview(null);
       setVideoPreviewFailed(false);
       return;
     }
 
     const controller = new AbortController();
-    setVideoPreviewUrl(lowResUrl ?? null);
+    setVideoPreview(cachedPreviewUrl ? { file, url: cachedPreviewUrl } : null);
     setVideoPreviewFailed(false);
-    generatePreviewImage(file, getFilePath(file), controller.signal)
+    if (cachedPreviewUrl) return () => controller.abort();
+    generatePreviewImage(file, filePath, controller.signal)
       .then((url) => {
         if (controller.signal.aborted) return;
         if (url) {
-          setVideoPreviewUrl(url);
+          setVideoPreview({ file, url });
         } else {
           setVideoPreviewFailed(true);
         }
@@ -109,7 +137,7 @@ export default function FileSection({ file }: FileSectionProps) {
       });
 
     return () => controller.abort();
-  }, [file, isVideo, lowResUrl]);
+  }, [file, filePath, isVideo, lowResUrl, cachedPreviewUrl]);
 
   if (!file) {
     return (
@@ -119,7 +147,11 @@ export default function FileSection({ file }: FileSectionProps) {
     );
   }
 
-  const vectorUrl = vectorPreviewUrl ?? lowResUrl;
+  // Prefer data for the currently selected file before local async state, so
+  // a just-switched file never briefly shows the previous file's preview.
+  const imageUrl = cachedPreviewUrl ?? (imagePreview?.file === file ? imagePreview.url : null) ?? lowResUrl;
+  const vectorUrl = cachedPreviewUrl ?? (vectorPreview?.file === file ? vectorPreview.url : null) ?? lowResUrl;
+  const currentVideoPreviewUrl = cachedPreviewUrl ?? (videoPreview?.file === file ? videoPreview.url : null) ?? lowResUrl;
 
   return (
     <div className="w-full h-full relative overflow-hidden">
@@ -133,32 +165,46 @@ export default function FileSection({ file }: FileSectionProps) {
             />
           )}
 
-          {isImage && objectUrl && (
+          {isImage && imageUrl && (
             <img
-              src={objectUrl}
+              src={imageUrl}
               alt={file.name}
               className="w-full h-full object-contain rounded-2xl"
               onLoad={() => setIsLoaded(true)}
             />
           )}
 
-          {isVideo && videoPreviewUrl && (
-            <img
-              src={videoPreviewUrl}
-              alt={file.name}
-              className="w-full h-full object-contain rounded-2xl"
-              onLoad={() => setIsLoaded(true)}
-            />
-          )}
-
-          {isVideo && !videoPreviewUrl && !videoPreviewFailed && (
+          {isImage && !imageUrl && !imagePreviewFailed && (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <p className="text-sm">Generating preview…</p>
             </div>
           )}
 
-          {isVideo && !videoPreviewUrl && videoPreviewFailed && (
+          {isImage && !imageUrl && imagePreviewFailed && (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <ImageOff className="text-6xl" />
+              <p className="text-sm">Image preview unavailable</p>
+            </div>
+          )}
+
+          {isVideo && currentVideoPreviewUrl && (
+            <img
+              src={currentVideoPreviewUrl}
+              alt={file.name}
+              className="w-full h-full object-contain rounded-2xl"
+              onLoad={() => setIsLoaded(true)}
+            />
+          )}
+
+          {isVideo && !currentVideoPreviewUrl && !videoPreviewFailed && (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm">Generating preview…</p>
+            </div>
+          )}
+
+          {isVideo && !currentVideoPreviewUrl && videoPreviewFailed && (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
               <ImageOff className="text-6xl" />
               <p className="text-sm">Video preview unavailable</p>

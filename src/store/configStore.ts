@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { invoke } from '@tauri-apps/api/core';
 
-export type Provider = 'gemini' | 'openrouter';
+export type Provider = 'gemini' | 'openrouter' | 'codex';
 
 export type MetadataLimits = {
   titleLimit: number;
@@ -63,6 +63,7 @@ const initialState: ConfigState = {
     apiKeys: {
       gemini: '',
       openrouter: '',
+      codex: '',
     },
     requestDelay: 0,
     processingMode: 'sequential',
@@ -116,7 +117,7 @@ export const useConfigStore = create<ConfigState>()(
     name: 'descify-config',
     partialize: (state) => ({
       ...state,
-      api: { ...state.api, apiKeys: { gemini: '', openrouter: '' } },
+      api: { ...state.api, apiKeys: { gemini: '', openrouter: '', codex: '' } },
     }),
   })
 );
@@ -231,8 +232,8 @@ export function hasApiKey(): boolean {
  * empty and the user is asked for them in Settings.
  */
 export async function loadApiKeys(): Promise<void> {
-  const loaded: Record<Provider, string> = { gemini: '', openrouter: '' };
-  for (const provider of ['gemini', 'openrouter'] as const) {
+  const loaded: Record<Provider, string> = { gemini: '', openrouter: '', codex: '' };
+  for (const provider of ['gemini', 'openrouter', 'codex'] as const) {
     try {
       const key = await invoke<string | null>('read_api_key', { provider });
       loaded[provider] = key ?? '';

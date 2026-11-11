@@ -8,6 +8,7 @@ mod services;
 
 // Import the command function for Tauri's generate_handler macro
 use commands::cache::{clear_cache_directory, get_cache_info};
+use commands::codex::{codex_generate, codex_logout, codex_models, codex_sign_in, codex_status};
 use commands::metadata::{embed_metadata, read_exif_metadata_command};
 use commands::secrets::{read_api_key, store_api_key};
 use commands::thumbnail::{
@@ -38,7 +39,12 @@ pub fn run() {
             get_cache_info,
             clear_cache_directory,
             store_api_key,
-            read_api_key
+            read_api_key,
+            codex_sign_in,
+            codex_status,
+            codex_logout,
+            codex_models,
+            codex_generate
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -59,3 +59,30 @@ export async function storeApiKey(provider: string, key: string): Promise<void> 
 export async function readApiKey(provider: string): Promise<string | null> {
   return await invoke<string | null>('read_api_key', { provider });
 }
+
+export interface CodexStatus {
+  connected: boolean;
+  email?: string;
+  plan_usage_enabled: boolean;
+  expires_at?: number;
+}
+
+export async function codexSignIn(): Promise<CodexStatus> {
+  return await invoke<CodexStatus>('codex_sign_in');
+}
+
+export async function codexStatus(): Promise<CodexStatus> {
+  return await invoke<CodexStatus>('codex_status');
+}
+
+export async function codexLogout(): Promise<void> {
+  return await invoke('codex_logout');
+}
+
+export async function codexModels(): Promise<Array<{ slug: string; display_name: string }>> {
+  return await invoke<Array<{ slug: string; display_name: string }>>('codex_models');
+}
+
+export async function codexGenerate(request: { model: string; prompt: string; image_data_url: string }): Promise<string> {
+  return await invoke<string>('codex_generate', { request });
+}

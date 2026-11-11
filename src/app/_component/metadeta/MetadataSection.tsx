@@ -42,7 +42,7 @@ export const MetadataSection = () => {
     const useLocalModel = api.useLocalModel;
     const localModelName = api.localModelName || undefined;
 
-    if (!useLocalModel && !apiKey) {
+    if (!useLocalModel && provider !== 'codex' && !apiKey) {
       alert('Please configure your API key in Settings');
       return;
     }

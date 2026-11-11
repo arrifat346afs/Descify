@@ -5,7 +5,7 @@ import {
   upsertThumbnails,
   markThumbnailFailed,
 } from '@/store/fileStore';
-import { BATCH_CONFIG } from '@/app/lib/thumbnailGenerator';
+import { BATCH_CONFIG, generatePreviewImage } from '@/app/lib/thumbnailGenerator';
 import { isThumbnailableFile } from '@/app/lib/thumbnail/mediaTypes';
 
 /**
@@ -102,6 +102,31 @@ export function useThumbnailAutoGeneration() {
         );
 
         console.log(`✅ Completed batch #${batchId}`);
+
+        // Warm larger display previews after thumbnails are available. Keep
+        // this to two workers so preview decoding does not compete heavily
+        // with the thumbnail batch or block selection in the UI.
+        const previewsToWarm = filesToGenerate.slice();
+        const warmPreviewWorker = async () => {
+          while (previewsToWarm.length > 0) {
+            const file = previewsToWarm.shift();
+            if (!file) continue;
+
+            const thumbnail = useFileStore.getState().thumbnails.find((item) => item.file === file);
+            if (!thumbnail) continue;
+
+            try {
+              // The preview service keeps results in its bounded LRU cache;
+              // discard the returned data URL instead of retaining one per
+              // file in the application store.
+              await generatePreviewImage(file, filePaths.get(file));
+            } catch (error) {
+              console.warn(`Preview prewarm failed for ${file.name}:`, error);
+            }
+          }
+        };
+
+        void Promise.all([warmPreviewWorker(), warmPreviewWorker()]);
       } catch (error) {
         console.error('❌ Batch thumbnail generation failed:', error);
         filesToGenerate.forEach((f) => {

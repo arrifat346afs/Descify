@@ -405,7 +405,7 @@ const GenerateButtonComponent = () => {
     console.log('Local API URL:', localApiUrl);
     console.log('API Key exists:', !!apiKey);
 
-    if (!useLocalModel && !apiKey) {
+    if (!useLocalModel && provider !== 'codex' && !apiKey) {
       console.error('No API key configured for provider:', provider);
       alert('Please configure your API key in Settings');
       return;
