@@ -123,7 +123,7 @@ export async function generatePreviewImage(file: File, filePath?: string, signal
   }
 
   if (file.type.startsWith('video/')) {
-    return generateVideoThumbnail(file);
+    return generateVideoThumbnail(file, PREVIEW_CONFIG.MAX_SIZE, PREVIEW_CONFIG.JPEG_QUALITY);
   }
 
   return generateImageViaCanvas(file, PREVIEW_CONFIG.MAX_SIZE, PREVIEW_CONFIG.JPEG_QUALITY);
@@ -133,7 +133,21 @@ export async function generatePreviewImage(file: File, filePath?: string, signal
 // Image thumbnail path (browser Canvas)
 // ---------------------------------------------------------------------------
 
-export async function generateImageThumbnail(file: File, filePath?: string): Promise<string> {
+// Import and drag/drop can request the same file concurrently. Share decoding.
+const imageThumbnails = new WeakMap<File, Promise<string>>();
+
+export function generateImageThumbnail(file: File, filePath?: string): Promise<string> {
+  const existing = imageThumbnails.get(file);
+  if (existing) return existing;
+  const pending = generateImageThumbnailUncached(file, filePath).catch((error) => {
+    imageThumbnails.delete(file);
+    throw error;
+  });
+  imageThumbnails.set(file, pending);
+  return pending;
+}
+
+async function generateImageThumbnailUncached(file: File, filePath?: string): Promise<string> {
   // Vector formats (.ai/.eps) must be rasterized by the Rust/Ghostscript backend.
   if (isVectorFile(file)) {
     if (!filePath) {

@@ -69,15 +69,14 @@ export async function generateImageViaCanvas(file: File, maxSize: number, qualit
   }
 
   try {
-    const bitmap = await createImageBitmap(file, {
-      resizeWidth: maxSize,
-      resizeHeight: maxSize,
-      resizeQuality: 'medium',
-    });
+    // Preserve the source aspect ratio: supplying both resize dimensions
+    // to createImageBitmap stretches every image into a square.
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(maxSize / bitmap.width, maxSize / bitmap.height, 1);
 
     const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
     const ctx = canvas.getContext('2d', { willReadFrequently: false });
 
     if (!ctx) {
@@ -85,7 +84,11 @@ export async function generateImageViaCanvas(file: File, maxSize: number, qualit
       throw new Error('Failed to get canvas context');
     }
 
-    ctx.drawImage(bitmap, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
     return canvas.toDataURL('image/jpeg', quality);
   } catch {

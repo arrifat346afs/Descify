@@ -16,8 +16,8 @@ export const AI_IMAGE_CONFIG = {
 };
 
 export const PREVIEW_CONFIG = {
-  MAX_SIZE: 600,
-  JPEG_QUALITY: 0.8,
+  MAX_SIZE: 2560,
+  JPEG_QUALITY: 0.95,
 };
 
 export function getCacheKey(filePath: string, size: number): string {

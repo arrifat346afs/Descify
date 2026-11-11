@@ -5,7 +5,7 @@
 
 import { BATCH_CONFIG } from './config';
 
-export function generateVideoThumbnail(file: File): Promise<string> {
+export function generateVideoThumbnail(file: File, maxSize = BATCH_CONFIG.MAX_THUMBNAIL_SIZE, quality = BATCH_CONFIG.JPEG_QUALITY): Promise<string> {
   return new Promise((resolve, reject) => {
     // An empty placeholder File (size 0, from the old lightweight upload path)
     // contains no decodable bytes — fail fast with a clear message instead of
@@ -33,7 +33,6 @@ export function generateVideoThumbnail(file: File): Promise<string> {
     video.onseeked = () => {
       clearTimeout(timeout);
       try {
-        const maxSize = BATCH_CONFIG.MAX_THUMBNAIL_SIZE;
         let width = video.videoWidth;
         let height = video.videoHeight;
         const scale = Math.min(maxSize / width, maxSize / height, 1);
@@ -53,7 +52,7 @@ export function generateVideoThumbnail(file: File): Promise<string> {
         }
 
         ctx.drawImage(video, 0, 0, width, height);
-        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.5);
+        const thumbnailUrl = canvas.toDataURL('image/jpeg', quality);
 
         URL.revokeObjectURL(objectUrl);
         video.src = '';

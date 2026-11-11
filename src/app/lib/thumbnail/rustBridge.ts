@@ -12,6 +12,18 @@ import type { GeneratedPreviewResult, GeneratedThumbnailResult } from './types';
 import { BATCH_CONFIG, PREVIEW_CONFIG, getCacheKey } from './config';
 import { thumbnailCache } from './lruCache';
 
+// Coalesce simultaneous requests from drag/drop and the automatic batch.
+const pendingRequests = new Map<string, Promise<unknown>>();
+
+function invokeShared<T>(command: string, args: { filePath: string; size: number }): Promise<T> {
+  const key = JSON.stringify([command, args.filePath, args.size]);
+  const existing = pendingRequests.get(key);
+  if (existing) return existing as Promise<T>;
+  const request = invoke<T>(command, args).finally(() => pendingRequests.delete(key));
+  pendingRequests.set(key, request);
+  return request;
+}
+
 /**
  * Read a cached thumbnail JPEG from disk and encode it as a data-URL.
  *
@@ -75,7 +87,7 @@ export async function generateVideoThumbnailRust(filePath: string, size: number 
   try {
     if (signal?.aborted) return null;
 
-    const result = await invoke<GeneratedThumbnailResult>('generate_video_thumbnail_command', {
+    const result = await invokeShared<GeneratedThumbnailResult>('generate_video_thumbnail_command', {
       filePath,
       size
     });
@@ -105,7 +117,7 @@ export async function generateVideoPreviewRust(filePath: string, size: number = 
   try {
     if (signal?.aborted) return null;
 
-    const result = await invoke<GeneratedPreviewResult>('generate_video_preview_command', {
+    const result = await invokeShared<GeneratedPreviewResult>('generate_video_preview_command', {
       filePath,
       size
     });
@@ -128,7 +140,7 @@ export async function generateThumbnailRust(filePath: string, size: number = 150
   if (thumbnailCache.has(cacheKey)) return thumbnailCache.get(cacheKey) ?? null;
 
   try {
-    const result = await invoke<GeneratedThumbnailResult>('generate_thumbnail_command', {
+    const result = await invokeShared<GeneratedThumbnailResult>('generate_thumbnail_command', {
       filePath,
       size
     });

@@ -138,11 +138,19 @@ pub(crate) fn resize_image(img: &DynamicImage, target_size: u32) -> DynamicImage
     img.resize(new_w, new_h, FilterType::Triangle)
 }
 
-fn encode_jpeg_fast(img: &DynamicImage) -> Vec<u8> {
+fn resize_preview(img: &DynamicImage, target_size: u32) -> DynamicImage {
+    img.resize(
+        target_size.min(img.width()),
+        target_size.min(img.height()),
+        FilterType::Lanczos3,
+    )
+}
+
+fn encode_jpeg(img: &DynamicImage, quality: u8) -> Vec<u8> {
     let rgb = img.to_rgb8();
     let (width, height) = rgb.dimensions();
     let mut buffer = Vec::with_capacity((width * height / 2) as usize);
-    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, 70);
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, quality);
     encoder.encode_image(&rgb).ok();
     buffer
 }
@@ -172,7 +180,11 @@ fn save_thumbnail_to_cache(
     let thumb_path = cache_dir.join(format!("{}.jpg", cache_key));
     let mut file = File::create(&thumb_path).ok()?;
     file.write_all(jpeg_data).ok()?;
-    evict_oldest(cache_dir);
+    // Amortize directory scans instead of stat-ing thousands of files per image.
+    static WRITES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    if WRITES.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % 128 == 0 {
+        evict_oldest(cache_dir);
+    }
     Some(thumb_path)
 }
 
@@ -233,7 +245,7 @@ pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult 
     };
     let (file_mtime, file_size) = file_meta;
 
-    let cache_key = compute_cache_key(file_path, file_mtime, file_size);
+    let cache_key = format!("thumb_v2_{target_size}_{}", compute_cache_key(file_path, file_mtime, file_size));
     let cache_dir = match get_app_thumbnail_cache_dir() {
         Some(d) => d,
         None => {
@@ -295,7 +307,7 @@ pub fn generate_thumbnail(file_path: &str, target_size: u32) -> ThumbnailResult 
 
     let resized = resize_image(&img, target_size);
     let (width, height) = resized.dimensions();
-    let jpeg_data = encode_jpeg_fast(&resized);
+    let jpeg_data = encode_jpeg(&resized, 70);
 
     // Prefer returning a path so the image never has to cross the IPC bridge as
     // base64.  Fall back to base64 only if the disk write failed.
@@ -342,9 +354,9 @@ pub fn generate_preview(file_path: &str, target_size: u32) -> PreviewResult {
             }
         }
     };
-    let (file_mtime, _file_size) = file_meta;
+    let (file_mtime, file_size) = file_meta;
 
-    let cache_key = format!("preview_{}", compute_cache_key(file_path, file_mtime, 0));
+    let cache_key = format!("preview_v2_{target_size}_{}", compute_cache_key(file_path, file_mtime, file_size));
     let cache_dir = match get_app_thumbnail_cache_dir() {
         Some(d) => d,
         None => {
@@ -398,9 +410,9 @@ pub fn generate_preview(file_path: &str, target_size: u32) -> PreviewResult {
         }
     };
 
-    let resized = resize_image(&img, target_size);
+    let resized = resize_preview(&img, target_size);
     let (width, height) = resized.dimensions();
-    let jpeg_data = encode_jpeg_fast(&resized);
+    let jpeg_data = encode_jpeg(&resized, 95);
 
     let (cache_path, preview_base64) =
         match save_thumbnail_to_cache(&cache_dir, &cache_key, &jpeg_data) {
@@ -466,7 +478,7 @@ async fn run_ffmpeg_thumbnail_attempt(
     cmd.arg("-frames:v").arg("1");
     cmd.arg("-threads").arg("1");
     cmd.arg("-vf").arg(format!("scale={target_size}:{target_size}:force_original_aspect_ratio=decrease"));
-    cmd.arg("-sws_flags").arg("fast_bilinear");
+    cmd.arg("-sws_flags").arg(if target_size > 480 { "lanczos" } else { "fast_bilinear" });
     cmd.arg("-q:v").arg("2");
     cmd.arg("-f").arg("image2pipe");
     cmd.arg("-c:v").arg("mjpeg");
@@ -595,7 +607,7 @@ pub async fn generate_video_thumbnail(file_path: &str, target_size: u32) -> Thum
     let (file_mtime, file_size) = file_meta;
 
     let cache_key = format!(
-        "video_{}",
+        "video_v2_{target_size}_{}",
         compute_cache_key(file_path, file_mtime, file_size)
     );
     let cache_dir = match get_app_thumbnail_cache_dir() {
@@ -712,11 +724,11 @@ pub async fn generate_video_preview(file_path: &str, target_size: u32) -> Previe
             }
         }
     };
-    let (file_mtime, _file_size) = file_meta;
+    let (file_mtime, file_size) = file_meta;
 
     let cache_key = format!(
-        "video_preview_{}",
-        compute_cache_key(file_path, file_mtime, 0)
+        "video_preview_v2_{target_size}_{}",
+        compute_cache_key(file_path, file_mtime, file_size)
     );
     let cache_dir = match get_app_thumbnail_cache_dir() {
         Some(d) => d,
@@ -776,6 +788,17 @@ pub async fn generate_video_preview(file_path: &str, target_size: u32) -> Previe
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn preview_preserves_aspect_ratio_and_does_not_upscale() {
+        let landscape = DynamicImage::new_rgb8(3000, 1500);
+        let preview = resize_preview(&landscape, 2560);
+        assert_eq!(preview.dimensions(), (2560, 1280));
+        let jpeg = encode_jpeg(&preview, 95);
+        assert_eq!(image::load_from_memory(&jpeg).unwrap().dimensions(), (2560, 1280));
+        let portrait = DynamicImage::new_rgb8(100, 200);
+        assert_eq!(resize_preview(&portrait, 2560).dimensions(), (100, 200));
+    }
 
     #[tokio::test]
     async fn test_batch_50_videos() {
