@@ -82,7 +82,9 @@ X-AppImage-Name=Descify
     if bundle.get("publisher"):
         field(component, "developer_name", bundle["publisher"])
     field(component, "url", bundle["homepage"], type="homepage")
-    field(component, "url", REPOSITORY, type="vcs-browser")
+    # Ubuntu 22.04's AppStream rejects vcs-browser. The repository README
+    # provides the user documentation, so expose it as a supported help link.
+    field(component, "url", REPOSITORY, type="help")
     field(component, "url", REPOSITORY + "/issues", type="bugtracker")
     field(component, "launchable", "Descify.desktop", type="desktop-id")
     categories = ET.SubElement(component, "categories")

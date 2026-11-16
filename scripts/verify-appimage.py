@@ -60,7 +60,7 @@ def verify(appimage, launch=False):
         check(component.findtext("launchable") == "Descify.desktop", "Wrong launchable")
         check(component.findtext("url[@type='homepage']") == config["bundle"]["homepage"],
               "Homepage mismatch")
-        check(component.findtext("url[@type='vcs-browser']") == metadata.REPOSITORY,
+        check(component.findtext("url[@type='help']") == metadata.REPOSITORY,
               "Repository mismatch")
         check(component.findtext("developer_name") == (config["bundle"].get("publisher") or None),
               "Publisher mismatch")

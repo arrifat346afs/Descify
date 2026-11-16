@@ -48,6 +48,10 @@ class MetadataTests(unittest.TestCase):
             self.assertEqual(component.find("releases/release").get("version"), overrides["version"])
             self.assertEqual(component.findtext("developer_name"), "Example & Partners")
             self.assertEqual(component.findtext("summary"), "Images < metadata")
+            # Keep URLs compatible with Ubuntu 22.04's AppStream validator.
+            self.assertEqual(component.findtext("url[@type='help']"), metadata.REPOSITORY)
+            self.assertTrue({url.get("type") for url in component.findall("url")}
+                            <= {"homepage", "help", "bugtracker"})
             first = xml_path.read_bytes()
             metadata.generate()
             self.assertEqual(first, xml_path.read_bytes())

@@ -30,6 +30,9 @@ to a JSON file is resolved relative to `src-tauri`, like Tauri's configuration.
 - `developer_name` is retained for compatibility with Ubuntu 22.04's AppStream
   validator. Newer validators may emit informational notices about this older
   tag and missing optional developer/content-rating information.
+- The repository URL uses the supported `help` type because its README contains
+  the user documentation. Ubuntu 22.04's validator rejects the newer
+  `vcs-browser` URL type; the website and issue tracker retain their own types.
 
 The Debian and RPM packages receive the same metadata. The repository URL is
 maintained in the generator because Tauri has no repository bundle property.

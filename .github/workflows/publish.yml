@@ -107,7 +107,10 @@ jobs:
 
       - name: Test Linux metadata generation
         if: matrix.platform == 'ubuntu-22.04'
-        run: python3 -m unittest discover -s scripts -p 'test_linux_metadata.py'
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_linux_metadata.py'
+          python3 scripts/generate-linux-metadata.py
+          appstreamcli validate --no-net src-tauri/generated/linux/com.descify.app.metainfo.xml
 
       - name: Get commit messages since last tag
         id: changelog
