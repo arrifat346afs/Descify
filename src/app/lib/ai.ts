@@ -167,7 +167,7 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
 
         response = await callAIApi({
           provider,
-          apiKey,
+          apiKey: apiKey ?? '',
           model: billedModel,
           messages,
           maxTokens,
