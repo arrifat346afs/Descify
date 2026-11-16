@@ -43,3 +43,5 @@ build/**
 *.swo
 Thumbs.db
 src-tauri/binaries/**
+src-tauri/generated/
+__pycache__/

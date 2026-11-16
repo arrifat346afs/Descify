@@ -42,7 +42,12 @@
     ],
     "resources": [
       "resources/*"
-    ]
+    ],
+    "category": "GraphicsAndDesign",
+    "shortDescription": "AI powered image metadata manager",
+    "longDescription": "Generate and manage image titles, descriptions, and keywords with AI. Descify helps stock contributors organize metadata and prepare images for publishing.",
+    "homepage": "https://descify-eta.vercel.app",
+    "license": "MIT"
   },
   "plugins": {
     "updater": {

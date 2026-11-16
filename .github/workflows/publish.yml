@@ -61,34 +61,31 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm libxdo-dev ffmpeg
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm libxdo-dev ffmpeg desktop-file-utils appstream xvfb xauth xdotool dbus-x11
 
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
 
-      # 3. ADD THIS STEP (Crucial: Extracts version/name for the Arch script)
       - name: get package info
         id: get-package
         shell: bash
         run: |
-          # Try to get version from package.json, default to 0.0.0 if missing
-          VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "undefined")
-          NAME=$(node -p "require('./package.json').name" 2>/dev/null || echo "undefined")
-          
-          # Fallback: Check tauri.conf.json if package.json is missing info
-          if [ "$VERSION" == "undefined" ]; then
-            VERSION=$(grep -oP '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json || echo "0.0.0")
-          fi
-          if [ "$NAME" == "undefined" ]; then
-             NAME="descify"
-          fi
-
-          echo "name=$NAME" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "description=$(node -p "require('./package.json').description" 2>/dev/null || echo "App")" >> $GITHUB_OUTPUT
-          echo "license=$(node -p "require('./package.json').license" 2>/dev/null || echo "MIT")" >> $GITHUB_OUTPUT
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const config = require('./src-tauri/tauri.conf.json');
+          const pkg = require('./package.json');
+          const versionPath = path.resolve('src-tauri', config.version);
+          const version = fs.existsSync(versionPath)
+            ? JSON.parse(fs.readFileSync(versionPath, 'utf8')).version
+            : config.version;
+          console.log(`name=${pkg.name}`);
+          console.log(`version=${version}`);
+          console.log(`description=${config.bundle.shortDescription}`);
+          console.log(`license=${config.bundle.license}`);
+          NODE
 
       - name: setup bun
         uses: oven-sh/setup-bun@v2
@@ -107,6 +104,10 @@ jobs:
 
       - name: install frontend dependencies
         run: bun install
+
+      - name: Test Linux metadata generation
+        if: matrix.platform == 'ubuntu-22.04'
+        run: python3 -m unittest discover -s scripts -p 'test_linux_metadata.py'
 
       - name: Get commit messages since last tag
         id: changelog
@@ -146,6 +147,22 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Validate packaged AppImage metadata and launch (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          images=(src-tauri/target/release/bundle/appimage/*.AppImage)
+          if [ "${#images[@]}" -eq 0 ]; then
+            echo "No AppImage produced"
+            exit 1
+          fi
+          for image in "${images[@]}"; do
+            # Read/extract only: never rewrite an artifact after Tauri signs it.
+            dbus-run-session -- xvfb-run -a python3 scripts/verify-appimage.py "$image" --launch
+          done
 
       # 4. ADD THIS ENTIRE SECTION (Arch Linux Build Steps)
       

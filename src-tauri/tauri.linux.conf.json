@@ -1,0 +1,27 @@
+{
+  "identifier": "com.descify.app",
+  "build": {
+    "beforeBundleCommand": "python3 scripts/generate-linux-metadata.py"
+  },
+  "bundle": {
+    "linux": {
+      "deb": {
+        "desktopTemplate": "generated/linux/Descify.desktop",
+        "files": {
+          "/usr/share/metainfo/com.descify.app.metainfo.xml": "generated/linux/com.descify.app.metainfo.xml"
+        }
+      },
+      "rpm": {
+        "desktopTemplate": "generated/linux/Descify.desktop",
+        "files": {
+          "/usr/share/metainfo/com.descify.app.metainfo.xml": "generated/linux/com.descify.app.metainfo.xml"
+        }
+      },
+      "appimage": {
+        "files": {
+          "/usr/share/metainfo/com.descify.app.metainfo.xml": "generated/linux/com.descify.app.metainfo.xml"
+        }
+      }
+    }
+  }
+}
