@@ -252,7 +252,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
     const apiKey = provider ? api.apiKeys[provider] : undefined;
 
     // Check if using local model or API key is configured
-    if (!api.useLocalModel && !apiKey) {
+    if (!api.useLocalModel && provider !== 'codex' && !apiKey) {
       alert('Please configure your API key in Settings');
       return;
     }

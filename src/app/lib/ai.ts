@@ -146,7 +146,9 @@ export const generateMetadata = async (opts: GenerateMetadataOptions): Promise<G
         });
       } else {
         // Use remote API model
-        if (!apiKey) {
+        // Codex uses the authenticated ChatGPT plan through the native command,
+        // so it does not require a separate API key.
+        if (provider !== 'codex' && !apiKey) {
           throw new Error(`No API key provided for ${provider}`);
         }
 

@@ -23,6 +23,7 @@ export const TemplateManager = () => {
   const activeTemplateId = useTemplateStore((state) => state.activeTemplateId);
   const userTemplates = useTemplateStore((state) => state.userTemplates);
   const editedDefaultTemplates = useTemplateStore((state) => state.editedDefaultTemplates);
+  const [activeTab, setActiveTab] = useState('templates');
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
   const [isEditingDefault, setIsEditingDefault] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
@@ -113,6 +114,7 @@ export const TemplateManager = () => {
       setEditingTemplate('new');
       setIsEditingDefault(false);
     }
+    setActiveTab('editor');
   };
 
   const cancelEdit = () => {
@@ -152,7 +154,7 @@ export const TemplateManager = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="templates" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="editor">Editor</TabsTrigger>
