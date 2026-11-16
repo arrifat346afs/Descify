@@ -1,7 +1,9 @@
 # Linux package metadata
 
 `src-tauri/tauri.conf.json` owns the application version, name, identifier,
-description, category, publisher, homepage and license. Linux packaging runs
+description, category, homepage and license. The Linux configuration supplies
+the publisher; if it is absent or empty, the optional AppStream developer name
+is omitted without blocking version metadata generation. Linux packaging runs
 `scripts/generate-linux-metadata.py` through `build.beforeBundleCommand` in
 `tauri.linux.conf.json`. This hook runs for both `tauri build` and `tauri bundle`.
 Python 3 is required on Linux packaging hosts.

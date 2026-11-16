@@ -79,7 +79,8 @@ X-AppImage-Name=Descify
     description = ET.SubElement(component, "description")
     field(description, "p", bundle["longDescription"])
     # developer_name also works with Ubuntu 22.04's AppStream validator.
-    field(component, "developer_name", bundle["publisher"])
+    if bundle.get("publisher"):
+        field(component, "developer_name", bundle["publisher"])
     field(component, "url", bundle["homepage"], type="homepage")
     field(component, "url", REPOSITORY, type="vcs-browser")
     field(component, "url", REPOSITORY + "/issues", type="bugtracker")

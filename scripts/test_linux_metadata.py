@@ -14,6 +14,23 @@ spec.loader.exec_module(metadata)
 
 
 class MetadataTests(unittest.TestCase):
+    def test_optional_publisher_does_not_block_version_metadata(self):
+        for publisher in (None, ""):
+            with self.subTest(publisher=publisher), tempfile.TemporaryDirectory() as directory, patch.object(
+                metadata, "OUTPUT", Path(directory)
+            ), patch.dict("os.environ", {
+                "TAURI_CONFIG": json.dumps({"bundle": {"publisher": publisher}}),
+                "SOURCE_DATE_EPOCH": "0",
+            }):
+                # A null Merge Patch removes the key, reproducing the CI failure.
+                metadata.generate()
+                version = metadata.configuration()["version"]
+                desktop = (Path(directory) / "Descify.desktop").read_text()
+                self.assertIn(f"X-AppImage-Version={version}\n", desktop)
+                component = ET.parse(Path(directory) / "com.descify.app.metainfo.xml").getroot()
+                self.assertIsNone(component.find("developer_name"))
+                self.assertEqual(component.find("releases/release").get("version"), version)
+
     def test_version_override_reaches_both_formats_and_xml_is_escaped(self):
         overrides = {"version": "9.8.7-test.1", "bundle": {
             "publisher": "Example & Partners", "shortDescription": "Images < metadata"

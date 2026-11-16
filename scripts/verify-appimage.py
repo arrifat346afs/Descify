@@ -62,7 +62,7 @@ def verify(appimage, launch=False):
               "Homepage mismatch")
         check(component.findtext("url[@type='vcs-browser']") == metadata.REPOSITORY,
               "Repository mismatch")
-        check(component.findtext("developer_name") == config["bundle"]["publisher"],
+        check(component.findtext("developer_name") == (config["bundle"].get("publisher") or None),
               "Publisher mismatch")
         if launch:
             # Run under xvfb-run so an existing Descify window cannot satisfy this check.

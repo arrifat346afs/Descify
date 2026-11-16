@@ -4,6 +4,7 @@
     "beforeBundleCommand": "python3 scripts/generate-linux-metadata.py"
   },
   "bundle": {
+    "publisher": "Abdur Rahman Rifat",
     "linux": {
       "deb": {
         "desktopTemplate": "generated/linux/Descify.desktop",
