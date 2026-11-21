@@ -197,7 +197,7 @@ const GenerateButtonComponent = () => {
               console.warn(`⚠️ Failed to embed metadata for ${item.file.name}: ${embedResult.message}`);
               // A failed embed (e.g. ExifTool missing) was previously
               // console-only — the user never saw it.
-              toast.error(`Failed to embed metadata for ${item.file.name}`);
+              toast.error(`Metadata generated for ${item.file.name}, but couldn't be embedded: ${embedResult.message}`);
             }
           } catch (error) {
             console.error(`❌ Error embedding metadata for ${item.file.name}:`, error);

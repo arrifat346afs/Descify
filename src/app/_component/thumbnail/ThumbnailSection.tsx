@@ -326,7 +326,7 @@ const ThumbnailSection = ({ onSelectFile }: ThumbnailSectionProps) => {
               console.log(`✅ Successfully embedded metadata for ${file.name}: ${embedResult.message}`);
             } else {
               console.warn(`⚠️ Failed to embed metadata for ${file.name}: ${embedResult.message}`);
-              toast.error(`Failed to embed metadata for ${file.name}`);
+              toast.error(`Metadata generated for ${file.name}, but couldn't be embedded: ${embedResult.message}`);
             }
           } catch (error) {
             console.error(`❌ Error embedding metadata for ${file.name}:`, error);

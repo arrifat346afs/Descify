@@ -80,41 +80,23 @@ export async function generatePreviewImage(file: File, filePath?: string, signal
     throw new Error('Aborted');
   }
 
-  if (filePath) {
-    if (file.type.startsWith('video/')) {
-      const preview = await generateVideoPreviewRust(filePath, PREVIEW_CONFIG.MAX_SIZE, signal);
-      if (preview) return preview;
-    } else {
-      try {
-        if (signal?.aborted) {
-          throw new Error('Aborted');
-        }
+  if (filePath && file.type.startsWith('video/')) {
+    const preview = await generateVideoPreviewRust(filePath, PREVIEW_CONFIG.MAX_SIZE, signal);
+    if (preview) return preview;
+  } else if (filePath && isVectorFile(file)) {
+    const cacheKey = `preview_${filePath}_${PREVIEW_CONFIG.MAX_SIZE}`;
+    if (thumbnailCache.has(cacheKey)) return thumbnailCache.get(cacheKey) ?? '';
 
-        const cacheKey = `preview_${filePath}_${PREVIEW_CONFIG.MAX_SIZE}`;
-        if (thumbnailCache.has(cacheKey)) {
-          return thumbnailCache.get(cacheKey) ?? '';
-        }
+    const result = await invoke<GeneratedPreviewResult>('generate_preview_command', {
+      filePath,
+      size: PREVIEW_CONFIG.MAX_SIZE
+    });
+    if (signal?.aborted) throw new Error('Aborted');
 
-        const result = await invoke<GeneratedPreviewResult>('generate_preview_command', {
-          filePath,
-          size: PREVIEW_CONFIG.MAX_SIZE
-        });
-
-        if (signal?.aborted) {
-          throw new Error('Aborted');
-        }
-
-        const preview = await resolveImageUrlAsync(result.preview_base64, result.cache_path);
-        if (preview) {
-          thumbnailCache.set(cacheKey, preview);
-          return preview;
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          throw error;
-        }
-        console.warn('Preview generation failed:', error);
-      }
+    const preview = await resolveImageUrlAsync(result.preview_base64, result.cache_path);
+    if (preview) {
+      thumbnailCache.set(cacheKey, preview);
+      return preview;
     }
   }
 
